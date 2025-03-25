@@ -15,6 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<CurrencyModel> _currencies = [];
   final TextEditingController _newCurrencyCodeController =
       TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
   bool _showCurrencyManagement = false;
 
   @override
@@ -24,26 +25,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadCurrencies() async {
-    final currencies = await _dbHelper.getAllCurrencies();
-    setState(() {
-      _currencies = currencies;
-    });
+    try {
+      final currencies = await _dbHelper.getAllCurrencies();
+      setState(() {
+        // Filter out SOM and ensure proper quantity parsing
+        _currencies =
+            currencies.map((currency) {
+              // Ensure quantity is properly parsed as double
+              return CurrencyModel(
+                id: currency.id,
+                code: currency.code,
+                quantity:
+                    currency.quantity is double
+                        ? currency.quantity
+                        : double.tryParse(currency.quantity.toString()) ?? 0.0,
+                updatedAt: currency.updatedAt,
+              );
+            }).toList();
+      });
+    } catch (e) {
+      debugPrint('Error loading currencies: $e');
+    }
   }
 
   Future<void> _showAddCurrencyDialog(BuildContext context) async {
+    _newCurrencyCodeController.clear();
+    _quantityController.clear();
+
     return showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Add New Currency'),
-          content: TextField(
-            controller: _newCurrencyCodeController,
-            decoration: const InputDecoration(
-              labelText: 'Currency Code (e.g. USD)',
-              border: OutlineInputBorder(),
-            ),
-            maxLength: 3,
-            textCapitalization: TextCapitalization.characters,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _newCurrencyCodeController,
+                decoration: const InputDecoration(
+                  labelText: 'Currency Code (e.g. USD)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLength: 3,
+                textCapitalization: TextCapitalization.characters,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _quantityController,
+                decoration: const InputDecoration(
+                  labelText: 'Initial Quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -52,16 +87,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (_newCurrencyCodeController.text.isNotEmpty) {
+                if (_newCurrencyCodeController.text.isNotEmpty &&
+                    _quantityController.text.isNotEmpty) {
                   try {
                     final newCurrency = CurrencyModel(
-                      code: _newCurrencyCodeController.text,
-                      quantity: 0.0, // Default to zero
+                      code: _newCurrencyCodeController.text.toUpperCase(),
+                      quantity: double.parse(_quantityController.text),
                     );
 
                     await _dbHelper.insertCurrency(newCurrency);
                     await _loadCurrencies();
-                    _newCurrencyCodeController.clear();
                     Navigator.pop(context);
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -78,16 +113,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _deleteCurrency(int? id) async {
-    if (id == null) return;
+  Future<void> _deleteCurrency(int? id, String code) async {
+    if (id == null || code == 'SOM') return;
 
-    try {
-      await _dbHelper.deleteCurrency(id);
-      await _loadCurrencies();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting currency: ${e.toString()}')),
-      );
+    // Show confirmation dialog
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete currency $code?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _dbHelper.deleteCurrency(id);
+        await _loadCurrencies();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Currency $code deleted')));
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting currency: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -116,7 +179,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        // Add other settings options here
         const ListTile(
           title: Text('Appearance'),
           leading: Icon(Icons.color_lens),
@@ -158,15 +220,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     itemCount: _currencies.length,
                     itemBuilder: (context, index) {
                       final currency = _currencies[index];
+                      // Format quantity with 2 decimal places
+                      final formattedQuantity = NumberFormat.currency(
+                        decimalDigits: 2,
+                        symbol: '',
+                      ).format(currency.quantity);
+
                       return ListTile(
                         title: Text(currency.code),
                         subtitle: Text(
-                          'Quantity: ${currency.quantity}\n'
+                          'Quantity: $formattedQuantity\n'
                           'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteCurrency(currency.id),
+                          onPressed:
+                              () => _deleteCurrency(currency.id, currency.code),
                         ),
                       );
                     },
@@ -189,6 +258,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _newCurrencyCodeController.dispose();
+    _quantityController.dispose();
     super.dispose();
   }
 }

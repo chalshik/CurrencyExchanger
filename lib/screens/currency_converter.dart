@@ -5,12 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
 
-// Kyrgyzstan Time Utility
-DateTime getKyrgyzstanTime() {
-  final now = DateTime.now().toUtc();
-  return now.add(const Duration(hours: 6));
-}
-
 // Responsive Currency Converter
 class ResponsiveCurrencyConverter extends StatelessWidget {
   const ResponsiveCurrencyConverter({super.key});
@@ -60,18 +54,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     try {
       final currencyModels = await _databaseHelper.getAllCurrencies();
       setState(() {
-        if (currencyModels.isNotEmpty) {
-          _currencies = currencyModels.map((c) => c.code).toList();
-          // Set default currency to first one if available
-          _selectedCurrency = _currencies.isNotEmpty ? _currencies.first : '';
-        } else {
-          _currencies = []; // Empty list instead of default currencies
-          _selectedCurrency = '';
-        }
+        // Filter out SOM from the currency list
+        _currencies =
+            currencyModels
+                .where((c) => c.code != 'SOM')
+                .map((c) => c.code)
+                .toList();
+
+        // Set default currency to first one if available
+        _selectedCurrency = _currencies.isNotEmpty ? _currencies.first : '';
       });
     } catch (e) {
       setState(() {
-        _currencies = []; // Empty list instead of default currencies
+        _currencies = [];
         _selectedCurrency = '';
       });
       _showBriefNotification(context, 'Error loading currencies', Colors.red);
@@ -112,7 +107,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     }
   }
 
-  // Method to show brief notification
   void _showBriefNotification(
     BuildContext context,
     String message,
@@ -164,16 +158,26 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     });
   }
 
-  // Build Currency Input Section
   Widget _buildCurrencyInputSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(
+          _operationType == 'Purchase'
+              ? 'Buy Rate (SOM per 1 $_selectedCurrency)'
+              : 'Sell Rate (SOM per 1 $_selectedCurrency)',
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 4),
         TextField(
           controller: _currencyController,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
-            labelText: 'Currency Value',
+            labelText: 'Exchange Rate',
+            hintText:
+                _operationType == 'Purchase'
+                    ? 'Enter buy rate'
+                    : 'Enter sell rate',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade400),
@@ -185,11 +189,17 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           onChanged: (_) => _calculateTotal(),
         ),
         const SizedBox(height: 16),
+        Text(
+          'Amount to ${_operationType == 'Purchase' ? 'buy' : 'sell'}',
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 4),
         TextField(
           controller: _quantityController,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: 'Quantity',
+            hintText: 'Enter amount in $_selectedCurrency',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade400),
@@ -205,30 +215,33 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  // Build Total Sum Card
   Widget _buildTotalSumCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.blue.shade100, width: 1),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             Text(
-              'Total Amount',
+              _operationType == 'Purchase'
+                  ? 'Total SOM to pay'
+                  : 'Total SOM to receive',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
             Text(
-              '${_totalSum.toStringAsFixed(2)} $_selectedCurrency',
+              '${_totalSum.toStringAsFixed(2)} SOM',
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.blue,
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'for ${_quantityController.text.isEmpty ? '0' : _quantityController.text} $_selectedCurrency',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -236,7 +249,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  // Build Currency Selector
   Widget _buildCurrencySelector() {
     if (_currencies.isEmpty) {
       return const Padding(
@@ -250,38 +262,53 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       );
     }
 
-    return SizedBox(
-      height: 50,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _currencies.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final currency = _currencies[index];
-          return ChoiceChip(
-            label: Text(currency),
-            selected: _selectedCurrency == currency,
-            onSelected: (selected) {
-              setState(() {
-                _selectedCurrency = currency;
-              });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Select Currency:',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Colors.blue.shade700,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 50,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _currencies.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final currency = _currencies[index];
+              return ChoiceChip(
+                label: Text(currency),
+                selected: _selectedCurrency == currency,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedCurrency = currency;
+                    _calculateTotal();
+                  });
+                },
+                selectedColor: Colors.blue,
+                backgroundColor: Colors.grey.shade100,
+                labelStyle: TextStyle(
+                  color:
+                      _selectedCurrency == currency
+                          ? Colors.white
+                          : Colors.black,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              );
             },
-            selectedColor: Colors.blue,
-            backgroundColor: Colors.grey.shade100,
-            labelStyle: TextStyle(
-              color:
-                  _selectedCurrency == currency ? Colors.white : Colors.black,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 
-  // Build Operation Type Buttons
   Widget _buildOperationTypeButtons() {
     return Row(
       children: [
@@ -332,7 +359,71 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  // Build Finish Button
+  Future<void> _showAddSomDialog() async {
+    final amountController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add SOM Balance'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount to add',
+                  prefixIcon: Icon(Icons.attach_money),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter amount';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter valid number';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final amount = double.parse(amountController.text);
+                    try {
+                      await _databaseHelper.addToSomBalance(amount);
+                      print("this one2");
+                      print(amount);
+                      Navigator.pop(context);
+                      _showBriefNotification(
+                        context,
+                        'Successfully added $amount SOM',
+                        Colors.green,
+                      );
+                    } catch (e) {
+                      Navigator.pop(context);
+                      _showBriefNotification(
+                        context,
+                        'Failed to add SOM: ${e.toString()}',
+                        Colors.red,
+                      );
+                    }
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+    );
+  }
+
   Widget _buildFinishButton() {
     return ElevatedButton(
       onPressed: _finishOperation,
@@ -346,43 +437,100 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  // Finish Operation Method
   Future<void> _finishOperation() async {
-    if (_currencyController.text.isNotEmpty &&
-        _quantityController.text.isNotEmpty) {
-      try {
-        double rate = double.parse(_currencyController.text);
-        double quantity = double.parse(_quantityController.text);
-
-        await _databaseHelper.performCurrencyOperation(
-          currencyCode: _selectedCurrency,
-          operationType: _operationType,
-          rate: rate,
-          quantity: quantity,
-          total: _totalSum,
-        );
-
-        setState(() {
-          _currencyController.clear();
-          _quantityController.clear();
-          _totalSum = 0.0;
-        });
-
-        _showBriefNotification(
-          context,
-          '$_operationType operation completed',
-          _operationType == 'Purchase' ? Colors.green : Colors.red,
-        );
-
-        await _loadOperationHistory();
-      } catch (e) {
-        _showBriefNotification(
-          context,
-          'Operation failed: ${e.toString()}',
-          Colors.red,
-        );
-      }
+    if (_currencyController.text.isEmpty || _quantityController.text.isEmpty) {
+      _showBriefNotification(
+        context,
+        'Please enter rate and amount',
+        Colors.orange,
+      );
+      return;
     }
+    if (_currencies.length == 0) {
+      _showBriefNotification(
+        context,
+        'No currencies available for exchange',
+        Colors.orange,
+      );
+      return;
+    }
+
+    try {
+      final rate = double.parse(_currencyController.text);
+      final quantity = double.parse(_quantityController.text);
+      final totalSom = rate * quantity;
+
+      if (_operationType == 'Purchase') {
+        // Check if we have enough SOM to buy the currency
+        final hasEnough = await _databaseHelper.hasEnoughSomForPurchase(
+          totalSom,
+        );
+        if (!hasEnough) {
+          _showBriefNotification(
+            context,
+            'Not enough SOM for this purchase',
+            Colors.red,
+          );
+          return;
+        }
+      } else {
+        // Check if we have enough of the currency to sell
+        final hasEnough = await _databaseHelper.hasEnoughCurrencyToSell(
+          _selectedCurrency,
+          quantity,
+        );
+        if (!hasEnough) {
+          _showBriefNotification(
+            context,
+            'Not enough $_selectedCurrency to sell',
+            Colors.red,
+          );
+          return;
+        }
+      }
+
+      // Proceed with the operation
+      await _databaseHelper.performCurrencyExchange(
+        currencyCode: _selectedCurrency,
+        operationType: _operationType,
+        rate: rate,
+        quantity: quantity,
+      );
+
+      setState(() {
+        _currencyController.clear();
+        _quantityController.clear();
+        _totalSum = 0.0;
+      });
+
+      _showBriefNotification(
+        context,
+        '$_operationType operation completed',
+        _operationType == 'Purchase' ? Colors.green : Colors.red,
+      );
+
+      await _loadOperationHistory();
+    } catch (e) {
+      _showBriefNotification(
+        context,
+        'Operation failed: ${e.toString()}',
+        Colors.red,
+      );
+    }
+  }
+
+  Widget _buildAddSomButton() {
+    return ElevatedButton.icon(
+      onPressed: _showAddSomDialog,
+      icon: const Icon(Icons.add),
+      label: const Text('Add SOM'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue.shade100,
+        foregroundColor: Colors.blue.shade800,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -395,18 +543,26 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              _operationType == 'Purchase'
+                  ? 'Buy Foreign Currency'
+                  : 'Sell Foreign Currency',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Colors.blue.shade800,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
             _buildCurrencyInputSection(),
             const SizedBox(height: 16),
             _buildTotalSumCard(),
-            const SizedBox(height: 24),
-            Text(
-              'Select Currency:',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.blue.shade700,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            // Add SOM button - only shown in wide layout
+            if (widget.isWideLayout) ...[
+              _buildAddSomButton(),
+              const SizedBox(height: 16),
+            ],
             _buildCurrencySelector(),
             const SizedBox(height: 24),
             Text(
@@ -434,7 +590,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 }
 
-// Mobile Layout with Enhanced Design
+// Mobile Layout
 class MobileCurrencyConverterLayout extends StatefulWidget {
   const MobileCurrencyConverterLayout({super.key});
 
@@ -466,7 +622,7 @@ class _MobileCurrencyConverterLayoutState
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
         backgroundColor: Colors.blue.shade700,
-        title: Text(
+        title: const Text(
           'Currency Converter',
           style: TextStyle(
             color: Colors.white,
@@ -477,75 +633,65 @@ class _MobileCurrencyConverterLayoutState
         ),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  DateFormat('HH:mm:ss').format(getKyrgyzstanTime()),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: IndexedStack(index: _selectedIndex, children: _pages),
       ),
-      bottomNavigationBar: _buildEnhancedBottomNavBar(),
-    );
-  }
-
-  Widget _buildEnhancedBottomNavBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade100,
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: Colors.blue.shade700,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
-          ),
-        ],
+      floatingActionButton:
+          _selectedIndex == 0
+              ? FloatingActionButton(
+                onPressed: () {
+                  final converterCore =
+                      _pages[_selectedIndex] as CurrencyConverterCore;
+                  final coreState =
+                      converterCore.createState()
+                          as _CurrencyConverterCoreState;
+                  coreState._showAddSomDialog();
+                },
+                backgroundColor: Colors.blue,
+                child: const Icon(Icons.add, color: Colors.white),
+              )
+              : null,
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.shade100,
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: Colors.blue.shade700,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.analytics),
+              label: 'Analytics',
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+// Tablet Layout
 class TabletCurrencyConverterLayout extends StatefulWidget {
   const TabletCurrencyConverterLayout({super.key});
 
@@ -577,7 +723,7 @@ class _TabletCurrencyConverterLayoutState
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
         backgroundColor: Colors.blue.shade700,
-        title: Text(
+        title: const Text(
           'Currency Converter',
           style: TextStyle(
             color: Colors.white,
@@ -588,31 +734,6 @@ class _TabletCurrencyConverterLayoutState
         ),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  DateFormat('HH:mm:ss').format(getKyrgyzstanTime()),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -626,53 +747,49 @@ class _TabletCurrencyConverterLayoutState
           ],
         ),
       ),
-      bottomNavigationBar: _buildTabletBottomNavBar(),
-    );
-  }
-
-  Widget _buildTabletBottomNavBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade100,
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.blue.shade700,
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.currency_exchange, size: 30),
-              label: 'Converter',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history, size: 30),
-              label: 'History',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics, size: 30),
-              label: 'Analytics',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings, size: 30),
-              label: 'Settings',
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.shade100,
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: Colors.blue.shade700,
+            unselectedItemColor: Colors.grey,
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.currency_exchange, size: 30),
+                label: 'Converter',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.history, size: 30),
+                label: 'History',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.analytics, size: 30),
+                label: 'Analytics',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings, size: 30),
+                label: 'Settings',
+              ),
+            ],
+          ),
         ),
       ),
     );

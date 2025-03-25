@@ -4,27 +4,31 @@ import 'package:path/path.dart';
 import './models/currency.dart';
 import './models/history.dart';
 
+/// Main database helper class for currency conversion operations
 class DatabaseHelper {
+  // Singleton instance
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
   DatabaseHelper._init();
 
+  /// Get database instance (initialize if needed)
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('currency_converter.db');
     return _database!;
   }
 
+  /// Initialize database file
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-
     return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
+  /// Create database tables
   Future<void> _createDB(Database db, int version) async {
-    // Currencies Table
+    // Create currencies table
     await db.execute('''
       CREATE TABLE currencies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +38,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // History Table
+    // Create history table
     await db.execute('''
       CREATE TABLE history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,26 +51,20 @@ class DatabaseHelper {
       )
     ''');
 
-    // Seed initial currencies
-    final List<CurrencyModel> initialCurrencies = [
-      CurrencyModel(code: 'USD', quantity: 0),
-      CurrencyModel(code: 'EUR', quantity: 0),
-      CurrencyModel(code: 'GBP', quantity: 0),
-      CurrencyModel(code: 'JPY', quantity: 0),
-      CurrencyModel(code: 'AUD', quantity: 0),
-      CurrencyModel(code: 'CAD', quantity: 0),
-    ];
-
-    for (var currency in initialCurrencies) {
-      await db.insert('currencies', currency.toMap());
-    }
+    // Initialize with SOM currency
+    final somCurrency = CurrencyModel(code: 'SOM', quantity: 0);
+    await db.insert('currencies', somCurrency.toMap());
   }
 
-  // Currencies CRUD Operations
+  // ========================
+  // CURRENCY CRUD OPERATIONS
+  // ========================
+
+  /// Create or update currency record
   Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
     final db = await instance.database;
 
-    // Try to update existing currency
+    // Try update first
     final updateCount = await db.update(
       'currencies',
       currency.toMap(),
@@ -74,7 +72,7 @@ class DatabaseHelper {
       whereArgs: [currency.code],
     );
 
-    // If no row was updated, insert new currency
+    // Insert if doesn't exist
     if (updateCount == 0) {
       currency = currency.copyWith(
         id: await db.insert('currencies', currency.toMap()),
@@ -84,6 +82,7 @@ class DatabaseHelper {
     return currency;
   }
 
+  /// Get currency by code
   Future<CurrencyModel?> getCurrency(String code) async {
     final db = await instance.database;
     final maps = await db.query(
@@ -91,10 +90,10 @@ class DatabaseHelper {
       where: 'code = ?',
       whereArgs: [code],
     );
-
     return maps.isNotEmpty ? CurrencyModel.fromMap(maps.first) : null;
   }
 
+  /// Insert new currency
   Future<int> insertCurrency(CurrencyModel currency) async {
     final db = await instance.database;
     return await db.insert(
@@ -104,17 +103,272 @@ class DatabaseHelper {
     );
   }
 
+  /// Delete currency by ID
   Future<int> deleteCurrency(int id) async {
     final db = await instance.database;
     return await db.delete('currencies', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Get all currencies (except SOM)
   Future<List<CurrencyModel>> getAllCurrencies() async {
     final db = await instance.database;
     final maps = await db.query('currencies', orderBy: 'updated_at DESC');
+    print(maps.map((map) => CurrencyModel.fromMap(map)).toList());
+    print(maps.last.values);
+    print(maps.last["quantity"]);
     return maps.map((map) => CurrencyModel.fromMap(map)).toList();
   }
 
+  // =====================
+  // BALANCE OPERATIONS
+  // =====================
+
+  /// Add amount to SOM balance
+  Future<void> addToSomBalance(double amount) async {
+    final db = await instance.database;
+
+    await db.transaction((txn) async {
+      // Get current SOM balance
+      final somMaps = await txn.query(
+        'currencies',
+        where: 'code = ?',
+        whereArgs: ['SOM'],
+      );
+
+      if (somMaps.isEmpty) throw Exception('SOM currency not found');
+      print(somMaps.first['quantity']);
+      print("this one");
+      // Calculate new balance
+      final newBalance = (somMaps.first['quantity'] as double) + amount;
+
+      // Update SOM balance
+      await txn.update(
+        'currencies',
+        {
+          'quantity': newBalance,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'code = ?',
+        whereArgs: ['SOM'],
+      );
+
+      // Record deposit in history
+      await txn.insert('history', {
+        'currency_code': 'SOM',
+        'operation_type': 'Deposit',
+        'rate': 1.0,
+        'quantity': amount,
+        'total': amount,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    });
+  }
+
+  /// Check if enough SOM available for purchase
+  Future<bool> hasEnoughSomForPurchase(double requiredSom) async {
+    final db = await instance.database;
+    final somMaps = await db.query(
+      'currencies',
+      where: 'code = ?',
+      whereArgs: ['SOM'],
+    );
+
+    if (somMaps.isEmpty) return false;
+
+    // Safely extract and convert quantity
+    final quantity = (somMaps.first['quantity'] as num?)?.toDouble() ?? 0.0;
+
+    return quantity >= requiredSom;
+  }
+
+  /// Check if enough currency available to sell
+  Future<bool> hasEnoughCurrencyToSell(
+    String currencyCode,
+    double quantity,
+  ) async {
+    if (currencyCode == 'SOM') return false;
+
+    final db = await instance.database;
+    final currencyMaps = await db.query(
+      'currencies',
+      where: 'code = ?',
+      whereArgs: [currencyCode],
+    );
+
+    if (currencyMaps.isEmpty) return false;
+
+    // Safely extract and convert quantity
+    final availableQuantity =
+        (currencyMaps.first['quantity'] as num?)?.toDouble() ?? 0.0;
+
+    return availableQuantity >= quantity;
+  }
+
+  // =====================
+  // CURRENCY EXCHANGE
+  // =====================
+
+  Future<void> performCurrencyExchange({
+    required String currencyCode,
+    required String operationType, // 'Buy' or 'Sell'
+    required double rate,
+    required double quantity,
+  }) async {
+    final db = await instance.database;
+
+    try {
+      // 1. Get SOM balance
+      final somResult = await db.query(
+        'currencies',
+        where: 'code = ?',
+        whereArgs: ['SOM'],
+      );
+
+      if (somResult.isEmpty) {
+        throw Exception('SOM currency not found');
+      }
+
+      final somBalance = (somResult.first['quantity'] as num).toDouble();
+      final totalSom = quantity * rate;
+
+      // 2. Get target currency balance
+      final targetResult = await db.query(
+        'currencies',
+        where: 'code = ?',
+        whereArgs: [currencyCode],
+      );
+      print(currencyCode);
+      print(targetResult);
+      double targetBalance =
+          targetResult.isNotEmpty
+              ? (targetResult.first['quantity'] as num).toDouble()
+              : 0.0;
+      print(operationType);
+      if (operationType == 'Purchase') {
+        // Validate purchase
+        if (somBalance < totalSom) {
+          throw Exception('Not enough SOM to perform this operation');
+        }
+
+        // Update SOM balance (deduct total)
+        await db.update(
+          'currencies',
+          {
+            'quantity': somBalance - totalSom,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'code = ?',
+          whereArgs: ['SOM'],
+        );
+        print(targetResult.isNotEmpty);
+        // Update or create target currency (add quantity)
+        if (targetResult.isNotEmpty) {
+          print("targetvalue");
+          await db.update(
+            'currencies',
+            {
+              'quantity': targetBalance + quantity,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            where: 'code = ?',
+            whereArgs: [currencyCode],
+          );
+        } else {
+          print("isnottarget");
+          await db.insert('currencies', {
+            'code': currencyCode,
+            'quantity': quantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+      } else if (operationType == 'Sale') {
+        print('sell');
+        // Validate sale
+        if (targetBalance < quantity) {
+          throw Exception('Not enough $currencyCode to perform this operation');
+        }
+
+        // Update SOM balance (add total)
+        await db.update(
+          'currencies',
+          {
+            'quantity': somBalance + totalSom,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'code = ?',
+          whereArgs: ['SOM'],
+        );
+
+        // Update target currency (deduct quantity)
+        await db.update(
+          'currencies',
+          {
+            'quantity': targetBalance - quantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'code = ?',
+          whereArgs: [currencyCode],
+        );
+      }
+
+      // Record transaction in history
+      await db.insert('history', {
+        'currency_code': currencyCode,
+        'operation_type': operationType,
+        'rate': rate,
+        'quantity': quantity,
+        'total': totalSom,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Error performing currency exchange: $e');
+      rethrow;
+    }
+  }
+
+  // Helper method to update or create currency
+  Future<void> _updateCurrencyBalance(
+    Transaction txn,
+    String code,
+    double newBalance,
+  ) async {
+    await txn.update(
+      'currencies',
+      {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'code = ?',
+      whereArgs: [code],
+    );
+  }
+
+  // Helper method to create or update currency
+  Future<void> _updateOrCreateCurrency(
+    Transaction txn,
+    String code,
+    double newBalance,
+  ) async {
+    final existing = await txn.query(
+      'currencies',
+      where: 'code = ?',
+      whereArgs: [code],
+    );
+
+    if (existing.isEmpty) {
+      await txn.insert('currencies', {
+        'code': code,
+        'quantity': newBalance,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } else {
+      await _updateCurrencyBalance(txn, code, newBalance);
+    }
+  }
+
+  // =====================
+  // HISTORY OPERATIONS
+  // =====================
+
+  /// Get filtered history by date range
   Future<List<HistoryModel>> getFilteredHistoryByDate({
     required DateTime fromDate,
     required DateTime toDate,
@@ -151,13 +405,14 @@ class DatabaseHelper {
     return maps.map((map) => HistoryModel.fromMap(map)).toList();
   }
 
-  // History CRUD Operations
+  /// Create new history entry
   Future<HistoryModel> createHistoryEntry(HistoryModel historyEntry) async {
     final db = await instance.database;
     final id = await db.insert('history', historyEntry.toMap());
     return historyEntry.copyWith(id: id);
   }
 
+  /// Get history entries with optional filters
   Future<List<HistoryModel>> getHistoryEntries({
     int? limit,
     String? currencyCode,
@@ -183,80 +438,34 @@ class DatabaseHelper {
     return maps.map((map) => HistoryModel.fromMap(map)).toList();
   }
 
-  // Transaction to update currency and create history entry
-  Future<void> performCurrencyOperation({
-    required String currencyCode,
-    required String operationType,
-    required double rate,
-    required double quantity,
-    required double total,
-  }) async {
-    final db = await instance.database;
-
-    await db.transaction((txn) async {
-      // Get current currency
-      final currencyMaps = await txn.query(
-        'currencies',
-        where: 'code = ?',
-        whereArgs: [currencyCode],
-      );
-
-      // Update currency quantity based on operation type
-      double currentQuantity =
-          currencyMaps.isNotEmpty
-              ? currencyMaps.first['quantity'] as double
-              : 0.0;
-
-      final updatedQuantity =
-          operationType == 'Purchase'
-              ? currentQuantity + quantity
-              : currentQuantity - quantity;
-
-      // Update currency
-      await txn.update(
-        'currencies',
-        {
-          'quantity': updatedQuantity,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'code = ?',
-        whereArgs: [currencyCode],
-      );
-
-      // Create history entry
-      await txn.insert('history', {
-        'currency_code': currencyCode,
-        'operation_type': operationType,
-        'rate': rate,
-        'quantity': quantity,
-        'total': total,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-    });
-  }
-
-  // Utility method to get summary
+  /// Get summary of all currency balances
   Future<Map<String, dynamic>> getCurrencySummary() async {
     final db = await instance.database;
 
-    // Get total quantities
-    final quantityResults = await db.rawQuery(
-      'SELECT currency_code, SUM(quantity) as total_quantity, '
-      'SUM(CASE WHEN operation_type = "Purchase" THEN total ELSE -total END) as net_total '
-      'FROM history GROUP BY currency_code',
+    // Get SOM balance
+    final somResult = await db.query(
+      'currencies',
+      where: 'code = ?',
+      whereArgs: ['SOM'],
+    );
+
+    // Get other currencies
+    final otherCurrencies = await db.query(
+      'currencies',
+      where: 'code != ?',
+      whereArgs: ['SOM'],
     );
 
     return {
-      'currency_quantities': {
-        for (var result in quantityResults)
-          result['currency_code']: {
-            'total_quantity': result['total_quantity'],
-            'net_total': result['net_total'],
-          },
+      'som_balance': somResult.isNotEmpty ? somResult.first['quantity'] : 0,
+      'other_currencies': {
+        for (var currency in otherCurrencies)
+          currency['code']: currency['quantity'],
       },
     };
   }
 
+  /// Get list of unique currency codes from history
   Future<List<String>> getHistoryCurrencyCodes() async {
     final db = await instance.database;
     final maps = await db.rawQuery(
@@ -265,7 +474,7 @@ class DatabaseHelper {
     return maps.map((map) => map['currency_code'] as String).toList();
   }
 
-  // Get all operation types from history
+  /// Get list of unique operation types from history
   Future<List<String>> getHistoryOperationTypes() async {
     final db = await instance.database;
     final maps = await db.rawQuery(
@@ -274,50 +483,14 @@ class DatabaseHelper {
     return maps.map((map) => map['operation_type'] as String).toList();
   }
 
-  // Get filtered history with pagination
-  Future<List<HistoryModel>> getFilteredHistory({
-    String? currencyCode,
-    String? operationType,
-    int limit = 50,
-    int offset = 0,
-  }) async {
-    final db = await instance.database;
-
-    final whereParts = <String>[];
-    final whereArgs = <dynamic>[];
-
-    if (currencyCode != null && currencyCode.isNotEmpty) {
-      whereParts.add('currency_code = ?');
-      whereArgs.add(currencyCode);
-    }
-
-    if (operationType != null && operationType.isNotEmpty) {
-      whereParts.add('operation_type = ?');
-      whereArgs.add(operationType);
-    }
-
-    final where = whereParts.isNotEmpty ? whereParts.join(' AND ') : null;
-
-    final maps = await db.query(
-      'history',
-      where: where,
-      whereArgs: whereArgs,
-      orderBy: 'created_at DESC',
-      limit: limit,
-      offset: offset,
-    );
-
-    return maps.map((map) => HistoryModel.fromMap(map)).toList();
-  }
-
-  // Close database
+  /// Close database connection
   Future<void> close() async {
     final db = await instance.database;
     db.close();
   }
 }
 
-// Extension for easy copying of models
+// Extension methods for model copying
 extension CurrencyModelCopy on CurrencyModel {
   CurrencyModel copyWith({
     int? id,
