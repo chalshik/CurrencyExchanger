@@ -441,7 +441,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     if (_currencyController.text.isEmpty || _quantityController.text.isEmpty) {
       _showBriefNotification(
         context,
-        'Please enter rate and amount',
+        'Please enter rate and amoun',
         Colors.orange,
       );
       return;
