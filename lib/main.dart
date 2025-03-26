@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/currency_converter.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const ResponsiveCurrencyConverter(),
+      home: const LoginScreen(),
     );
   }
 }

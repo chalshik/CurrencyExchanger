@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import './models/currency.dart';
 import './models/history.dart';
+import './models/user.dart';
 
 /// Main database helper class for currency conversion operations
 class DatabaseHelper {
@@ -23,7 +24,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(path, version: 2, onCreate: _createDB, onUpgrade: _upgradeDB);
   }
 
   /// Create database tables
@@ -51,9 +52,52 @@ class DatabaseHelper {
       )
     ''');
 
+    // Create users table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     // Initialize with SOM currency
     final somCurrency = CurrencyModel(code: 'SOM', quantity: 0);
     await db.insert('currencies', somCurrency.toMap());
+    
+    // Create initial admin user (username: a, password: a)
+    final adminUser = UserModel(
+      username: 'a',
+      password: 'a',
+      role: 'admin',
+    );
+    await db.insert('users', adminUser.toMap());
+  }
+  
+  /// Upgrade database when schema changes
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add users table if upgrading from version 1
+      await db.execute('''
+        CREATE TABLE users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          role TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      
+      // Create initial admin user
+      final adminUser = UserModel(
+        username: 'a',
+        password: 'a',
+        role: 'admin',
+      );
+      await db.insert('users', adminUser.toMap());
+    }
   }
 
   // ========================
@@ -595,6 +639,69 @@ class DatabaseHelper {
   Future<void> close() async {
     final db = await instance.database;
     db.close();
+  }
+
+  // =====================
+  // USER OPERATIONS
+  // =====================
+  
+  /// Get user by username and password (for login)
+  Future<UserModel?> getUserByCredentials(String username, String password) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'users',
+      where: 'username = ? AND password = ?',
+      whereArgs: [username, password],
+    );
+    return maps.isNotEmpty ? UserModel.fromMap(maps.first) : null;
+  }
+  
+  /// Get all users
+  Future<List<UserModel>> getAllUsers() async {
+    final db = await instance.database;
+    final maps = await db.query('users', orderBy: 'created_at DESC');
+    return maps.map((map) => UserModel.fromMap(map)).toList();
+  }
+  
+  /// Create new user
+  Future<int> createUser(UserModel user) async {
+    final db = await instance.database;
+    return await db.insert(
+      'users',
+      user.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+  }
+  
+  /// Update user
+  Future<int> updateUser(UserModel user) async {
+    final db = await instance.database;
+    return await db.update(
+      'users',
+      user.toMap(),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+  }
+  
+  /// Delete user
+  Future<int> deleteUser(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+  
+  /// Check if a username already exists
+  Future<bool> usernameExists(String username) async {
+    final db = await instance.database;
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM users WHERE username = ?',
+      [username],
+    ));
+    return count != null && count > 0;
   }
 }
 

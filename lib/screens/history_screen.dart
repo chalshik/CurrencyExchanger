@@ -17,7 +17,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   int _netBalance = 0;
 
   // Date filters
-  DateTime _fromDate = DateTime.now();
+  DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30)); // Show last 30 days by default
   DateTime _toDate = DateTime.now();
   final TextEditingController _fromDateController = TextEditingController();
   final TextEditingController _toDateController = TextEditingController();
@@ -44,17 +44,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
-  Future<void> _loadFilters() async {
-    final currencies = await _dbHelper.getHistoryCurrencyCodes();
-    final operations = await _dbHelper.getHistoryOperationTypes();
+  // Public method to refresh history entries
+  void loadHistoryEntries() {
+    _loadHistory();
+  }
 
-    setState(() {
-      _currencyCodes = currencies;
-      _operationTypes = operations;
-    });
+  Future<void> _loadFilters() async {
+    try {
+      final currencies = await _dbHelper.getHistoryCurrencyCodes();
+      final operations = await _dbHelper.getHistoryOperationTypes();
+
+      if (mounted) {
+        setState(() {
+          _currencyCodes = currencies;
+          _operationTypes = operations;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading filters: $e');
+    }
   }
 
   Future<void> _loadHistory() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
@@ -86,16 +99,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 : -entry.total.toInt();
       }
 
-      setState(() {
-        _history = history;
-        _netBalance = balance;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _history = history;
+          _netBalance = balance;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      // Handle error
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error loading history: $e');
     }
   }
 
@@ -106,7 +123,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         if (isFromDate) {
           _fromDate = picked;
@@ -116,13 +133,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           _toDateController.text = DateFormat('yyyy-MM-dd').format(picked);
         }
       });
+      // Load history immediately after date change
       _loadHistory();
     }
   }
 
   void _resetFilters() {
+    if (!mounted) return;
+    
     setState(() {
-      _fromDate = DateTime.now();
+      _fromDate = DateTime.now().subtract(const Duration(days: 30));
       _toDate = DateTime.now();
       _fromDateController.text = DateFormat('yyyy-MM-dd').format(_fromDate);
       _toDateController.text = DateFormat('yyyy-MM-dd').format(_toDate);
@@ -144,7 +164,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           if (_selectedCurrency != null ||
               _selectedOperationType != null ||
-              _fromDate != DateTime.now() ||
+              _fromDate != DateTime.now().subtract(const Duration(days: 30)) ||
               _toDate != DateTime.now())
             IconButton(
               icon: const Icon(Icons.filter_alt_off),
@@ -185,8 +205,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ],
             ),
           ),
-
-          const Divider(height: 20),
+          
+          
           // History List
           Expanded(
             child:
@@ -194,13 +214,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : _history.isEmpty
                     ? const Center(child: Text('No operations found'))
-                    : ListView.builder(
-                      itemCount: _history.length,
-                      itemBuilder: (context, index) {
-                        final entry = _history[index];
-                        return _buildHistoryItem(entry);
-                      },
-                    ),
+                    : RefreshIndicator(
+                        onRefresh: _loadHistory,
+                        child: ListView.builder(
+                          itemCount: _history.length,
+                          itemBuilder: (context, index) {
+                            final entry = _history[index];
+                            return _buildHistoryItem(entry);
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -235,92 +258,122 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _showFilterDialog() async {
+    // Save initial filter state to check for changes later
+    final initialCurrency = _selectedCurrency;
+    final initialOperationType = _selectedOperationType;
+    
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Filters',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              // Currency filter
-              DropdownButtonFormField<String>(
-                value: _selectedCurrency,
-                decoration: const InputDecoration(
-                  labelText: 'Currency',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('All Currencies'),
-                  ),
-                  ..._currencyCodes.map((currency) {
-                    return DropdownMenuItem(
-                      value: currency,
-                      child: Text(currency),
-                    );
-                  }).toList(),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCurrency = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              // Operation type filter
-              DropdownButtonFormField<String>(
-                value: _selectedOperationType,
-                decoration: const InputDecoration(
-                  labelText: 'Operation Type',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('All Operations'),
-                  ),
-                  ..._operationTypes.map((type) {
-                    return DropdownMenuItem(value: type, child: Text(type));
-                  }).toList(),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedOperationType = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              Row(
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _resetFilters,
-                      child: const Text('Reset'),
+                  const Text(
+                    'Filters',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  // Currency filter
+                  DropdownButtonFormField<String>(
+                    value: _selectedCurrency,
+                    decoration: const InputDecoration(
+                      labelText: 'Currency',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All Currencies'),
+                      ),
+                      ..._currencyCodes.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Text(currency),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setModalState(() {
+                        _selectedCurrency = value;
+                      });
+                      // Update the parent state too
+                      setState(() {
+                        _selectedCurrency = value;
+                      });
+                      // Load data immediately
+                      _loadHistory();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Operation type filter
+                  DropdownButtonFormField<String>(
+                    value: _selectedOperationType,
+                    decoration: const InputDecoration(
+                      labelText: 'Operation Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All Operations'),
+                      ),
+                      ..._operationTypes.map((type) {
+                        return DropdownMenuItem(value: type, child: Text(type));
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setModalState(() {
+                        _selectedOperationType = value;
+                      });
+                      // Update the parent state too
+                      setState(() {
+                        _selectedOperationType = value;
+                      });
+                      // Load data immediately
+                      _loadHistory();
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Close'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _loadHistory();
-                      },
-                      child: const Text('Apply'),
-                    ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      setModalState(() {
+                        _selectedCurrency = null;
+                        _selectedOperationType = null;
+                      });
+                      // Reset in parent state too
+                      setState(() {
+                        _selectedCurrency = null;
+                        _selectedOperationType = null;
+                      });
+                      // Load data immediately
+                      _loadHistory();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Reset Filters'),
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            );
+          },
         );
       },
     );
