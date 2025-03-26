@@ -22,135 +22,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<void> _loadCurrencyStats() async {
+    if (!mounted) return;
+
     try {
-      final stats = await _calculateCurrencyStats();
+      setState(() => _isLoading = true);
+
+      final analytics = await _dbHelper.calculateAnalytics();
+
+      if (!mounted) return;
+
       setState(() {
-        _currencyStats = stats;
-        _totalProfit = stats.fold(
-          0.0,
-          (sum, item) => sum + (item['profit'] as double),
-        );
+        _currencyStats =
+            analytics['currency_stats'] as List<Map<String, dynamic>>;
+        _totalProfit = analytics['total_profit'] as double;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading analytics: ${e.toString()}')),
       );
     }
-  }
-
-  Future<List<Map<String, dynamic>>> _calculateCurrencyStats() async {
-    final db = await _dbHelper.database;
-
-    // Query to get purchase stats
-    final purchaseStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_purchase_rate,
-        SUM(quantity) as total_purchased,
-        SUM(total) as total_purchase_amount
-      FROM history
-      WHERE operation_type = 'Purchase'
-      GROUP BY currency_code
-    ''');
-
-    // Query to get sale stats
-    final saleStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_sale_rate,
-        SUM(quantity) as total_sold,
-        SUM(total) as total_sale_amount
-      FROM history
-      WHERE operation_type = 'Sale'
-      GROUP BY currency_code
-    ''');
-
-    // Query to get current quantities
-    final currentQuantities = await db.rawQuery('''
-      SELECT code, quantity FROM currencies
-    ''');
-
-    // Combine all data
-    final Map<String, Map<String, dynamic>> combinedStats = {};
-
-    // Add purchase stats
-    for (var stat in purchaseStats) {
-      combinedStats[stat['currency_code'] as String] = {
-        'currency': stat['currency_code'],
-        'avg_purchase_rate': stat['avg_purchase_rate'] as double? ?? 0.0,
-        'total_purchased': stat['total_purchased'] as double? ?? 0.0,
-        'total_purchase_amount':
-            stat['total_purchase_amount'] as double? ?? 0.0,
-      };
-    }
-
-    // Add sale stats
-    for (var stat in saleStats) {
-      final currency = stat['currency_code'] as String;
-      if (combinedStats.containsKey(currency)) {
-        combinedStats[currency]!.addAll({
-          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
-          'total_sold': stat['total_sold'] as double? ?? 0.0,
-          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
-        });
-      } else {
-        combinedStats[currency] = {
-          'currency': currency,
-          'avg_purchase_rate': 0.0,
-          'total_purchased': 0.0,
-          'total_purchase_amount': 0.0,
-          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
-          'total_sold': stat['total_sold'] as double? ?? 0.0,
-          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
-        };
-      }
-    }
-
-    // Add current quantities
-    for (var quantity in currentQuantities) {
-      final currency = quantity['code'] as String;
-      if (combinedStats.containsKey(currency)) {
-        combinedStats[currency]!['current_quantity'] =
-            quantity['quantity'] as double? ?? 0.0;
-      } else {
-        combinedStats[currency] = {
-          'currency': currency,
-          'avg_purchase_rate': 0.0,
-          'total_purchased': 0.0,
-          'total_purchase_amount': 0.0,
-          'avg_sale_rate': 0.0,
-          'total_sold': 0.0,
-          'total_sale_amount': 0.0,
-          'current_quantity': quantity['quantity'] as double? ?? 0.0,
-        };
-      }
-    }
-
-    // Calculate profit for each currency
-    final List<Map<String, dynamic>> result = [];
-    combinedStats.forEach((currency, stats) {
-      final avgPurchaseRate = stats['avg_purchase_rate'] as double;
-      final avgSaleRate = stats['avg_sale_rate'] as double;
-      final totalSold = stats['total_sold'] as double;
-
-      final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
-
-      result.add({
-        'currency': currency,
-        'avg_purchase_rate': avgPurchaseRate,
-        'avg_sale_rate': avgSaleRate,
-        'current_quantity': stats['current_quantity'] as double,
-        'profit': profit,
-        'total_purchased': stats['total_purchased'] as double,
-        'total_sold': stats['total_sold'] as double,
-      });
-    });
-
-    return result;
   }
 
   Widget _buildMobileTable() {

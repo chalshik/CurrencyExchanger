@@ -483,6 +483,114 @@ class DatabaseHelper {
     return maps.map((map) => map['operation_type'] as String).toList();
   }
 
+  /// Calculate currency statistics for analytics
+  Future<Map<String, dynamic>> calculateAnalytics() async {
+    final db = await database;
+    List<Map<String, dynamic>> currencyStats = [];
+    double totalProfit = 0.0;
+
+    // Query to get purchase stats
+    final purchaseStats = await db.rawQuery('''
+      SELECT 
+        currency_code,
+        AVG(rate) as avg_purchase_rate,
+        SUM(quantity) as total_purchased,
+        SUM(total) as total_purchase_amount
+      FROM history
+      WHERE operation_type = 'Purchase'
+      GROUP BY currency_code
+    ''');
+
+    // Query to get sale stats
+    final saleStats = await db.rawQuery('''
+      SELECT 
+        currency_code,
+        AVG(rate) as avg_sale_rate,
+        SUM(quantity) as total_sold,
+        SUM(total) as total_sale_amount
+      FROM history
+      WHERE operation_type = 'Sale'
+      GROUP BY currency_code
+    ''');
+
+    // Query to get current quantities
+    final currentQuantities = await db.rawQuery('''
+      SELECT code, quantity FROM currencies
+    ''');
+
+    // Combine all data
+    final Map<String, Map<String, dynamic>> combinedStats = {};
+
+    // Add purchase stats
+    for (var stat in purchaseStats) {
+      combinedStats[stat['currency_code'] as String] = {
+        'currency': stat['currency_code'],
+        'avg_purchase_rate': stat['avg_purchase_rate'] as double? ?? 0.0,
+        'total_purchased': stat['total_purchased'] as double? ?? 0.0,
+        'total_purchase_amount':
+            stat['total_purchase_amount'] as double? ?? 0.0,
+      };
+    }
+
+    // Add sale stats
+    for (var stat in saleStats) {
+      final currency = stat['currency_code'] as String;
+      if (combinedStats.containsKey(currency)) {
+        combinedStats[currency]!.addAll({
+          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
+          'total_sold': stat['total_sold'] as double? ?? 0.0,
+          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
+        });
+      } else {
+        combinedStats[currency] = {
+          'currency': currency,
+          'avg_purchase_rate': 0.0,
+          'total_purchased': 0.0,
+          'total_purchase_amount': 0.0,
+          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
+          'total_sold': stat['total_sold'] as double? ?? 0.0,
+          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
+        };
+      }
+    }
+
+    // Add current quantities
+    for (var quantity in currentQuantities) {
+      final currency = quantity['code'] as String;
+      if (combinedStats.containsKey(currency)) {
+        combinedStats[currency]!['current_quantity'] =
+            quantity['quantity'] as double? ?? 0.0;
+      } else {
+        combinedStats[currency] = {
+          'currency': currency,
+          'avg_purchase_rate': 0.0,
+          'total_purchased': 0.0,
+          'total_purchase_amount': 0.0,
+          'avg_sale_rate': 0.0,
+          'total_sold': 0.0,
+          'total_sale_amount': 0.0,
+          'current_quantity': quantity['quantity'] as double? ?? 0.0,
+        };
+      }
+    }
+
+    // Calculate profit for each currency
+    for (var stats in combinedStats.values) {
+      final avgPurchaseRate = stats['avg_purchase_rate'] as double;
+      final avgSaleRate = stats['avg_sale_rate'] as double;
+      final totalSold = stats['total_sold'] as double;
+
+      final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
+      stats['profit'] = profit;
+      totalProfit += profit;
+    }
+
+    return {
+      'currency_stats': combinedStats.values.toList(),
+      'total_profit': totalProfit,
+    };
+  }
+
   /// Close database connection
   Future<void> close() async {
     final db = await instance.database;
