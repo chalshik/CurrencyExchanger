@@ -1,4 +1,4 @@
-import 'package:currency_changer/screens/analytical_screen.dart';
+import 'package:currency_changer/screens/report_screen.dart';
 import 'package:currency_changer/screens/history_screen.dart';
 import 'package:currency_changer/screens/settings.dart';
 import 'package:flutter/material.dart';
@@ -192,7 +192,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
             filled: true,
             fillColor: Colors.grey.shade50,
-            prefixIcon: Icon(Icons.attach_money, color: Colors.blue, size: iconSize),
+            prefixIcon: Icon(
+              Icons.attach_money,
+              color: Colors.blue,
+              size: iconSize,
+            ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 12,
               vertical: verticalPadding,
@@ -252,7 +256,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               _operationType == 'Purchase'
                   ? 'Total SOM to pay'
                   : 'Total SOM to receive',
-              style: TextStyle(fontSize: titleSize, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: titleSize,
+                color: Colors.grey.shade600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -266,7 +273,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             const SizedBox(height: 8),
             Text(
               'for ${_quantityController.text.isEmpty ? '0' : _quantityController.text} $_selectedCurrency',
-              style: TextStyle(fontSize: subtitleSize, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: subtitleSize,
+                color: Colors.grey.shade600,
+              ),
             ),
           ],
         ),
@@ -314,9 +324,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               return ChoiceChip(
                 label: Text(
                   currency,
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 12 : 14,
-                  ),
+                  style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
                 ),
                 selected: _selectedCurrency == currency,
                 onSelected: (selected) {
@@ -336,9 +344,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: isSmallScreen ? 
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4) :
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    isSmallScreen
+                        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                        : const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
               );
             },
           ),
@@ -351,9 +363,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Get screen width to adjust button size
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    final buttonPadding = isSmallScreen
-        ? const EdgeInsets.symmetric(vertical: 12)
-        : const EdgeInsets.symmetric(vertical: 16);
+    final buttonPadding =
+        isSmallScreen
+            ? const EdgeInsets.symmetric(vertical: 12)
+            : const EdgeInsets.symmetric(vertical: 16);
     final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
 
     return Row(
@@ -590,7 +603,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Check screen size to adjust layout accordingly
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -664,7 +677,7 @@ class _MobileCurrencyConverterLayoutState
   int _selectedIndex = 0;
   final _currencyConverterCoreKey = GlobalKey<_CurrencyConverterCoreState>();
   final _historyScreenKey = GlobalKey();
-  
+
   late List<Widget> _pages;
   late List<BottomNavigationBarItem> _navigationItems;
 
@@ -674,30 +687,30 @@ class _MobileCurrencyConverterLayoutState
     _initPages();
     _initNavigationItems();
   }
-  
+
   void _initPages() {
     // Check if user is admin to determine what pages are available
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     // Always include Converter and History screens
     _pages = [
       CurrencyConverterCore(key: _currencyConverterCoreKey),
       HistoryScreen(key: _historyScreenKey),
     ];
-    
+
     // Add Analytics screen only for admin users
     if (isAdmin) {
       _pages.add(const AnalyticsScreen());
     }
-    
+
     // Add Settings screen for all users
     _pages.add(const SettingsScreen());
   }
-  
+
   void _initNavigationItems() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     // Basic navigation items available to all users
     _navigationItems = [
       const BottomNavigationBarItem(
@@ -709,17 +722,17 @@ class _MobileCurrencyConverterLayoutState
         label: 'History',
       ),
     ];
-    
+
     // Only add Analytics option for admin users
     if (isAdmin) {
       _navigationItems.add(
         const BottomNavigationBarItem(
           icon: Icon(Icons.analytics),
-          label: 'Analytics',
+          label: 'Statistics',
         ),
       );
     }
-    
+
     // Settings available for all users
     _navigationItems.add(
       const BottomNavigationBarItem(
@@ -732,7 +745,7 @@ class _MobileCurrencyConverterLayoutState
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      
+
       // Refresh data when navigating to specific screens
       if (_pages[index] is HistoryScreen) {
         // Force History Screen to refresh data
@@ -839,30 +852,30 @@ class _TabletCurrencyConverterLayoutState
     _initPages();
     _initNavigationItems();
   }
-  
+
   void _initPages() {
     // Check if user is admin to determine what pages are available
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     // Always include Converter and History screens
     _pages = [
       CurrencyConverterCore(isWideLayout: true, key: _currencyConverterCoreKey),
       HistoryScreen(key: _historyScreenKey),
     ];
-    
+
     // Add Analytics screen only for admin users
     if (isAdmin) {
       _pages.add(const AnalyticsScreen());
     }
-    
+
     // Add Settings screen for all users
     _pages.add(const SettingsScreen());
   }
-  
+
   void _initNavigationItems() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     // Basic navigation items available to all users
     _navigationItems = [
       const BottomNavigationBarItem(
@@ -874,17 +887,17 @@ class _TabletCurrencyConverterLayoutState
         label: 'History',
       ),
     ];
-    
+
     // Only add Analytics option for admin users
     if (isAdmin) {
       _navigationItems.add(
         const BottomNavigationBarItem(
           icon: Icon(Icons.analytics, size: 30),
-          label: 'Analytics',
+          label: 'Statistics',
         ),
       );
     }
-    
+
     // Settings available for all users
     _navigationItems.add(
       const BottomNavigationBarItem(
@@ -897,7 +910,7 @@ class _TabletCurrencyConverterLayoutState
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      
+
       // Refresh data when navigating to specific screens
       if (_pages[index] is HistoryScreen) {
         // Force History Screen to refresh data
@@ -953,7 +966,7 @@ class _TabletCurrencyConverterLayoutState
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: horizontalPadding,
-                  vertical: 16
+                  vertical: 16,
                 ),
                 child: _pages[_selectedIndex],
               ),
