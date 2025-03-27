@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/currency_converter.dart';
 import 'screens/login_screen.dart';
+import 'screens/analytical_screen.dart';
 
 void main() {
   runApp(const MyApp());

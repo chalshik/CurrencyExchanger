@@ -1,6 +1,7 @@
 import 'package:currency_changer/screens/report_screen.dart';
 import 'package:currency_changer/screens/history_screen.dart';
 import 'package:currency_changer/screens/settings.dart';
+import '../screens/analytical_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';

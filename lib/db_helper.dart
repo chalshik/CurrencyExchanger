@@ -24,7 +24,12 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 2, onCreate: _createDB, onUpgrade: _upgradeDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
   }
 
   /// Create database tables
@@ -66,16 +71,12 @@ class DatabaseHelper {
     // Initialize with SOM currency
     final somCurrency = CurrencyModel(code: 'SOM', quantity: 0);
     await db.insert('currencies', somCurrency.toMap());
-    
+
     // Create initial admin user (username: a, password: a)
-    final adminUser = UserModel(
-      username: 'a',
-      password: 'a',
-      role: 'admin',
-    );
+    final adminUser = UserModel(username: 'a', password: 'a', role: 'admin');
     await db.insert('users', adminUser.toMap());
   }
-  
+
   /// Upgrade database when schema changes
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
@@ -89,13 +90,9 @@ class DatabaseHelper {
           created_at TEXT NOT NULL
         )
       ''');
-      
+
       // Create initial admin user
-      final adminUser = UserModel(
-        username: 'a',
-        password: 'a',
-        role: 'admin',
-      );
+      final adminUser = UserModel(username: 'a', password: 'a', role: 'admin');
       await db.insert('users', adminUser.toMap());
     }
   }
@@ -641,12 +638,41 @@ class DatabaseHelper {
     db.close();
   }
 
+  Future<Map<String, dynamic>> getPieChartData() async {
+    final db = await database;
+
+    // Get total purchased amounts by currency
+    final purchaseData = await db.rawQuery('''
+    SELECT 
+      currency_code,
+      SUM(total) as total_purchase_amount
+    FROM history
+    WHERE operation_type = 'Purchase'
+    GROUP BY currency_code
+  ''');
+
+    // Get total sold amounts by currency
+    final saleData = await db.rawQuery('''
+    SELECT 
+      currency_code,
+      SUM(total) as total_sale_amount
+    FROM history
+    WHERE operation_type = 'Sale'
+    GROUP BY currency_code
+  ''');
+
+    return {'purchases': purchaseData, 'sales': saleData};
+  }
+
   // =====================
   // USER OPERATIONS
   // =====================
-  
+
   /// Get user by username and password (for login)
-  Future<UserModel?> getUserByCredentials(String username, String password) async {
+  Future<UserModel?> getUserByCredentials(
+    String username,
+    String password,
+  ) async {
     final db = await instance.database;
     final maps = await db.query(
       'users',
@@ -655,14 +681,14 @@ class DatabaseHelper {
     );
     return maps.isNotEmpty ? UserModel.fromMap(maps.first) : null;
   }
-  
+
   /// Get all users
   Future<List<UserModel>> getAllUsers() async {
     final db = await instance.database;
     final maps = await db.query('users', orderBy: 'created_at DESC');
     return maps.map((map) => UserModel.fromMap(map)).toList();
   }
-  
+
   /// Create new user
   Future<int> createUser(UserModel user) async {
     final db = await instance.database;
@@ -672,7 +698,7 @@ class DatabaseHelper {
       conflictAlgorithm: ConflictAlgorithm.abort,
     );
   }
-  
+
   /// Update user
   Future<int> updateUser(UserModel user) async {
     final db = await instance.database;
@@ -683,24 +709,21 @@ class DatabaseHelper {
       whereArgs: [user.id],
     );
   }
-  
+
   /// Delete user
   Future<int> deleteUser(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'users',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('users', where: 'id = ?', whereArgs: [id]);
   }
-  
+
   /// Check if a username already exists
   Future<bool> usernameExists(String username) async {
     final db = await instance.database;
-    final count = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM users WHERE username = ?',
-      [username],
-    ));
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM users WHERE username = ?', [
+        username,
+      ]),
+    );
     return count != null && count > 0;
   }
 }
