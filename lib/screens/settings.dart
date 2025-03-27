@@ -136,7 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _usernameController.clear();
     _passwordController.clear();
     _roleController.text = 'user'; // Default role
-    
+
     return showDialog(
       context: context,
       builder: (context) {
@@ -191,14 +191,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _passwordController.text.isNotEmpty) {
                   try {
                     // Check if username already exists
-                    final exists = await _dbHelper.usernameExists(_usernameController.text);
+                    final exists = await _dbHelper.usernameExists(
+                      _usernameController.text,
+                    );
                     if (exists) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Username already exists')),
+                        const SnackBar(
+                          content: Text('Username already exists'),
+                        ),
                       );
                       return;
                     }
-                    
+
                     final newUser = UserModel(
                       username: _usernameController.text,
                       password: _passwordController.text,
@@ -208,9 +212,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     await _dbHelper.createUser(newUser);
                     await _loadUsers();
                     Navigator.pop(context);
-                    
+
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User created successfully')),
+                      const SnackBar(
+                        content: Text('User created successfully'),
+                      ),
                     );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -267,39 +273,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-  
+
   Future<void> _deleteUser(int? id, String username) async {
     if (id == null) return;
 
     // Show confirmation dialog
     bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete user $username?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Delete'),
+            content: Text('Are you sure you want to delete user $username?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
       try {
         await _dbHelper.deleteUser(id);
         await _loadUsers();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User $username deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('User $username deleted')));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error deleting user: ${e.toString()}')),
@@ -312,9 +319,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: _showCurrencyManagement 
-          ? _buildCurrencyManagement()
-          : _showUserManagement 
+      body:
+          _showCurrencyManagement
+              ? _buildCurrencyManagement()
+              : _showUserManagement
               ? _buildUserManagement()
               : _buildSettings(),
     );
@@ -323,7 +331,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettings() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -354,6 +362,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildCurrencyManagement() {
+    // Separate SOM from other currencies
+    final somCurrency = _currencies.firstWhere(
+      (currency) => currency.code == 'SOM',
+      orElse:
+          () => CurrencyModel(
+            code: 'SOM',
+            quantity: 0.0,
+            updatedAt: DateTime.now(),
+          ),
+    );
+
+    final otherCurrencies =
+        _currencies.where((currency) => currency.code != 'SOM').toList();
+
     return Column(
       children: [
         AppBar(
@@ -376,29 +398,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
                   )
-                  : ListView.builder(
-                    itemCount: _currencies.length,
-                    itemBuilder: (context, index) {
-                      final currency = _currencies[index];
-                      // Format quantity with 2 decimal places
-                      final formattedQuantity = NumberFormat.currency(
-                        decimalDigits: 2,
-                        symbol: '',
-                      ).format(currency.quantity);
+                  : ListView(
+                    children: [
+                      // SOM Card - Main Currency
+                      Card(
+                        margin: const EdgeInsets.all(8),
+                        color: Colors.blue.shade50,
+                        child: ListTile(
+                          title: const Text(
+                            'SOM (Main Currency)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Quantity: ${NumberFormat.currency(decimalDigits: 2, symbol: '').format(somCurrency.quantity)}',
+                              ),
+                              Text(
+                                'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(somCurrency.updatedAt)}',
+                              ),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.lock, color: Colors.grey),
+                        ),
+                      ),
 
-                      return ListTile(
-                        title: Text(currency.code),
-                        subtitle: Text(
-                          'Quantity: $formattedQuantity\n'
-                          'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed:
-                              () => _deleteCurrency(currency.id, currency.code),
-                        ),
-                      );
-                    },
+                      // Other Currencies
+                      ...otherCurrencies.map((currency) {
+                        final formattedQuantity = NumberFormat.currency(
+                          decimalDigits: 2,
+                          symbol: '',
+                        ).format(currency.quantity);
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: ListTile(
+                            title: Text(currency.code),
+                            subtitle: Text(
+                              'Quantity: $formattedQuantity\n'
+                              'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed:
+                                  () => _deleteCurrency(
+                                    currency.id,
+                                    currency.code,
+                                  ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
                   ),
         ),
         Padding(
@@ -414,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-  
+
   Widget _buildUserManagement() {
     return Column(
       children: [
@@ -430,40 +488,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         Expanded(
-          child: _users.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No users available',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _users.length,
-                  itemBuilder: (context, index) {
-                    final user = _users[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: 
-                          user.role == 'admin' ? Colors.orange : Colors.blue,
-                        child: Icon(
-                          user.role == 'admin' 
-                              ? Icons.admin_panel_settings
-                              : Icons.person,
-                          color: Colors.white,
+          child:
+              _users.isEmpty
+                  ? const Center(
+                    child: Text(
+                      'No users available',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                  )
+                  : ListView.builder(
+                    itemCount: _users.length,
+                    itemBuilder: (context, index) {
+                      final user = _users[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              user.role == 'admin'
+                                  ? Colors.orange
+                                  : Colors.blue,
+                          child: Icon(
+                            user.role == 'admin'
+                                ? Icons.admin_panel_settings
+                                : Icons.person,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      title: Text(user.username),
-                      subtitle: Text(
-                        'Role: ${user.role}\n'
-                        'Created: ${DateFormat('yyyy-MM-dd').format(user.createdAt)}',
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteUser(user.id, user.username),
-                      ),
-                    );
-                  },
-                ),
+                        title: Text(user.username),
+                        subtitle: Text(
+                          'Role: ${user.role}\n'
+                          'Created: ${DateFormat('yyyy-MM-dd').format(user.createdAt)}',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteUser(user.id, user.username),
+                        ),
+                      );
+                    },
+                  ),
         ),
         Padding(
           padding: const EdgeInsets.all(16.0),

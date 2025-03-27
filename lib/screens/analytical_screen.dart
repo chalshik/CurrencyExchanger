@@ -4,15 +4,16 @@ import '../db_helper.dart';
 
 class AnalyticsDiagramScreen extends StatefulWidget {
   @override
-  _AnalyticsScreenState createState() => _AnalyticsScreenState();
+  _AnalyticsDiagramScreenState createState() => _AnalyticsDiagramScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsDiagramScreen> {
+class _AnalyticsDiagramScreenState extends State<AnalyticsDiagramScreen> {
   // Current selected chart type
   ChartType _selectedChartType = ChartType.pie;
   // Current selected pie subtype
   PieSubType _selectedPieSubType = PieSubType.bought;
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,10 +109,14 @@ class _AnalyticsScreenState extends State<AnalyticsDiagramScreen> {
         }
 
         final data = snapshot.data!;
-        final chartData =
+        List<Map<String, dynamic>> chartData =
             _selectedPieSubType == PieSubType.bought
                 ? data['purchases'] as List<Map<String, dynamic>>
                 : data['sales'] as List<Map<String, dynamic>>;
+
+        // Filter out SOM currency
+        chartData =
+            chartData.where((item) => item['currency_code'] != 'SOM').toList();
 
         final valueKey =
             _selectedPieSubType == PieSubType.bought
@@ -121,8 +126,8 @@ class _AnalyticsScreenState extends State<AnalyticsDiagramScreen> {
         return _buildSyncfusionPieChart(
           title:
               _selectedPieSubType == PieSubType.bought
-                  ? 'Purchased Currencies'
-                  : 'Sold Currencies',
+                  ? 'Purchased Currencies (excl. SOM)'
+                  : 'Sold Currencies (excl. SOM)',
           data: chartData,
           valueKey: valueKey,
           labelKey: 'currency_code',

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../db_helper.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -13,6 +12,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   List<Map<String, dynamic>> _currencyStats = [];
   double _totalProfit = 0.0;
+  double _somBalance = 0.0;
+  double _kassaValue = 0.0;
   bool _isLoading = true;
 
   @override
@@ -31,10 +32,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
       if (!mounted) return;
 
+      // Calculate SOM balance and kassa value
+      double somBalance = 0.0;
+      double kassaValue = 0.0;
+
+      final stats = analytics['currency_stats'] as List<Map<String, dynamic>>;
+      for (var stat in stats) {
+        if (stat['currency'] == 'SOM') {
+          somBalance = stat['current_quantity'] as double;
+        } else {
+          kassaValue +=
+              (stat['current_quantity'] as double) *
+              (stat['avg_sale_rate'] as double);
+        }
+      }
+
       setState(() {
-        _currencyStats =
-            analytics['currency_stats'] as List<Map<String, dynamic>>;
+        _currencyStats = stats;
         _totalProfit = analytics['total_profit'] as double;
+        _somBalance = somBalance;
+        _kassaValue = kassaValue;
         _isLoading = false;
       });
     } catch (e) {
@@ -47,63 +64,131 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
   }
 
-  Widget _buildMobileTable() {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _currencyStats.length,
-      itemBuilder: (context, index) {
-        final stat = _currencyStats[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  Widget _buildSummaryCards() {
+    return Column(
+      children: [
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.blue.shade50, // Light blue background for SOM
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  stat['currency'].toString(),
-                  style: const TextStyle(
-                    fontSize: 18,
+                const Text(
+                  'Main Currency (SOM)',
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 8),
                 _buildStatRow(
-                  'Avg Buy Rate',
-                  stat['avg_purchase_rate'].toStringAsFixed(4),
+                  'Balance',
+                  _somBalance.toStringAsFixed(2),
+                  valueColor: Colors.blue,
                 ),
-                _buildStatRow(
-                  'Avg Sell Rate',
-                  stat['avg_sale_rate'].toStringAsFixed(4),
-                ),
-                _buildStatRow(
-                  'Purchased',
-                  stat['total_purchased'].toStringAsFixed(2),
-                ),
-                _buildStatRow('Sold', stat['total_sold'].toStringAsFixed(2)),
-                _buildStatRow(
-                  'Remaining',
-                  stat['current_quantity'].toStringAsFixed(2),
-                ),
-                _buildProfitRow(stat['profit'] as double),
-                const Divider(height: 20),
               ],
             ),
           ),
-        );
-      },
+        ),
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Foreign Currency Value',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildStatRow(
+                  'Total Kassa Value',
+                  _kassaValue.toStringAsFixed(2),
+                  valueColor: Colors.green,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStatRow(String label, String value) {
+  Widget _buildCurrencyCard(Map<String, dynamic> stat) {
+    final isSom = stat['currency'] == 'SOM';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      color: isSom ? Colors.blue.shade50 : null,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  stat['currency'].toString(),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isSom ? Colors.blue : null,
+                  ),
+                ),
+                if (isSom)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Text(
+                      '(Main Currency)',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              'Avg Buy Rate',
+              stat['avg_purchase_rate'].toStringAsFixed(4),
+            ),
+            _buildStatRow(
+              'Avg Sell Rate',
+              stat['avg_sale_rate'].toStringAsFixed(4),
+            ),
+            _buildStatRow(
+              'Purchased',
+              stat['total_purchased'].toStringAsFixed(2),
+            ),
+            _buildStatRow('Sold', stat['total_sold'].toStringAsFixed(2)),
+            _buildStatRow(
+              'Remaining',
+              stat['current_quantity'].toStringAsFixed(2),
+            ),
+            _buildProfitRow(stat['profit'] as double),
+            const Divider(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey.shade600)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
+          ),
         ],
       ),
     );
@@ -125,91 +210,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTabletTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 24,
-        horizontalMargin: 12,
-        headingRowColor: MaterialStateProperty.resolveWith<Color>(
-          (states) => Colors.blue.shade50,
-        ),
-        columns: const [
-          DataColumn(
-            label: Text(
-              'Currency',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              'Avg Buy Rate',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Avg Sell Rate',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Purchased',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text('Sold', style: TextStyle(fontWeight: FontWeight.bold)),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Remaining',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Profit',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-        ],
-        rows:
-            _currencyStats.map((stat) {
-              return DataRow(
-                cells: [
-                  DataCell(Text(stat['currency'].toString())),
-                  DataCell(Text(stat['avg_purchase_rate'].toStringAsFixed(4))),
-                  DataCell(Text(stat['avg_sale_rate'].toStringAsFixed(4))),
-                  DataCell(Text(stat['total_purchased'].toStringAsFixed(2))),
-                  DataCell(Text(stat['total_sold'].toStringAsFixed(2))),
-                  DataCell(Text(stat['current_quantity'].toStringAsFixed(2))),
-                  DataCell(
-                    Text(
-                      stat['profit'].toStringAsFixed(2),
-                      style: TextStyle(
-                        color:
-                            (stat['profit'] as double) >= 0
-                                ? Colors.green
-                                : Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
       ),
     );
   }
@@ -247,8 +247,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = MediaQuery.of(context).size.width > 600;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Currency Analytics'),
@@ -259,21 +257,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (!_isLoading && _currencyStats.isNotEmpty) _buildTotalProfitCard(),
-          Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _currencyStats.isEmpty
-                    ? const Center(child: Text('No analytics data available'))
-                    : isTablet
-                    ? _buildTabletTable()
-                    : _buildMobileTable(),
-          ),
-        ],
-      ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _currencyStats.isEmpty
+              ? const Center(child: Text('No analytics data available'))
+              : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildSummaryCards(),
+                    _buildTotalProfitCard(),
+                    // Show all currencies including SOM (now properly highlighted)
+                    ..._currencyStats.map((stat) => _buildCurrencyCard(stat)),
+                  ],
+                ),
+              ),
     );
   }
 }
