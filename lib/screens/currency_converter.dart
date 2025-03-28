@@ -278,7 +278,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 fontSize: isSmallScreen ? 14 : 16,
               ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : availableCurrencies.isEmpty
@@ -402,18 +402,32 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Get screen width to adjust sizing
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final fontSize = isSmallScreen ? 13.0 : 15.0;
     final verticalPadding = isSmallScreen ? 14.0 : 16.0;
 
-    return ElevatedButton(
-      onPressed: _finishOperation,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: verticalPadding),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      height: isSmallScreen ? 50 : 56,
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      child: ElevatedButton(
+        onPressed: _finishOperation,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.shade600,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: Colors.blue.shade200,
+          padding: EdgeInsets.symmetric(vertical: verticalPadding),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: Text(
+          'Finish Operation', 
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
-      child: Text('Finish Operation', style: TextStyle(fontSize: fontSize)),
     );
   }
 
@@ -500,13 +514,14 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Check screen size to adjust layout accordingly
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
+    final spacing = isSmallScreen ? 8.0 : 12.0;
 
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+          padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -517,28 +532,28 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.blue.shade800,
                   fontWeight: FontWeight.bold,
-                  fontSize: isSmallScreen ? 18 : 20,
+                  fontSize: isSmallScreen ? 16 : 18,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: spacing),
               _buildCurrencyInputSection(),
-              const SizedBox(height: 16),
+              SizedBox(height: spacing),
               _buildTotalSumCard(),
-              const SizedBox(height: 16),
+              SizedBox(height: spacing),
               _buildCurrencySelector(),
-              const SizedBox(height: 24),
+              SizedBox(height: spacing),
               Text(
                 'Operation Type:',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Colors.blue.shade700,
                   fontWeight: FontWeight.bold,
-                  fontSize: isSmallScreen ? 14 : 16,
+                  fontSize: isSmallScreen ? 13 : 15,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 4),
               _buildOperationTypeButtons(),
-              const SizedBox(height: 24),
+              SizedBox(height: spacing),
               _buildFinishButton(),
             ],
           ),
@@ -568,7 +583,10 @@ class _MobileCurrencyConverterLayoutState
     extends State<MobileCurrencyConverterLayout> {
   int _selectedIndex = 0;
   final _currencyConverterCoreKey = GlobalKey<_CurrencyConverterCoreState>();
-  final _historyScreenKey = GlobalKey();
+  Key _historyScreenKey = GlobalKey();
+  // Keys for statistics and analytics screens to force refresh
+  Key _statisticsKey = UniqueKey();
+  Key _analyticsKey = UniqueKey();
 
   late List<Widget> _pages;
   late List<BottomNavigationBarItem> _navigationItems;
@@ -592,8 +610,8 @@ class _MobileCurrencyConverterLayoutState
     
     // Add Statistics and Analytics screens only for admin users
     if (isAdmin) {
-      _pages.add(const StatisticsScreen());
-      _pages.add(const AnalyticsScreen());
+      _pages.add(StatisticsScreen(key: _statisticsKey));
+      _pages.add(AnalyticsScreen(key: _analyticsKey));
     }
     
     // Add Settings screen for all users
@@ -645,19 +663,30 @@ class _MobileCurrencyConverterLayoutState
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-
-      // Refresh data when navigating to specific screens
-      if (_pages[index] is HistoryScreen) {
-        // Force History Screen to refresh data
-        final historyState = _historyScreenKey.currentState as dynamic;
-        if (historyState != null && historyState.loadHistoryEntries != null) {
-          historyState.loadHistoryEntries();
-        }
-      } else if (index == 0) {
-        // Refresh currency data when navigating back to converter
-        _currencyConverterCoreKey.currentState?._loadCurrencies();
+      
+      // Handle the history screen refresh
+      if (index == 2 && _historyScreenKey != null) {
+        _historyScreenKey = UniqueKey();
+      }
+      
+      // For Statistics and Analytics screens, always recreate them with a new key
+      // to force a full refresh when they're selected
+      if (index == 3) { // Statistics screen
+        _statisticsKey = UniqueKey();
+      } else if (index == 4) { // Analytics screen
+        _analyticsKey = UniqueKey();
+      }
+      
+      // Refresh currency data when going to converter screen
+      if (index == 0) {
+        _loadCurrencyData();
       }
     });
+  }
+
+  // Method to refresh currency data in the converter screen
+  void _loadCurrencyData() {
+    _currencyConverterCoreKey.currentState?._loadCurrencies();
   }
 
   @override
@@ -682,7 +711,8 @@ class _MobileCurrencyConverterLayoutState
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: IndexedStack(index: _selectedIndex, children: _pages),
+          // Use a direct widget instead of IndexedStack to ensure screens rebuild
+          child: _buildCurrentPage(),
         ),
       ),
       bottomNavigationBar: Container(
@@ -715,6 +745,12 @@ class _MobileCurrencyConverterLayoutState
       ),
     );
   }
+  
+  // Build the current page directly rather than using IndexedStack
+  Widget _buildCurrentPage() {
+    // This ensures every page switch fully rebuilds the widget
+    return _pages[_selectedIndex];
+  }
 }
 
 // Tablet Layout
@@ -730,7 +766,10 @@ class _TabletCurrencyConverterLayoutState
     extends State<TabletCurrencyConverterLayout> {
   int _selectedIndex = 0;
   final _currencyConverterCoreKey = GlobalKey<_CurrencyConverterCoreState>();
-  final _historyScreenKey = GlobalKey();
+  Key _historyScreenKey = GlobalKey();
+  // Keys for statistics and analytics screens to force refresh
+  Key _statisticsKey = UniqueKey();
+  Key _analyticsKey = UniqueKey();
 
   late List<Widget> _pages;
   late List<BottomNavigationBarItem> _navigationItems;
@@ -754,8 +793,8 @@ class _TabletCurrencyConverterLayoutState
     
     // Add Statistics and Analytics screens only for admin users
     if (isAdmin) {
-      _pages.add(const StatisticsScreen());
-      _pages.add(const AnalyticsScreen());
+      _pages.add(StatisticsScreen(key: _statisticsKey));
+      _pages.add(AnalyticsScreen(key: _analyticsKey));
     }
     
     // Add Settings screen for all users
@@ -807,19 +846,30 @@ class _TabletCurrencyConverterLayoutState
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-
-      // Refresh data when navigating to specific screens
-      if (_pages[index] is HistoryScreen) {
-        // Force History Screen to refresh data
-        final historyState = _historyScreenKey.currentState as dynamic;
-        if (historyState != null && historyState.loadHistoryEntries != null) {
-          historyState.loadHistoryEntries();
-        }
-      } else if (index == 0) {
-        // Refresh currency data when navigating back to converter
-        _currencyConverterCoreKey.currentState?._loadCurrencies();
+      
+      // Handle the history screen refresh
+      if (index == 2 && _historyScreenKey != null) {
+        _historyScreenKey = UniqueKey();
+      }
+      
+      // For Statistics and Analytics screens, always recreate them with a new key
+      // to force a full refresh when they're selected
+      if (index == 3) { // Statistics screen
+        _statisticsKey = UniqueKey();
+      } else if (index == 4) { // Analytics screen
+        _analyticsKey = UniqueKey();
+      }
+      
+      // Refresh currency data when going to converter screen
+      if (index == 0) {
+        _loadCurrencyData();
       }
     });
+  }
+
+  // Method to refresh currency data in the converter screen
+  void _loadCurrencyData() {
+    _currencyConverterCoreKey.currentState?._loadCurrencies();
   }
 
   @override
@@ -854,7 +904,8 @@ class _TabletCurrencyConverterLayoutState
                   horizontal: horizontalPadding,
                   vertical: 16,
                 ),
-                child: _pages[_selectedIndex],
+                // Use a direct widget instead of IndexedStack
+                child: _buildCurrentPage(),
               ),
             ),
           ],
@@ -889,5 +940,11 @@ class _TabletCurrencyConverterLayoutState
         ),
       ),
     );
+  }
+  
+  // Build the current page directly rather than using IndexedStack
+  Widget _buildCurrentPage() {
+    // This ensures every page switch fully rebuilds the widget
+    return _pages[_selectedIndex];
   }
 }

@@ -715,7 +715,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           subtitle: Text(
                             'Quantity: $formattedQuantity\n'
-                            'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
+                            'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
                           ),
                           trailing: isSom 
                               ? const Icon(Icons.payments, color: Colors.blue)
@@ -800,7 +800,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: Text(user.username),
                         subtitle: Text(
                           'Role: ${user.role}\n'
-                          'Created: ${DateFormat('yyyy-MM-dd').format(user.createdAt)}',
+                          'Created: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
                         ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),

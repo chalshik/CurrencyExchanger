@@ -31,8 +31,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _fromDateController.text = DateFormat('yyyy-MM-dd').format(_fromDate);
-    _toDateController.text = DateFormat('yyyy-MM-dd').format(_toDate);
+    _fromDateController.text = DateFormat('dd-MM-yy').format(_fromDate);
+    _toDateController.text = DateFormat('dd-MM-yy').format(_toDate);
     _loadFilters();
     _loadHistory();
   }
@@ -79,8 +79,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
 
     try {
-      final fromDate = DateFormat('yyyy-MM-dd').parse(_fromDateController.text);
-      final toDate = DateFormat('yyyy-MM-dd').parse(_toDateController.text);
+      final fromDate = DateFormat('dd-MM-yy').parse(_fromDateController.text);
+      final toDate = DateFormat('dd-MM-yy').parse(_toDateController.text);
       
       // Add 23:59:59 to the toDate to include the entire day
       final adjustedToDate = DateTime(toDate.year, toDate.month, toDate.day, 23, 59, 59);
@@ -132,10 +132,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       setState(() {
         if (isFromDate) {
           _fromDate = picked;
-          _fromDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+          _fromDateController.text = DateFormat('dd-MM-yy').format(picked);
         } else {
           _toDate = picked;
-          _toDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+          _toDateController.text = DateFormat('dd-MM-yy').format(picked);
         }
       });
       // Load history immediately after date change
@@ -149,8 +149,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() {
       _fromDate = DateTime.now().subtract(const Duration(days: 30));
       _toDate = DateTime.now();
-      _fromDateController.text = DateFormat('yyyy-MM-dd').format(_fromDate);
-      _toDateController.text = DateFormat('yyyy-MM-dd').format(_toDate);
+      _fromDateController.text = DateFormat('dd-MM-yy').format(_fromDate);
+      _toDateController.text = DateFormat('dd-MM-yy').format(_toDate);
       _selectedCurrency = null;
       _selectedOperationType = null;
     });
@@ -164,34 +164,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           // Date Range Selector with filter icons
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
             child: Row(
               children: [
                 Expanded(
+                  flex: 4,
                   child: TextField(
                     controller: _fromDateController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
                       labelText: 'From',
-                      suffixIcon: Icon(Icons.calendar_today),
+                      labelStyle: const TextStyle(fontSize: 13),
+                      prefixIcon: const Icon(Icons.calendar_today, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
                     ),
                     readOnly: true,
                     onTap: () => _selectDate(context, true),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
                 Expanded(
+                  flex: 4,
                   child: TextField(
                     controller: _toDateController,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
                       labelText: 'To',
-                      suffixIcon: Icon(Icons.calendar_today),
+                      labelStyle: const TextStyle(fontSize: 13),
+                      prefixIcon: const Icon(Icons.calendar_today, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
                     ),
                     readOnly: true,
                     onTap: () => _selectDate(context, false),
                   ),
                 ),
+                const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.filter_alt),
+                  icon: const Icon(Icons.filter_alt, size: 22),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                   onPressed: _showFilterDialog,
                   tooltip: 'Filter',
                 ),
@@ -200,7 +221,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     _fromDate != DateTime.now().subtract(const Duration(days: 30)) ||
                     _toDate != DateTime.now())
                   IconButton(
-                    icon: const Icon(Icons.filter_alt_off),
+                    icon: const Icon(Icons.filter_alt_off, size: 22),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     onPressed: _resetFilters,
                     tooltip: 'Reset Filters',
                   ),
@@ -282,7 +305,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Text('Rate: ${entry.rate.toStringAsFixed(6)}'),
             Text('Total: ${entry.total.toInt()}'),
             Text(
-              DateFormat('yyyy-MM-dd HH:mm').format(entry.createdAt),
+              DateFormat('dd-MM-yy HH:mm').format(entry.createdAt),
               style: const TextStyle(color: Colors.grey),
             ),
           ],

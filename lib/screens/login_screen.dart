@@ -310,15 +310,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: TextStyle(fontSize: 16),
                                 ),
                         ),
+                                                                    
                         
-                        const SizedBox(height: 16),
-                        
-                        // Helper text
-                        const Text(
-                          'Use "a" for both username and password to login as admin',
-                          style: TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   ),
