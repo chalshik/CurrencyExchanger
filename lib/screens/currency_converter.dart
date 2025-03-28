@@ -431,7 +431,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  Future<void> _finishOperation() async {
+  Future<void> _finishOperation() async {z
     if (_currencyController.text.isEmpty || _quantityController.text.isEmpty) {
       _showBriefNotification(
         'Please enter rate and amount',
