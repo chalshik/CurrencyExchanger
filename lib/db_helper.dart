@@ -402,7 +402,10 @@ class DatabaseHelper {
     } else {
       await txn.update(
         'currencies',
-        {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
+        {
+          'quantity': newBalance,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
         where: 'code = ?',
         whereArgs: [code],
       );
@@ -571,7 +574,7 @@ class DatabaseHelper {
       for (var stat in purchaseStats) {
         final currencyCode = stat['currency_code'] as String? ?? '';
         if (currencyCode.isEmpty) continue;
-        
+
         combinedStats[currencyCode] = {
           'currency': currencyCode,
           'avg_purchase_rate': _safeDouble(stat['avg_purchase_rate']),
@@ -589,7 +592,7 @@ class DatabaseHelper {
       for (var stat in saleStats) {
         final currencyCode = stat['currency_code'] as String? ?? '';
         if (currencyCode.isEmpty) continue;
-        
+
         if (combinedStats.containsKey(currencyCode)) {
           combinedStats[currencyCode]!.addAll({
             'avg_sale_rate': _safeDouble(stat['avg_sale_rate']),
@@ -615,9 +618,9 @@ class DatabaseHelper {
       for (var quantity in currentQuantities) {
         final currencyCode = quantity['code'] as String? ?? '';
         if (currencyCode.isEmpty) continue;
-        
+
         final currentQuantity = _safeDouble(quantity['quantity']);
-        
+
         if (combinedStats.containsKey(currencyCode)) {
           combinedStats[currencyCode]!['current_quantity'] = currentQuantity;
         } else {
@@ -656,7 +659,7 @@ class DatabaseHelper {
       return {'currency_stats': [], 'total_profit': 0.0};
     }
   }
-  
+
   // Helper function to safely convert values to double
   double _safeDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -674,30 +677,164 @@ class DatabaseHelper {
     db.close();
   }
 
-  Future<Map<String, dynamic>> getPieChartData() async {
+  // =====================
+  // CHART DATA OPERATIONS
+  // =====================
+  /// Enhanced pie chart data with multiple metrics
+  Future<Map<String, dynamic>> getEnhancedPieChartData({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     final db = await database;
+    final whereArgs = <dynamic>[];
+    var whereClause = '';
 
-    // Get total purchased amounts by currency
+    // Add date range filtering if provided
+    if (startDate != null && endDate != null) {
+      whereClause = 'WHERE created_at BETWEEN ? AND ?';
+      whereArgs.addAll([
+        startDate.toIso8601String(),
+        endDate.toIso8601String(),
+      ]);
+    }
+
+    // Get purchase data (quantity and value)
     final purchaseData = await db.rawQuery('''
     SELECT 
       currency_code,
-      SUM(total) as total_purchase_amount
+      SUM(quantity) as total_quantity,
+      SUM(total) as total_value
     FROM history
-    WHERE operation_type = 'Purchase'
+    $whereClause
+    AND operation_type = 'Purchase'
     GROUP BY currency_code
-  ''');
+  ''', whereArgs);
 
-    // Get total sold amounts by currency
+    // Get sale data (quantity and value)
     final saleData = await db.rawQuery('''
     SELECT 
       currency_code,
-      SUM(total) as total_sale_amount
+      SUM(quantity) as total_quantity,
+      SUM(total) as total_value
     FROM history
-    WHERE operation_type = 'Sale'
+    $whereClause
+    AND operation_type = 'Sale'
     GROUP BY currency_code
-  ''');
+  ''', whereArgs);
 
     return {'purchases': purchaseData, 'sales': saleData};
+  }
+
+  /// Get profit by currency for charts
+  Future<List<Map<String, dynamic>>> getProfitByCurrency({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? groupBy, // 'day', 'week', 'month'
+  }) async {
+    final db = await database;
+    final whereArgs = <dynamic>[];
+    var whereClause = '';
+
+    if (startDate != null && endDate != null) {
+      whereClause = 'WHERE h.created_at BETWEEN ? AND ?';
+      whereArgs.addAll([
+        startDate.toIso8601String(),
+        endDate.toIso8601String(),
+      ]);
+    }
+
+    String dateGrouping;
+    switch (groupBy?.toLowerCase()) {
+      case 'week':
+        dateGrouping = "strftime('%Y-%W', h.created_at)";
+        break;
+      case 'month':
+        dateGrouping = "strftime('%Y-%m', h.created_at)";
+        break;
+      default: // default to daily
+        dateGrouping = "date(h.created_at)";
+    }
+
+    try {
+      return await db.rawQuery('''
+      SELECT 
+        h.currency_code,
+        $dateGrouping as time_period,
+        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.quantity ELSE 0 END) as quantity_sold,
+        AVG(CASE WHEN h.operation_type = 'Sale' THEN h.rate ELSE NULL END) as avg_sale_rate,
+        AVG(CASE WHEN h.operation_type = 'Purchase' THEN h.rate ELSE NULL END) as avg_purchase_rate,
+        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.total ELSE 0 END) as total_sales,
+        SUM(CASE WHEN h.operation_type = 'Purchase' THEN h.total ELSE 0 END) as total_purchases,
+        SUM(
+          CASE WHEN h.operation_type = 'Sale' 
+          THEN h.quantity * (h.rate - (
+            SELECT AVG(p.rate) 
+            FROM history p 
+            WHERE p.currency_code = h.currency_code 
+            AND p.operation_type = 'Purchase'
+            ${startDate != null && endDate != null ? 'AND p.created_at BETWEEN ? AND ?' : ''}
+          ))
+          ELSE 0 
+          END
+        ) as profit
+      FROM history h
+      $whereClause
+      AND (h.operation_type = 'Purchase' OR h.operation_type = 'Sale')
+      GROUP BY h.currency_code, time_period
+      ORDER BY time_period, profit DESC
+    ''', whereArgs + (startDate != null && endDate != null ? whereArgs : []));
+    } catch (e) {
+      debugPrint('Error in getProfitByCurrency: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMostProfitableCurrencies({
+    required DateTime startDate,
+    required DateTime endDate,
+    int limit = 5,
+  }) async {
+    final db = await database;
+
+    try {
+      return await db.rawQuery(
+        '''
+      SELECT 
+        h.currency_code,
+        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.quantity ELSE 0 END) as quantity_sold,
+        AVG(CASE WHEN h.operation_type = 'Sale' THEN h.rate ELSE NULL END) as avg_sale_rate,
+        AVG(CASE WHEN h.operation_type = 'Purchase' THEN h.rate ELSE NULL END) as avg_purchase_rate,
+        SUM(
+          CASE WHEN h.operation_type = 'Sale' 
+          THEN h.quantity * (h.rate - (
+            SELECT AVG(p.rate) 
+            FROM history p 
+            WHERE p.currency_code = h.currency_code 
+            AND p.operation_type = 'Purchase'
+            AND p.created_at BETWEEN ? AND ?
+          ))
+          ELSE 0 
+          END
+        ) as profit
+      FROM history h
+      WHERE h.created_at BETWEEN ? AND ?
+      AND (h.operation_type = 'Purchase' OR h.operation_type = 'Sale')
+      GROUP BY h.currency_code
+      ORDER BY profit DESC
+      LIMIT ?
+    ''',
+        [
+          startDate.toIso8601String(),
+          endDate.toIso8601String(),
+          startDate.toIso8601String(),
+          endDate.toIso8601String(),
+          limit,
+        ],
+      );
+    } catch (e) {
+      debugPrint('Error in getMostProfitableCurrencies: $e');
+      rethrow;
+    }
   }
 
   // =====================
@@ -766,35 +903,31 @@ class DatabaseHelper {
   /// Reset all data - delete all transactions, reset currencies, and delete all users except admin with "a"/"a" credentials
   Future<void> resetAllData() async {
     final db = await instance.database;
-    
+
     await db.transaction((txn) async {
       // 1. Delete all history entries
       await txn.delete('history');
-      
+
       // 2. Delete all currencies
       await txn.delete('currencies');
-      
+
       // 3. Initialize SOM currency with zero balance
       await txn.insert('currencies', {
         'code': 'SOM',
         'quantity': 0.0,
         'updated_at': DateTime.now().toIso8601String(),
       });
-      
+
       // 4. Delete all users except the admin user with login "a"
-      await txn.delete(
-        'users',
-        where: 'username != ?',
-        whereArgs: ['a'],
-      );
-      
+      await txn.delete('users', where: 'username != ?', whereArgs: ['a']);
+
       // 5. Check if admin user "a" exists, create if not
       final adminCheck = await txn.query(
         'users',
         where: 'username = ?',
         whereArgs: ['a'],
       );
-      
+
       if (adminCheck.isEmpty) {
         // Create admin user with "a"/"a" credentials
         await txn.insert('users', {
@@ -807,10 +940,7 @@ class DatabaseHelper {
         // Make sure the existing user is set as admin
         await txn.update(
           'users',
-          {
-            'role': 'admin',
-            'password': 'a',
-          },
+          {'role': 'admin', 'password': 'a'},
           where: 'username = ?',
           whereArgs: ['a'],
         );
