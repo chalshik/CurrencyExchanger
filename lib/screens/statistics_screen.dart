@@ -9,7 +9,8 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBindingObserver {
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with WidgetsBindingObserver {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   List<Map<String, dynamic>> _currencyStats = [];
   double _totalProfit = 0.0;
@@ -42,7 +43,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Always force refresh when the screen becomes visible
     _lastLoadTime = null; // Reset last load time
     _loadCurrencyStats();
@@ -65,13 +66,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
 
       if (analytics.containsKey('currency_stats')) {
         final stats = analytics['currency_stats'] as List<dynamic>;
-        
+
         // Convert to proper format and filter out invalid entries
-        final currencyStats = stats
-            .where((item) => item is Map<String, dynamic> && item.containsKey('currency'))
-            .map((item) => item as Map<String, dynamic>)
-            .toList();
-        
+        final currencyStats =
+            stats
+                .where(
+                  (item) =>
+                      item is Map<String, dynamic> &&
+                      item.containsKey('currency'),
+                )
+                .map((item) => item as Map<String, dynamic>)
+                .toList();
+
         for (var stat in currencyStats) {
           if (stat['currency'] == 'SOM') {
             somBalance = stat['current_quantity'] as double? ?? 0.0;
@@ -103,7 +109,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
         _currencyStats = [];
         _isLoading = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading statistics: ${e.toString()}'),
@@ -169,7 +175,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
 
   Widget _buildCurrencyCard(Map<String, dynamic> stat) {
     final isSom = stat['currency'] == 'SOM';
-    
+
     // Handle possible null values with defaults
     final avgPurchaseRate = stat['avg_purchase_rate'] as double? ?? 0.0;
     final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
@@ -177,7 +183,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
     final totalSold = stat['total_sold'] as double? ?? 0.0;
     final currentQuantity = stat['current_quantity'] as double? ?? 0.0;
     final profit = stat['profit'] as double? ?? 0.0;
-
+    if (isSom) return const SizedBox();
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: isSom ? Colors.blue.shade50 : null,
@@ -210,23 +216,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
               ],
             ),
             const SizedBox(height: 8),
-            _buildStatRow(
-              'Avg Buy Rate',
-              avgPurchaseRate.toStringAsFixed(4),
-            ),
-            _buildStatRow(
-              'Avg Sell Rate',
-              avgSaleRate.toStringAsFixed(4),
-            ),
-            _buildStatRow(
-              'Purchased',
-              totalPurchased.toStringAsFixed(2),
-            ),
+            _buildStatRow('Avg Buy Rate', avgPurchaseRate.toStringAsFixed(4)),
+            _buildStatRow('Avg Sell Rate', avgSaleRate.toStringAsFixed(4)),
+            _buildStatRow('Purchased', totalPurchased.toStringAsFixed(2)),
             _buildStatRow('Sold', totalSold.toStringAsFixed(2)),
-            _buildStatRow(
-              'Remaining',
-              currentQuantity.toStringAsFixed(2),
-            ),
+            _buildStatRow('Remaining', currentQuantity.toStringAsFixed(2)),
             _buildProfitRow(profit),
             const Divider(height: 20),
           ],
@@ -305,26 +299,29 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _currencyStats.isEmpty
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _currencyStats.isEmpty
               ? const Center(child: Text('No statistics data available'))
               : SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      _buildSummaryCards(),
-                      _buildTotalProfitCard(),
-                      // Show all currencies including SOM (now properly highlighted)
-                      ..._currencyStats
-                          .where((stat) => 
-                              stat.containsKey('currency') && 
-                              stat['currency'] != null)
-                          .map((stat) => _buildCurrencyCard(stat))
-                          .toList(),
-                    ],
-                  ),
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildSummaryCards(),
+                    _buildTotalProfitCard(),
+                    // Show all currencies including SOM (now properly highlighted)
+                    ..._currencyStats
+                        .where(
+                          (stat) =>
+                              stat.containsKey('currency') &&
+                              stat['currency'] != null,
+                        )
+                        .map((stat) => _buildCurrencyCard(stat))
+                        .toList(),
+                  ],
                 ),
+              ),
     );
   }
 }
