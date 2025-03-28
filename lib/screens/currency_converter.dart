@@ -1,10 +1,12 @@
-import 'package:currency_changer/screens/report_screen.dart';
-import 'package:currency_changer/screens/history_screen.dart';
-import 'package:currency_changer/screens/settings.dart';
-import '../screens/analytical_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
+import '../models/currency.dart';
+import '../models/history.dart';
+import 'history_screen.dart';
+import 'settings.dart';
+import 'analytics_screen.dart';
+import 'statistics_screen.dart';
 import 'login_screen.dart'; // Import to access currentUser
 
 // Responsive Currency Converter
@@ -36,42 +38,60 @@ class CurrencyConverterCore extends StatefulWidget {
 }
 
 class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
+  final _databaseHelper = DatabaseHelper.instance;
+  List<CurrencyModel> _currencies = [];
+  List<HistoryModel> _recentHistory = [];
   final TextEditingController _currencyController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  String _selectedCurrency = 'USD';
+  String _selectedCurrency = '';
   String _operationType = 'Purchase';
   double _totalSum = 0.0;
-  List<Map<String, dynamic>> _operationHistory = [];
-  List<String> _currencies = [];
-  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadOperationHistory();
-    _loadCurrencies();
+    _initializeData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when screen becomes visible
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await _loadCurrencies();
+    await _loadOperationHistory();
   }
 
   Future<void> _loadCurrencies() async {
     try {
-      final currencyModels = await _databaseHelper.getAllCurrencies();
+      if (!mounted) return;
+      setState(() => _isLoading = true);
+      
+      final currencies = await _databaseHelper.getAllCurrencies();
+      
+      if (!mounted) return;
       setState(() {
-        // Filter out SOM from the currency list
-        _currencies =
-            currencyModels
-                .where((c) => c.code != 'SOM')
-                .map((c) => c.code)
-                .toList();
-
-        // Set default currency to first one if available
-        _selectedCurrency = _currencies.isNotEmpty ? _currencies.first : '';
+        _currencies = currencies;
+        _isLoading = false;
+        
+        // Update selected currency if needed
+        if (_selectedCurrency.isEmpty && currencies.isNotEmpty) {
+          for (var currency in currencies) {
+            if (currency.code != 'SOM') {
+              _selectedCurrency = currency.code!;
+              break;
+            }
+          }
+        }
       });
     } catch (e) {
-      setState(() {
-        _currencies = [];
-        _selectedCurrency = '';
-      });
-      _showBriefNotification(context, 'Error loading currencies', Colors.red);
+      debugPrint('Error loading currencies: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
   }
 
@@ -79,22 +99,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     try {
       final historyEntries = await _databaseHelper.getHistoryEntries(limit: 10);
       setState(() {
-        _operationHistory =
-            historyEntries
-                .map(
-                  (entry) => {
-                    'currency': entry.currencyCode,
-                    'value': entry.rate,
-                    'quantity': entry.quantity,
-                    'total': entry.total,
-                    'type': entry.operationType,
-                    'date': entry.createdAt,
-                  },
-                )
-                .toList();
+        _recentHistory = historyEntries;
       });
     } catch (e) {
-      _showBriefNotification(context, 'Error loading history', Colors.red);
+      _showBriefNotification(
+        'Error loading history',
+        Colors.red,
+      );
     }
   }
 
@@ -109,55 +120,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     }
   }
 
-  void _showBriefNotification(
-    BuildContext context,
-    String message,
-    Color color,
-  ) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 20,
-            right: 20,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
+  // Show brief notification (snackbar)
+  void _showBriefNotification(String message, Color backgroundColor) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
     );
-
-    overlay.insert(overlayEntry);
-    Future.delayed(const Duration(seconds: 1), () {
-      overlayEntry.remove();
-    });
   }
 
   Widget _buildCurrencyInputSection() {
@@ -286,76 +260,81 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildCurrencySelector() {
-    if (_currencies.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text(
-            'No currencies available',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ),
-      );
-    }
-
-    // Determine screen size
+    // Check screen size to adjust layout accordingly
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
+
+    // Filter out SOM currency for selection
+    final availableCurrencies = _currencies.where((c) => c.code != 'SOM').toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select Currency:',
+          'Currency:',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.blue.shade700,
-            fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 14 : 16,
-          ),
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.bold,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
         ),
         const SizedBox(height: 8),
-        SizedBox(
-          height: 50,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _currencies.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final currency = _currencies[index];
-              return ChoiceChip(
-                label: Text(
-                  currency,
-                  style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
-                ),
-                selected: _selectedCurrency == currency,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedCurrency = currency;
-                    _calculateTotal();
-                  });
-                },
-                selectedColor: Colors.blue,
-                backgroundColor: Colors.grey.shade100,
-                labelStyle: TextStyle(
-                  color:
-                      _selectedCurrency == currency
-                          ? Colors.white
-                          : Colors.black,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding:
-                    isSmallScreen
-                        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                        : const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+        _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : availableCurrencies.isEmpty
+                ? Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'No currencies available',
+                          style: TextStyle(color: Colors.grey.shade600),
                         ),
-              );
-            },
-          ),
-        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add currencies in Settings',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: availableCurrencies.map((currency) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              currency.code ?? '',
+                              style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                            ),
+                            selected: _selectedCurrency == currency.code,
+                            onSelected: (selected) {
+                              if (currency.code != null) {
+                                setState(() {
+                                  _selectedCurrency = currency.code!;
+                                  _calculateTotal();
+                                });
+                              }
+                            },
+                            backgroundColor: Colors.blue.shade50,
+                            selectedColor: Colors.blue.shade700,
+                            labelStyle: TextStyle(
+                              color:
+                                  _selectedCurrency == currency.code
+                                      ? Colors.white
+                                      : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
       ],
     );
   }
@@ -419,71 +398,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  Future<void> _showAddSomDialog() async {
-    final amountController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Add SOM Balance'),
-            content: Form(
-              key: formKey,
-              child: TextFormField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Amount to add',
-                  prefixIcon: Icon(Icons.attach_money),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter amount';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter valid number';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final amount = double.parse(amountController.text);
-                    try {
-                      await _databaseHelper.addToSomBalance(amount);
-                      print("this one2");
-                      print(amount);
-                      Navigator.pop(context);
-                      _showBriefNotification(
-                        context,
-                        'Successfully added $amount SOM',
-                        Colors.green,
-                      );
-                    } catch (e) {
-                      Navigator.pop(context);
-                      _showBriefNotification(
-                        context,
-                        'Failed to add SOM: ${e.toString()}',
-                        Colors.red,
-                      );
-                    }
-                  }
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          ),
-    );
-  }
-
   Widget _buildFinishButton() {
     // Get screen width to adjust sizing
     final screenWidth = MediaQuery.of(context).size.width;
@@ -506,15 +420,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   Future<void> _finishOperation() async {
     if (_currencyController.text.isEmpty || _quantityController.text.isEmpty) {
       _showBriefNotification(
-        context,
-        'Please enter rate and amoun',
+        'Please enter rate and amount',
         Colors.orange,
       );
       return;
     }
-    if (_currencies.length == 0) {
+    if (_currencies.isEmpty) {
       _showBriefNotification(
-        context,
         'No currencies available for exchange',
         Colors.orange,
       );
@@ -533,7 +445,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         );
         if (!hasEnough) {
           _showBriefNotification(
-            context,
             'Not enough SOM for this purchase',
             Colors.red,
           );
@@ -547,7 +458,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         );
         if (!hasEnough) {
           _showBriefNotification(
-            context,
             'Not enough $_selectedCurrency to sell',
             Colors.red,
           );
@@ -570,33 +480,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       });
 
       _showBriefNotification(
-        context,
         '$_operationType operation completed',
         _operationType == 'Purchase' ? Colors.green : Colors.red,
       );
 
+      // Refresh history and available currencies
       await _loadOperationHistory();
+      await _loadCurrencies();
     } catch (e) {
       _showBriefNotification(
-        context,
         'Operation failed: ${e.toString()}',
         Colors.red,
       );
     }
-  }
-
-  Widget _buildAddSomButton() {
-    return ElevatedButton.icon(
-      onPressed: _showAddSomDialog,
-      icon: const Icon(Icons.add),
-      label: const Text('Add SOM'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue.shade100,
-        foregroundColor: Colors.blue.shade800,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
   }
 
   @override
@@ -630,11 +526,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               const SizedBox(height: 16),
               _buildTotalSumCard(),
               const SizedBox(height: 16),
-              // Add SOM button - shown in both layouts, but positioned differently
-              if (!widget.isWideLayout) ...[
-                _buildAddSomButton(),
-                const SizedBox(height: 16),
-              ],
               _buildCurrencySelector(),
               const SizedBox(height: 24),
               Text(
@@ -692,18 +583,19 @@ class _MobileCurrencyConverterLayoutState
   void _initPages() {
     // Check if user is admin to determine what pages are available
     final bool isAdmin = currentUser?.role == 'admin';
-
+    
     // Always include Converter and History screens
     _pages = [
       CurrencyConverterCore(key: _currencyConverterCoreKey),
       HistoryScreen(key: _historyScreenKey),
     ];
-
-    // Add Analytics screen only for admin users
+    
+    // Add Statistics and Analytics screens only for admin users
     if (isAdmin) {
+      _pages.add(const StatisticsScreen());
       _pages.add(const AnalyticsScreen());
     }
-
+    
     // Add Settings screen for all users
     _pages.add(const SettingsScreen());
   }
@@ -711,7 +603,7 @@ class _MobileCurrencyConverterLayoutState
   void _initNavigationItems() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-
+    
     // Basic navigation items available to all users
     _navigationItems = [
       const BottomNavigationBarItem(
@@ -723,8 +615,8 @@ class _MobileCurrencyConverterLayoutState
         label: 'History',
       ),
     ];
-
-    // Only add Analytics option for admin users
+    
+    // Only add Analytics and Charts options for admin users
     if (isAdmin) {
       _navigationItems.add(
         const BottomNavigationBarItem(
@@ -732,8 +624,15 @@ class _MobileCurrencyConverterLayoutState
           label: 'Statistics',
         ),
       );
+      
+      _navigationItems.add(
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.pie_chart),
+          label: 'Analytics',
+        ),
+      );
     }
-
+    
     // Settings available for all users
     _navigationItems.add(
       const BottomNavigationBarItem(
@@ -786,17 +685,6 @@ class _MobileCurrencyConverterLayoutState
           child: IndexedStack(index: _selectedIndex, children: _pages),
         ),
       ),
-      floatingActionButton:
-          _selectedIndex == 0
-              ? FloatingActionButton(
-                onPressed: () {
-                  // Correctly access the state using the key
-                  _currencyConverterCoreKey.currentState?._showAddSomDialog();
-                },
-                backgroundColor: Colors.blue,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-              : null,
       bottomNavigationBar: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -857,18 +745,19 @@ class _TabletCurrencyConverterLayoutState
   void _initPages() {
     // Check if user is admin to determine what pages are available
     final bool isAdmin = currentUser?.role == 'admin';
-
+    
     // Always include Converter and History screens
     _pages = [
       CurrencyConverterCore(isWideLayout: true, key: _currencyConverterCoreKey),
       HistoryScreen(key: _historyScreenKey),
     ];
-
-    // Add Analytics screen only for admin users
+    
+    // Add Statistics and Analytics screens only for admin users
     if (isAdmin) {
+      _pages.add(const StatisticsScreen());
       _pages.add(const AnalyticsScreen());
     }
-
+    
     // Add Settings screen for all users
     _pages.add(const SettingsScreen());
   }
@@ -876,7 +765,7 @@ class _TabletCurrencyConverterLayoutState
   void _initNavigationItems() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-
+    
     // Basic navigation items available to all users
     _navigationItems = [
       const BottomNavigationBarItem(
@@ -888,8 +777,8 @@ class _TabletCurrencyConverterLayoutState
         label: 'History',
       ),
     ];
-
-    // Only add Analytics option for admin users
+    
+    // Only add Analytics and Charts options for admin users
     if (isAdmin) {
       _navigationItems.add(
         const BottomNavigationBarItem(
@@ -897,8 +786,15 @@ class _TabletCurrencyConverterLayoutState
           label: 'Statistics',
         ),
       );
+      
+      _navigationItems.add(
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.pie_chart, size: 30),
+          label: 'Analytics',
+        ),
+      );
     }
-
+    
     // Settings available for all users
     _navigationItems.add(
       const BottomNavigationBarItem(
@@ -948,17 +844,6 @@ class _TabletCurrencyConverterLayoutState
         ),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              if (_selectedIndex == 0) {
-                _currencyConverterCoreKey.currentState?._showAddSomDialog();
-              }
-            },
-            tooltip: 'Add SOM',
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(

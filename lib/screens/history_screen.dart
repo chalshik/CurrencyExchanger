@@ -12,7 +12,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  List<HistoryModel> _history = [];
+  List<HistoryModel> _historyEntries = [];
   bool _isLoading = true;
   int _netBalance = 0;
 
@@ -34,6 +34,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _fromDateController.text = DateFormat('yyyy-MM-dd').format(_fromDate);
     _toDateController.text = DateFormat('yyyy-MM-dd').format(_toDate);
     _loadFilters();
+    _loadHistory();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ensure history is always refreshed when the screen becomes visible
     _loadHistory();
   }
 
@@ -67,53 +74,51 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     if (!mounted) return;
-    
     setState(() {
       _isLoading = true;
     });
 
-    // Adjust toDate to include the entire day
-    final adjustedToDate = DateTime(
-      _toDate.year,
-      _toDate.month,
-      _toDate.day,
-      23,
-      59,
-      59,
-    );
-
     try {
-      final history = await _dbHelper.getFilteredHistoryByDate(
-        fromDate: _fromDate,
+      final fromDate = DateFormat('yyyy-MM-dd').parse(_fromDateController.text);
+      final toDate = DateFormat('yyyy-MM-dd').parse(_toDateController.text);
+      
+      // Add 23:59:59 to the toDate to include the entire day
+      final adjustedToDate = DateTime(toDate.year, toDate.month, toDate.day, 23, 59, 59);
+
+      // Apply filters if they exist
+      final entries = await _dbHelper.getFilteredHistoryByDate(
+        fromDate: fromDate,
         toDate: adjustedToDate,
-        currencyCode: _selectedCurrency,
-        operationType: _selectedOperationType,
+        currencyCode: _selectedCurrency == null || _selectedCurrency!.isEmpty ? null : _selectedCurrency,
+        operationType: _selectedOperationType == null || _selectedOperationType!.isEmpty ? null : _selectedOperationType,
       );
 
-      // Calculate net balance
-      int balance = 0;
-      for (var entry in history) {
-        balance +=
-            entry.operationType == 'Purchase'
-                ? entry.total.toInt()
-                : -entry.total.toInt();
-      }
-
-      if (mounted) {
-        setState(() {
-          _history = history;
-          _netBalance = balance;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _historyEntries = entries;
+        _isLoading = false;
+        _calculateTotals();
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      debugPrint('Error loading history: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
+
+  void _calculateTotals() {
+    int balance = 0;
+    for (var entry in _historyEntries) {
+      if (entry.operationType == 'Purchase') {
+        balance -= entry.total.toInt(); // Deduct for purchases
+      } else if (entry.operationType == 'Sale') {
+        balance += entry.total.toInt(); // Add for sales
+      } else if (entry.operationType == 'Deposit') {
+        balance += entry.total.toInt(); // Add for deposits
+      }
+    }
+    _netBalance = balance;
   }
 
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
@@ -155,26 +160,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Operation History'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_alt),
-            onPressed: _showFilterDialog,
-          ),
-          if (_selectedCurrency != null ||
-              _selectedOperationType != null ||
-              _fromDate != DateTime.now().subtract(const Duration(days: 30)) ||
-              _toDate != DateTime.now())
-            IconButton(
-              icon: const Icon(Icons.filter_alt_off),
-              onPressed: _resetFilters,
-            ),
-        ],
-      ),
       body: Column(
         children: [
-          // Date Range Selector
+          // Date Range Selector with filter icons
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -202,24 +190,70 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     onTap: () => _selectDate(context, false),
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.filter_alt),
+                  onPressed: _showFilterDialog,
+                  tooltip: 'Filter',
+                ),
+                if (_selectedCurrency != null ||
+                    _selectedOperationType != null ||
+                    _fromDate != DateTime.now().subtract(const Duration(days: 30)) ||
+                    _toDate != DateTime.now())
+                  IconButton(
+                    icon: const Icon(Icons.filter_alt_off),
+                    onPressed: _resetFilters,
+                    tooltip: 'Reset Filters',
+                  ),
               ],
             ),
           ),
           
+          // Balance summary
+          if (!_isLoading && _historyEntries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Card(
+                color: _netBalance >= 0 ? Colors.green.shade100 : Colors.red.shade100,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Net Balance: ${_netBalance.abs()} SOM',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _netBalance >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        _netBalance >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: _netBalance >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          const Divider(height: 1),
           
           // History List
           Expanded(
             child:
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : _history.isEmpty
+                    : _historyEntries.isEmpty
                     ? const Center(child: Text('No operations found'))
                     : RefreshIndicator(
                         onRefresh: _loadHistory,
                         child: ListView.builder(
-                          itemCount: _history.length,
+                          itemCount: _historyEntries.length,
                           itemBuilder: (context, index) {
-                            final entry = _history[index];
+                            final entry = _historyEntries[index];
                             return _buildHistoryItem(entry);
                           },
                         ),

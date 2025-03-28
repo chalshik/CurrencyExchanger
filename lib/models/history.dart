@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class HistoryModel {
   final int? id;
   final String currencyCode;
@@ -32,12 +34,25 @@ class HistoryModel {
   factory HistoryModel.fromMap(Map<String, dynamic> map) {
     return HistoryModel(
       id: map['id'],
-      currencyCode: map['currency_code'],
-      operationType: map['operation_type'],
-      rate: map['rate'],
-      quantity: map['quantity'],
-      total: map['total'],
-      createdAt: DateTime.parse(map['created_at']),
+      currencyCode: map['currency_code'] ?? '',
+      operationType: map['operation_type'] ?? '',
+      rate: map['rate'] is double
+          ? map['rate']
+          : double.tryParse(map['rate'].toString()) ?? 0.0,
+      quantity: map['quantity'] is double
+          ? map['quantity']
+          : double.tryParse(map['quantity'].toString()) ?? 0.0,
+      total: map['total'] is double
+          ? map['total']
+          : double.tryParse(map['total'].toString()) ?? 0.0,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
+          : DateTime.now(),
     );
+  }
+
+  @override
+  String toString() {
+    return 'HistoryModel(id: $id, currencyCode: $currencyCode, operationType: $operationType, rate: $rate, quantity: $quantity, total: $total, createdAt: $createdAt)';
   }
 }

@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 class CurrencyModel {
   final int? id;
-  final String code;
+  final String? code;
   final double quantity;
   final DateTime updatedAt;
 
   CurrencyModel({
     this.id,
     required this.code,
-    required this.quantity,
+    this.quantity = 0.0,
     DateTime? updatedAt,
   }) : updatedAt = updatedAt ?? DateTime.now();
 
@@ -24,8 +26,17 @@ class CurrencyModel {
     return CurrencyModel(
       id: map['id'],
       code: map['code'],
-      quantity: map['quantity'],
-      updatedAt: DateTime.parse(map['updated_at']),
+      quantity: map['quantity'] is double
+          ? map['quantity']
+          : double.tryParse(map['quantity'].toString()) ?? 0.0,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
+          : DateTime.now(),
     );
+  }
+
+  @override
+  String toString() {
+    return 'CurrencyModel(id: $id, code: $code, quantity: $quantity, updatedAt: $updatedAt)';
   }
 }

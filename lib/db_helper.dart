@@ -397,11 +397,15 @@ class DatabaseHelper {
       await txn.insert('currencies', {
         'code': code,
         'quantity': newBalance,
-        'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
     } else {
-      await _updateCurrencyBalance(txn, code, newBalance);
+      await txn.update(
+        'currencies',
+        {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
+        where: 'code = ?',
+        whereArgs: [code],
+      );
     }
   }
 
@@ -526,110 +530,142 @@ class DatabaseHelper {
 
   /// Calculate currency statistics for analytics
   Future<Map<String, dynamic>> calculateAnalytics() async {
-    final db = await database;
-    List<Map<String, dynamic>> currencyStats = [];
-    double totalProfit = 0.0;
+    try {
+      final db = await database;
+      List<Map<String, dynamic>> currencyStats = [];
+      double totalProfit = 0.0;
 
-    // Query to get purchase stats
-    final purchaseStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_purchase_rate,
-        SUM(quantity) as total_purchased,
-        SUM(total) as total_purchase_amount
-      FROM history
-      WHERE operation_type = 'Purchase'
-      GROUP BY currency_code
-    ''');
+      // Query to get purchase stats
+      final purchaseStats = await db.rawQuery('''
+        SELECT 
+          currency_code,
+          AVG(rate) as avg_purchase_rate,
+          SUM(quantity) as total_purchased,
+          SUM(total) as total_purchase_amount
+        FROM history
+        WHERE operation_type = 'Purchase'
+        GROUP BY currency_code
+      ''');
 
-    // Query to get sale stats
-    final saleStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_sale_rate,
-        SUM(quantity) as total_sold,
-        SUM(total) as total_sale_amount
-      FROM history
-      WHERE operation_type = 'Sale'
-      GROUP BY currency_code
-    ''');
+      // Query to get sale stats
+      final saleStats = await db.rawQuery('''
+        SELECT 
+          currency_code,
+          AVG(rate) as avg_sale_rate,
+          SUM(quantity) as total_sold,
+          SUM(total) as total_sale_amount
+        FROM history
+        WHERE operation_type = 'Sale'
+        GROUP BY currency_code
+      ''');
 
-    // Query to get current quantities
-    final currentQuantities = await db.rawQuery('''
-      SELECT code, quantity FROM currencies
-    ''');
+      // Query to get current quantities
+      final currentQuantities = await db.rawQuery('''
+        SELECT code, quantity FROM currencies
+      ''');
 
-    // Combine all data
-    final Map<String, Map<String, dynamic>> combinedStats = {};
+      // Combine all data
+      final Map<String, Map<String, dynamic>> combinedStats = {};
 
-    // Add purchase stats
-    for (var stat in purchaseStats) {
-      combinedStats[stat['currency_code'] as String] = {
-        'currency': stat['currency_code'],
-        'avg_purchase_rate': stat['avg_purchase_rate'] as double? ?? 0.0,
-        'total_purchased': stat['total_purchased'] as double? ?? 0.0,
-        'total_purchase_amount':
-            stat['total_purchase_amount'] as double? ?? 0.0,
-      };
-    }
-
-    // Add sale stats
-    for (var stat in saleStats) {
-      final currency = stat['currency_code'] as String;
-      if (combinedStats.containsKey(currency)) {
-        combinedStats[currency]!.addAll({
-          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
-          'total_sold': stat['total_sold'] as double? ?? 0.0,
-          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
-        });
-      } else {
-        combinedStats[currency] = {
-          'currency': currency,
-          'avg_purchase_rate': 0.0,
-          'total_purchased': 0.0,
-          'total_purchase_amount': 0.0,
-          'avg_sale_rate': stat['avg_sale_rate'] as double? ?? 0.0,
-          'total_sold': stat['total_sold'] as double? ?? 0.0,
-          'total_sale_amount': stat['total_sale_amount'] as double? ?? 0.0,
-        };
-      }
-    }
-
-    // Add current quantities
-    for (var quantity in currentQuantities) {
-      final currency = quantity['code'] as String;
-      if (combinedStats.containsKey(currency)) {
-        combinedStats[currency]!['current_quantity'] =
-            quantity['quantity'] as double? ?? 0.0;
-      } else {
-        combinedStats[currency] = {
-          'currency': currency,
-          'avg_purchase_rate': 0.0,
-          'total_purchased': 0.0,
-          'total_purchase_amount': 0.0,
+      // Add purchase stats
+      for (var stat in purchaseStats) {
+        final currencyCode = stat['currency_code'] as String? ?? '';
+        if (currencyCode.isEmpty) continue;
+        
+        combinedStats[currencyCode] = {
+          'currency': currencyCode,
+          'avg_purchase_rate': _safeDouble(stat['avg_purchase_rate']),
+          'total_purchased': _safeDouble(stat['total_purchased']),
+          'total_purchase_amount': _safeDouble(stat['total_purchase_amount']),
           'avg_sale_rate': 0.0,
           'total_sold': 0.0,
           'total_sale_amount': 0.0,
-          'current_quantity': quantity['quantity'] as double? ?? 0.0,
+          'current_quantity': 0.0,
+          'profit': 0.0,
         };
       }
+
+      // Add sale stats
+      for (var stat in saleStats) {
+        final currencyCode = stat['currency_code'] as String? ?? '';
+        if (currencyCode.isEmpty) continue;
+        
+        if (combinedStats.containsKey(currencyCode)) {
+          combinedStats[currencyCode]!.addAll({
+            'avg_sale_rate': _safeDouble(stat['avg_sale_rate']),
+            'total_sold': _safeDouble(stat['total_sold']),
+            'total_sale_amount': _safeDouble(stat['total_sale_amount']),
+          });
+        } else {
+          combinedStats[currencyCode] = {
+            'currency': currencyCode,
+            'avg_purchase_rate': 0.0,
+            'total_purchased': 0.0,
+            'total_purchase_amount': 0.0,
+            'avg_sale_rate': _safeDouble(stat['avg_sale_rate']),
+            'total_sold': _safeDouble(stat['total_sold']),
+            'total_sale_amount': _safeDouble(stat['total_sale_amount']),
+            'current_quantity': 0.0,
+            'profit': 0.0,
+          };
+        }
+      }
+
+      // Add current quantities
+      for (var quantity in currentQuantities) {
+        final currencyCode = quantity['code'] as String? ?? '';
+        if (currencyCode.isEmpty) continue;
+        
+        final currentQuantity = _safeDouble(quantity['quantity']);
+        
+        if (combinedStats.containsKey(currencyCode)) {
+          combinedStats[currencyCode]!['current_quantity'] = currentQuantity;
+        } else {
+          combinedStats[currencyCode] = {
+            'currency': currencyCode,
+            'avg_purchase_rate': 0.0,
+            'total_purchased': 0.0,
+            'total_purchase_amount': 0.0,
+            'avg_sale_rate': 0.0,
+            'total_sold': 0.0,
+            'total_sale_amount': 0.0,
+            'current_quantity': currentQuantity,
+            'profit': 0.0,
+          };
+        }
+      }
+
+      // Calculate profit for each currency
+      for (var stats in combinedStats.values) {
+        final avgPurchaseRate = stats['avg_purchase_rate'] as double;
+        final avgSaleRate = stats['avg_sale_rate'] as double;
+        final totalSold = stats['total_sold'] as double;
+
+        final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
+        stats['profit'] = profit;
+        totalProfit += profit;
+      }
+
+      return {
+        'currency_stats': combinedStats.values.toList(),
+        'total_profit': totalProfit,
+      };
+    } catch (e) {
+      debugPrint('Error calculating analytics: $e');
+      // Return empty data structure on error
+      return {'currency_stats': [], 'total_profit': 0.0};
     }
-
-    // Calculate profit for each currency
-    for (var stats in combinedStats.values) {
-      final avgPurchaseRate = stats['avg_purchase_rate'] as double;
-      final avgSaleRate = stats['avg_sale_rate'] as double;
-      final totalSold = stats['total_sold'] as double;
-
-      final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
-      stats['profit'] = profit;
-      totalProfit += profit;
+  }
+  
+  // Helper function to safely convert values to double
+  double _safeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
     }
-
-    return {
-      'currency_stats': combinedStats.values.toList(),
-      'total_profit': totalProfit,
-    };
+    return 0.0;
   }
 
   /// Close database connection
@@ -725,6 +761,61 @@ class DatabaseHelper {
       ]),
     );
     return count != null && count > 0;
+  }
+
+  /// Reset all data - delete all transactions, reset currencies, and delete all users except admin with "a"/"a" credentials
+  Future<void> resetAllData() async {
+    final db = await instance.database;
+    
+    await db.transaction((txn) async {
+      // 1. Delete all history entries
+      await txn.delete('history');
+      
+      // 2. Delete all currencies
+      await txn.delete('currencies');
+      
+      // 3. Initialize SOM currency with zero balance
+      await txn.insert('currencies', {
+        'code': 'SOM',
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      
+      // 4. Delete all users except the admin user with login "a"
+      await txn.delete(
+        'users',
+        where: 'username != ?',
+        whereArgs: ['a'],
+      );
+      
+      // 5. Check if admin user "a" exists, create if not
+      final adminCheck = await txn.query(
+        'users',
+        where: 'username = ?',
+        whereArgs: ['a'],
+      );
+      
+      if (adminCheck.isEmpty) {
+        // Create admin user with "a"/"a" credentials
+        await txn.insert('users', {
+          'username': 'a',
+          'password': 'a', // In production you'd use a hashed password
+          'role': 'admin',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Make sure the existing user is set as admin
+        await txn.update(
+          'users',
+          {
+            'role': 'admin',
+            'password': 'a',
+          },
+          where: 'username = ?',
+          whereArgs: ['a'],
+        );
+      }
+    });
   }
 }
 

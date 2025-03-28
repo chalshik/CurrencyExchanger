@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import '../db_helper.dart';
 import '../models/currency.dart';
 import '../models/user.dart';
@@ -24,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _roleController = TextEditingController();
   bool _showCurrencyManagement = false;
   bool _showUserManagement = false;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
@@ -32,11 +35,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadUsers();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when the screen becomes visible
+    if (_showCurrencyManagement) {
+      _loadCurrencies();
+      _startAutoRefresh();
+    } else if (_showUserManagement) {
+      _loadUsers();
+    } else {
+      // Also refresh when first navigating to this screen
+      _loadCurrencies();
+      _loadUsers();
+    }
+  }
+
+  void _startAutoRefresh() {
+    // Cancel any existing timer
+    _autoRefreshTimer?.cancel();
+    
+    // Set up a timer to refresh currencies every 3 seconds
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_showCurrencyManagement && mounted) {
+        _loadCurrencies();
+      } else if (_showUserManagement && mounted) {
+        _loadUsers();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    _newCurrencyCodeController.dispose();
+    _quantityController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _roleController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCurrencies() async {
     try {
       final currencies = await _dbHelper.getAllCurrencies();
+      if (!mounted) return;
       setState(() {
-        // Filter out SOM and ensure proper quantity parsing
+        // Ensure proper quantity parsing for all currencies
         _currencies =
             currencies.map((currency) {
               // Ensure quantity is properly parsed as double
@@ -59,11 +106,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadUsers() async {
     try {
       final users = await _dbHelper.getAllUsers();
+      if (!mounted) return;
       setState(() {
         _users = users;
       });
     } catch (e) {
       debugPrint('Error loading users: $e');
+    }
+  }
+
+  Future<void> _resetAllData() async {
+    // Show confirmation dialog with warning
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset All Data'),
+        content: const Text(
+          'WARNING: This will delete all currencies, transaction history, and users except the admin. '
+          'This action cannot be undone!',
+          style: TextStyle(color: Colors.red),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text(
+              'Reset Everything',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+        
+        // Perform the reset
+        await _dbHelper.resetAllData();
+        
+        // Close loading indicator
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data has been reset'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Refresh the data
+        await _loadCurrencies();
+        await _loadUsers();
+        
+        // Return to main settings page
+        setState(() {
+          _showCurrencyManagement = false;
+          _showUserManagement = false;
+        });
+      } catch (e) {
+        // Close loading indicator if still showing
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error resetting data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -129,6 +256,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _showAddSomDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final amountController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add SOM Balance'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: amountController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Amount to add',
+              prefixIcon: Icon(Icons.attach_money),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter amount';
+              }
+              if (double.tryParse(value) == null) {
+                return 'Please enter valid number';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final amount = double.parse(amountController.text);
+                try {
+                  await _dbHelper.addToSomBalance(amount);
+                  Navigator.pop(context);
+                  _showSuccessNotification('Successfully added $amount SOM');
+                  // Refresh currencies to show updated SOM balance
+                  _loadCurrencies();
+                } catch (e) {
+                  Navigator.pop(context);
+                  _showErrorNotification('Failed to add SOM: ${e.toString()}');
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showErrorNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -318,11 +521,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body:
-          _showCurrencyManagement
-              ? _buildCurrencyManagement()
-              : _showUserManagement
+      body: _showCurrencyManagement 
+          ? _buildCurrencyManagement()
+          : _showUserManagement 
               ? _buildUserManagement()
               : _buildSettings(),
     );
@@ -331,7 +532,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettings() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-
+    
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -342,6 +543,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: () {
             setState(() {
               _showCurrencyManagement = true;
+              // Start auto-refresh when navigating to currency management
+              _startAutoRefresh();
             });
           },
         ),
@@ -357,108 +560,177 @@ class _SettingsScreenState extends State<SettingsScreen> {
               });
             },
           ),
+        
+        const Divider(),
+        
+        // Reset All Data option (admin only)
+        if (isAdmin)
+          ListTile(
+            title: const Text('Reset All Data'),
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            onTap: _resetAllData,
+          ),
+        
+        // Logout option
+        ListTile(
+          title: const Text('Logout'),
+          leading: const Icon(Icons.logout, color: Colors.red),
+          onTap: _logout,
+        ),
       ],
     );
   }
 
-  Widget _buildCurrencyManagement() {
-    // Separate SOM from other currencies
-    final somCurrency = _currencies.firstWhere(
-      (currency) => currency.code == 'SOM',
-      orElse:
-          () => CurrencyModel(
-            code: 'SOM',
-            quantity: 0.0,
-            updatedAt: DateTime.now(),
+  // Logout function
+  Future<void> _logout() async {
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
+    
+    if (shouldLogout == true) {
+      try {
+        // Clear remember me if enabled
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('remember_me', false);
+        
+        // Clear the current user
+        currentUser = null;
+        
+        if (!mounted) return;
+        
+        // Navigate back to login screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false, // Remove all previous routes
+        );
+      } catch (e) {
+        debugPrint('Error during logout: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error during logout')),
+        );
+      }
+    }
+  }
 
-    final otherCurrencies =
-        _currencies.where((currency) => currency.code != 'SOM').toList();
-
+  Widget _buildCurrencyManagement() {
     return Column(
       children: [
-        AppBar(
-          title: const Text('Currency Management'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                _showCurrencyManagement = false;
-              });
-            },
+        // Header section
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _showCurrencyManagement = false;
+                    _autoRefreshTimer?.cancel();
+                  });
+                },
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Currency Management',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
+        
+        // Add SOM button
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _showAddSomDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Add SOM Balance'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade100,
+                foregroundColor: Colors.blue.shade800,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // Currency list
         Expanded(
-          child:
-              _currencies.isEmpty
-                  ? const Center(
+          child: RefreshIndicator(
+            onRefresh: _loadCurrencies,
+            child: _currencies.isEmpty
+                ? const Center(
                     child: Text(
                       'No currencies available',
                       style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
                   )
-                  : ListView(
-                    children: [
-                      // SOM Card - Main Currency
-                      Card(
-                        margin: const EdgeInsets.all(8),
-                        color: Colors.blue.shade50,
+                : ListView.builder(
+                    itemCount: _currencies.length,
+                    itemBuilder: (context, index) {
+                      final currency = _currencies[index];
+                      // Format quantity with 2 decimal places
+                      final formattedQuantity = NumberFormat.currency(
+                        decimalDigits: 2,
+                        symbol: '',
+                      ).format(currency.quantity);
+
+                      // Use different style for SOM currency
+                      final bool isSom = currency.code == 'SOM';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        color: isSom ? Colors.blue.shade50 : null,
                         child: ListTile(
-                          title: const Text(
-                            'SOM (Main Currency)',
+                          title: Text(
+                            currency.code ?? '',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                              color: isSom ? Colors.blue.shade800 : null,
                             ),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Quantity: ${NumberFormat.currency(decimalDigits: 2, symbol: '').format(somCurrency.quantity)}',
-                              ),
-                              Text(
-                                'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(somCurrency.updatedAt)}',
-                              ),
-                            ],
+                          subtitle: Text(
+                            'Quantity: $formattedQuantity\n'
+                            'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
                           ),
-                          trailing: const Icon(Icons.lock, color: Colors.grey),
+                          trailing: isSom 
+                              ? const Icon(Icons.payments, color: Colors.blue)
+                              : IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
+                                ),
                         ),
-                      ),
-
-                      // Other Currencies
-                      ...otherCurrencies.map((currency) {
-                        final formattedQuantity = NumberFormat.currency(
-                          decimalDigits: 2,
-                          symbol: '',
-                        ).format(currency.quantity);
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          child: ListTile(
-                            title: Text(currency.code),
-                            subtitle: Text(
-                              'Quantity: $formattedQuantity\n'
-                              'Last updated: ${DateFormat('yyyy-MM-dd HH:mm').format(currency.updatedAt)}',
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed:
-                                  () => _deleteCurrency(
-                                    currency.id,
-                                    currency.code,
-                                  ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ],
+                      );
+                    },
                   ),
+          ),
         ),
+        
+        // Add New Currency button
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
@@ -476,38 +748,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildUserManagement() {
     return Column(
       children: [
-        AppBar(
-          title: const Text('User Management'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                _showUserManagement = false;
-              });
-            },
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _showUserManagement = false;
+                    _autoRefreshTimer?.cancel();
+                  });
+                },
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'User Management',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
-          child:
-              _users.isEmpty
-                  ? const Center(
+          child: RefreshIndicator(
+            onRefresh: _loadUsers,
+            child: _users.isEmpty
+                ? const Center(
                     child: Text(
                       'No users available',
                       style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
                   )
-                  : ListView.builder(
+                : ListView.builder(
                     itemCount: _users.length,
                     itemBuilder: (context, index) {
                       final user = _users[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor:
-                              user.role == 'admin'
-                                  ? Colors.orange
-                                  : Colors.blue,
+                          backgroundColor: 
+                            user.role == 'admin' ? Colors.orange : Colors.blue,
                           child: Icon(
-                            user.role == 'admin'
+                            user.role == 'admin' 
                                 ? Icons.admin_panel_settings
                                 : Icons.person,
                             color: Colors.white,
@@ -525,6 +809,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                   ),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -538,15 +823,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _newCurrencyCodeController.dispose();
-    _quantityController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    _roleController.dispose();
-    super.dispose();
   }
 }
