@@ -9,11 +9,27 @@ void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Force portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // Determine if running on a tablet
+  final size = WidgetsBinding.instance.window.physicalSize;
+  final devicePixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
+  final width = size.width / devicePixelRatio;
+  final isTablet = width >= 600;
+  
+  // Only force portrait on phones, allow both orientations on tablets
+  if (!isTablet) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  } else {
+    // Allow all orientations on tablets
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
   
   runApp(const MyApp());
 }

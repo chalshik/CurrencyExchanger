@@ -304,27 +304,366 @@ class _StatisticsScreenState extends State<StatisticsScreen> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
+    // Check if we're on a tablet
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width >= 600;
+    final isLandscape = screenSize.width > screenSize.height;
+    final isWideTablet = isTablet && isLandscape;
+    
+    // Determine column count based on screen width
+    final columnCount = isWideTablet ? 3 : (isTablet ? 2 : 1);
+    
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _currencyStats.isEmpty
-              ? const Center(child: Text('No statistics data available'))
-              : SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    children: [
-                      _buildSummaryCards(),
-                      _buildTotalProfitCard(),
-                      // Show all currencies including SOM (now properly highlighted)
-                      ..._currencyStats
-                          .where((stat) => 
-                              stat.containsKey('currency') && 
-                              stat['currency'] != null)
-                          .map((stat) => _buildCurrencyCard(stat))
-                          .toList(),
-                    ],
+      body: RefreshIndicator(
+        onRefresh: _loadCurrencyStats,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24, top: 16),
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Title with refresh button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Statistics & Balance',
+                            style: TextStyle(
+                              fontSize: isTablet ? 24 : 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.refresh),
+                            onPressed: _loadCurrencyStats,
+                            tooltip: 'Refresh Statistics',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Total profit card
+                    isWideTablet
+                        ? _buildWideTabletSummary()
+                        : _buildSummaryCards(),
+                    
+                    // Currency statistics section
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'Currency Statistics',
+                        style: TextStyle(
+                          fontSize: isTablet ? 20 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                    
+                    // Currency cards grid
+                    isTablet
+                        ? _buildCurrencyCardsGrid(columnCount)
+                        : _buildCurrencyCardsList(),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+  
+  // Wide tablet layout with all summary cards in one row
+  Widget _buildWideTabletSummary() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // SOM Balance
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'SOM Balance',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${_somBalance.toStringAsFixed(2)} SOM',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Foreign Currency Value
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Foreign Currency Value',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${_kassaValue.toStringAsFixed(2)} SOM',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Total Profit
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total Profit',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${_totalProfit.toStringAsFixed(2)} SOM',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _totalProfit >= 0 
+                            ? Colors.green.shade800
+                            : Colors.red.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Grid layout for currency cards on tablets
+  Widget _buildCurrencyCardsGrid(int columnCount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columnCount,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+        ),
+        itemCount: _currencyStats.length,
+        itemBuilder: (context, index) {
+          return _buildCurrencyCardForGrid(_currencyStats[index]);
+        },
+      ),
+    );
+  }
+  
+  // Modified currency card for grid layout with more compact stats
+  Widget _buildCurrencyCardForGrid(Map<String, dynamic> stat) {
+    final isSom = stat['currency'] == 'SOM';
+    
+    // Handle possible null values with defaults
+    final avgPurchaseRate = stat['avg_purchase_rate'] as double? ?? 0.0;
+    final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
+    final currentQuantity = stat['current_quantity'] as double? ?? 0.0;
+    final profit = stat['profit'] as double? ?? 0.0;
+    
+    return Card(
+      elevation: 3,
+      color: isSom ? Colors.blue.shade50 : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Currency name with icon
+            Row(
+              children: [
+                Text(
+                  stat['currency'].toString(),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isSom ? Colors.blue.shade700 : Colors.blue.shade800,
                   ),
                 ),
+                if (isSom)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.star,
+                      size: 16,
+                      color: Colors.amber.shade700,
+                    ),
+                  ),
+                const Spacer(),
+                // Circular indicator for positive/negative profit
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: profit >= 0 ? Colors.green.shade100 : Colors.red.shade100,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      profit >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                      size: 16,
+                      color: profit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            
+            // Balance information
+            Text(
+              'Current Balance',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              currentQuantity.toStringAsFixed(2),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            
+            // Rates
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Avg Buy', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(
+                      avgPurchaseRate.toStringAsFixed(2),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Avg Sell', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(
+                      avgSaleRate.toStringAsFixed(2),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Profit
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Profit: ',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  profit.toStringAsFixed(2),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: profit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Original list layout for currency cards on mobile
+  Widget _buildCurrencyCardsList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _currencyStats.length,
+      itemBuilder: (context, index) {
+        return _buildCurrencyCard(_currencyStats[index]);
+      },
     );
   }
 }

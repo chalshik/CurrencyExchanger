@@ -266,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add SOM Balance'),
+        title: const Text('Add SOM'),
         content: Form(
           key: formKey,
           child: TextFormField(
@@ -665,7 +665,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ElevatedButton.icon(
               onPressed: _showAddSomDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Add SOM Balance'),
+              label: const Text('Add SOM'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade100,
                 foregroundColor: Colors.blue.shade800,
