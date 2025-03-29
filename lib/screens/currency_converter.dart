@@ -8,7 +8,7 @@ import 'history_screen.dart';
 import 'settings.dart';
 import 'analytics_screen.dart';
 import 'statistics_screen.dart';
-import 'login_screen.dart'; // Import to access currentUser
+import 'login_screen.dart';
 import 'package:flutter/rendering.dart';
 
 // Responsive Currency Converter
@@ -19,7 +19,7 @@ class ResponsiveCurrencyConverter extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth > 600) {
+        if (constraints.maxWidth > 599) {
           return const TabletCurrencyConverterLayout();
         } else {
           return const MobileCurrencyConverterLayout();
@@ -49,11 +49,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   String _operationType = 'Purchase';
   double _totalSum = 0.0;
   bool _isLoading = true;
-  
+
   // Add focus nodes to track which field is active
   final FocusNode _currencyFocusNode = FocusNode();
   final FocusNode _quantityFocusNode = FocusNode();
-  
+
   // Track which field is currently active for the numpad
   bool _isRateFieldActive = true;
 
@@ -61,18 +61,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   void initState() {
     super.initState();
     _initializeData();
-    
+
     // Set default values to start with
     _currencyController.text = '';
     _quantityController.text = '';
-    
+
     // Set up listeners for focus changes
     _currencyFocusNode.addListener(_handleFocusChange);
     _quantityFocusNode.addListener(_handleFocusChange);
-    
+
     // Ensure rate field is active initially
     _isRateFieldActive = true;
-    
+
     // Schedule focus request for after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.isWideLayout) {
@@ -81,7 +81,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       }
     });
   }
-  
+
   void _handleFocusChange() {
     setState(() {
       _isRateFieldActive = _currencyFocusNode.hasFocus;
@@ -444,7 +444,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
     final isLandscape = screenSize.width > screenSize.height;
-    
+
     // Larger sizes for landscape mode
     final fontSize = isLandscape ? 18.0 : (isSmallScreen ? 13.0 : 15.0);
     final verticalPadding = isLandscape ? 18.0 : (isSmallScreen ? 14.0 : 16.0);
@@ -557,29 +557,51 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final isSmallScreen = screenSize.width < 360;
     final isTablet = screenSize.width >= 600;
     final spacing = isSmallScreen ? 8.0 : 12.0;
-    
+
     final cardRadius = widget.isWideLayout ? 20.0 : 16.0;
-    final cardPadding = widget.isWideLayout ? 20.0 : (isSmallScreen ? 8.0 : 12.0);
-    final headerFontSize = widget.isWideLayout ? 22.0 : (isSmallScreen ? 16.0 : 18.0);
-    final standardFontSize = widget.isWideLayout ? 16.0 : (isSmallScreen ? 13.0 : 15.0);
+    final cardPadding =
+        widget.isWideLayout ? 20.0 : (isSmallScreen ? 8.0 : 12.0);
+    final headerFontSize =
+        widget.isWideLayout ? 22.0 : (isSmallScreen ? 16.0 : 18.0);
+    final standardFontSize =
+        widget.isWideLayout ? 16.0 : (isSmallScreen ? 13.0 : 15.0);
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardRadius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(cardRadius),
+      ),
       child: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(cardPadding),
-          child: widget.isWideLayout 
-              ? _buildTabletLayout(context, spacing, headerFontSize, standardFontSize, isTablet)
-              : _buildMobileLayout(context, spacing, headerFontSize, standardFontSize),
+          child:
+              widget.isWideLayout
+                  ? _buildTabletLayout(
+                    context,
+                    spacing,
+                    headerFontSize,
+                    standardFontSize,
+                    isTablet,
+                  )
+                  : _buildMobileLayout(
+                    context,
+                    spacing,
+                    headerFontSize,
+                    standardFontSize,
+                  ),
         ),
       ),
     );
   }
-  
+
   // Two-column layout optimized for tablets
-  Widget _buildTabletLayout(BuildContext context, double spacing, double headerFontSize, 
-      double standardFontSize, bool isTablet) {
+  Widget _buildTabletLayout(
+    BuildContext context,
+    double spacing,
+    double headerFontSize,
+    double standardFontSize,
+    bool isTablet,
+  ) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -599,8 +621,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Main content area
           LayoutBuilder(
             builder: (context, constraints) {
-              final isLandscape = MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
-              
+              final isLandscape =
+                  MediaQuery.of(context).size.width >
+                  MediaQuery.of(context).size.height;
+
               // Use row in landscape, column in portrait for tablets
               if (isLandscape) {
                 return Stack(
@@ -624,7 +648,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                 SizedBox(height: spacing),
                                 Text(
                                   'Operation Type:',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium?.copyWith(
                                     color: Colors.blue.shade700,
                                     fontWeight: FontWeight.bold,
                                     fontSize: standardFontSize,
@@ -632,7 +658,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                 ),
                                 SizedBox(height: 4),
                                 _buildOperationTypeButtons(),
-                                SizedBox(height: spacing * 3), // Extra space for button at bottom
+                                SizedBox(
+                                  height: spacing * 3,
+                                ), // Extra space for button at bottom
                               ],
                             ),
                           ),
@@ -640,21 +668,20 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         // Right column for numpad
                         if (isTablet) ...[
                           SizedBox(width: spacing),
-                          Expanded(
-                            flex: 3,
-                            child: _buildNumpad(),
-                          ),
+                          Expanded(flex: 3, child: _buildNumpad()),
                         ],
                       ],
                     ),
-                    
+
                     // Positioned finish button at bottom right
                     Positioned(
                       right: 0,
                       bottom: 50, // Position it even higher (50px from bottom)
                       child: Container(
                         width: 250, // Maintain width
-                        padding: const EdgeInsets.symmetric(vertical: 2), // Add padding to fix overlap
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                        ), // Add padding to fix overlap
                         child: _buildFinishButton(),
                       ),
                     ),
@@ -677,7 +704,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     // Position numpad after total sum
                     if (isTablet) _buildPortraitNumpad(),
                     SizedBox(height: spacing),
-                    
+
                     // Operation type and finish button
                     Text(
                       'Operation Type:',
@@ -701,16 +728,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       ),
     );
   }
-  
+
   // Special numpad layout for portrait mode with buttons on the side
   Widget _buildPortraitNumpad() {
-    final activeColor = _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
-    final activeBorder = _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
-    
+    final activeColor =
+        _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
+    final activeBorder =
+        _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
+
     // Calculate optimal button size based on available width - make buttons larger
     final screenWidth = MediaQuery.of(context).size.width;
-    final buttonSize = (screenWidth - 200) / 8; // Make buttons larger (was -350)
-    
+    final buttonSize =
+        (screenWidth - 200) / 8; // Make buttons larger (was -350)
+
     return Container(
       key: const ValueKey('portrait_numpad'),
       decoration: BoxDecoration(
@@ -732,7 +762,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Header with active field display only
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6), // Tiny padding
+            padding: const EdgeInsets.symmetric(
+              vertical: 4,
+              horizontal: 6,
+            ), // Tiny padding
             decoration: BoxDecoration(
               color: activeColor,
               borderRadius: BorderRadius.circular(6),
@@ -754,9 +787,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       ),
                       const SizedBox(height: 1), // Minimal spacing
                       Text(
-                        _isRateFieldActive 
-                            ? (_currencyController.text.isEmpty ? '0' : _currencyController.text)
-                            : (_quantityController.text.isEmpty ? '0' : _quantityController.text),
+                        _isRateFieldActive
+                            ? (_currencyController.text.isEmpty
+                                ? '0'
+                                : _currencyController.text)
+                            : (_quantityController.text.isEmpty
+                                ? '0'
+                                : _quantityController.text),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 12, // Slight increase
@@ -769,7 +806,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
           ),
           const SizedBox(height: 4), // Minimal spacing
-          
           // Numpad grid with side buttons - extremely compact layout
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,12 +863,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       const SizedBox(width: 6),
                       _buildPortraitNumpadButton('0', size: buttonSize),
                       const SizedBox(width: 6),
-                      _buildPortraitNumpadButton('⌫', size: buttonSize, isSpecial: true),
+                      _buildPortraitNumpadButton(
+                        '⌫',
+                        size: buttonSize,
+                        isSpecial: true,
+                      ),
                     ],
                   ),
                 ],
               ),
-              
+
               // Side buttons
               const SizedBox(width: 2), // Minimal spacing
               Column(
@@ -850,7 +890,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4), // Smaller radius
+                          borderRadius: BorderRadius.circular(
+                            4,
+                          ), // Smaller radius
                         ),
                       ),
                       child: Column(
@@ -882,7 +924,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4), // Smaller radius
+                          borderRadius: BorderRadius.circular(
+                            4,
+                          ), // Smaller radius
                         ),
                       ),
                       child: Column(
@@ -910,9 +954,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       ),
     );
   }
-  
+
   // Special button for portrait mode with smaller size but larger font
-  Widget _buildPortraitNumpadButton(String value, {required double size, bool isSpecial = false}) {
+  Widget _buildPortraitNumpadButton(
+    String value, {
+    required double size,
+    bool isSpecial = false,
+  }) {
     return SizedBox(
       width: size,
       height: size,
@@ -940,17 +988,23 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       ),
     );
   }
-  
+
   // Numpad widget for tablets
   Widget _buildNumpad() {
-    final activeColor = _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
-    final activeBorder = _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
-    
+    final activeColor =
+        _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
+    final activeBorder =
+        _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
+
     // Calculate optimal button size based on available width
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape = MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
-    final buttonSize = isLandscape ? 50.0 : (screenWidth > 600 ? 60.0 : 50.0); // Restore original sizes
-    
+    final isLandscape =
+        MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
+    final buttonSize =
+        isLandscape
+            ? 50.0
+            : (screenWidth > 600 ? 60.0 : 50.0); // Restore original sizes
+
     return Container(
       key: const ValueKey('numpad'),
       decoration: BoxDecoration(
@@ -997,7 +1051,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeBorder,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: const Size(10, 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -1022,9 +1079,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               color: Colors.grey.shade50,
             ),
             child: Text(
-              _isRateFieldActive 
-                  ? (_currencyController.text.isEmpty ? '0' : _currencyController.text)
-                  : (_quantityController.text.isEmpty ? '0' : _quantityController.text),
+              _isRateFieldActive
+                  ? (_currencyController.text.isEmpty
+                      ? '0'
+                      : _currencyController.text)
+                  : (_quantityController.text.isEmpty
+                      ? '0'
+                      : _quantityController.text),
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18, // Restored
@@ -1033,7 +1094,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
           ),
           const SizedBox(height: 6),
-          
+
           // Layout with numpad and side buttons for landscape mode
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,13 +1140,17 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       children: [
                         _buildFixedSizeNumpadButton('.', size: buttonSize),
                         _buildFixedSizeNumpadButton('0', size: buttonSize),
-                        _buildFixedSizeNumpadButton('⌫', size: buttonSize, isSpecial: true),
+                        _buildFixedSizeNumpadButton(
+                          '⌫',
+                          size: buttonSize,
+                          isSpecial: true,
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              
+
               // Side buttons for landscape mode
               if (isLandscape) ...[
                 const SizedBox(width: 8),
@@ -1109,10 +1174,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.swap_vert,
-                              size: 16,
-                            ),
+                            Icon(Icons.swap_vert, size: 16),
                             const SizedBox(height: 4),
                             Text(
                               'Switch',
@@ -1141,10 +1203,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.clear,
-                              size: 16,
-                            ),
+                            const Icon(Icons.clear, size: 16),
                             const SizedBox(height: 4),
                             Text(
                               'Clear',
@@ -1160,7 +1219,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ],
             ],
           ),
-          
+
           // Clear button at bottom (only for portrait mode or if not using side buttons)
           if (!isLandscape) ...[
             const SizedBox(height: 8),
@@ -1185,9 +1244,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       ),
     );
   }
-  
+
   // Fixed size numpad button with smaller styling
-  Widget _buildFixedSizeNumpadButton(String value, {required double size, bool isSpecial = false}) {
+  Widget _buildFixedSizeNumpadButton(
+    String value, {
+    required double size,
+    bool isSpecial = false,
+  }) {
     return SizedBox(
       width: size,
       height: size,
@@ -1206,48 +1269,51 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         child: Center(
           child: Text(
             value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
       ),
     );
   }
-  
+
   // Handle numpad button presses
   void _handleNumpadInput(String value) {
-    final controller = _isRateFieldActive ? _currencyController : _quantityController;
+    final controller =
+        _isRateFieldActive ? _currencyController : _quantityController;
     final currentText = controller.text;
-    
+
     // Ensure controller has a valid selection
     if (controller.selection.baseOffset < 0) {
-      controller.selection = TextSelection.collapsed(offset: currentText.length);
+      controller.selection = TextSelection.collapsed(
+        offset: currentText.length,
+      );
     }
-    
+
     final currentSelection = controller.selection;
-    final selectionStart = currentSelection.start < 0 ? 0 : currentSelection.start;
+    final selectionStart =
+        currentSelection.start < 0 ? 0 : currentSelection.start;
     final selectionEnd = currentSelection.end < 0 ? 0 : currentSelection.end;
-    
+
     if (value == '⌫') {
       // Handle backspace
       if (currentText.isEmpty) return;
-      
+
       if (selectionStart == selectionEnd && selectionStart == 0) return;
-      
+
       String newText;
       if (selectionStart == selectionEnd) {
         // Delete character before cursor
         final deletePos = selectionStart - 1;
-        newText = currentText.substring(0, deletePos) + 
-                 currentText.substring(selectionEnd);
+        newText =
+            currentText.substring(0, deletePos) +
+            currentText.substring(selectionEnd);
         controller.text = newText;
         controller.selection = TextSelection.collapsed(offset: deletePos);
       } else {
         // Delete selected text
-        newText = currentText.substring(0, selectionStart) + 
-                 currentText.substring(selectionEnd);
+        newText =
+            currentText.substring(0, selectionStart) +
+            currentText.substring(selectionEnd);
         controller.text = newText;
         controller.selection = TextSelection.collapsed(offset: selectionStart);
       }
@@ -1257,19 +1323,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         String newText;
         if (selectionStart != selectionEnd) {
           // Replace selected text
-          newText = currentText.substring(0, selectionStart) + 
-                   (currentText.isEmpty ? '0.' : '.') + 
-                   currentText.substring(selectionEnd);
+          newText =
+              currentText.substring(0, selectionStart) +
+              (currentText.isEmpty ? '0.' : '.') +
+              currentText.substring(selectionEnd);
         } else {
           // Insert at cursor
-          newText = currentText.isEmpty ? 
-                   '0.' : 
-                   currentText.substring(0, selectionStart) + 
-                   '.' + 
-                   currentText.substring(selectionEnd);
+          newText =
+              currentText.isEmpty
+                  ? '0.'
+                  : currentText.substring(0, selectionStart) +
+                      '.' +
+                      currentText.substring(selectionEnd);
         }
         controller.text = newText;
-        
+
         // Calculate new cursor position
         final newPosition = selectionStart + (currentText.isEmpty ? 2 : 1);
         controller.selection = TextSelection.collapsed(offset: newPosition);
@@ -1279,24 +1347,28 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       String newText;
       if (selectionStart != selectionEnd) {
         // Replace selected text
-        newText = currentText.substring(0, selectionStart) + 
-                 value + 
-                 currentText.substring(selectionEnd);
+        newText =
+            currentText.substring(0, selectionStart) +
+            value +
+            currentText.substring(selectionEnd);
       } else {
         // Insert at cursor
-        newText = currentText.substring(0, selectionStart) + 
-                 value + 
-                 currentText.substring(selectionEnd);
+        newText =
+            currentText.substring(0, selectionStart) +
+            value +
+            currentText.substring(selectionEnd);
       }
-      
+
       controller.text = newText;
-      controller.selection = TextSelection.collapsed(offset: selectionStart + 1);
+      controller.selection = TextSelection.collapsed(
+        offset: selectionStart + 1,
+      );
     }
-    
+
     // Recalculate total
     _calculateTotal();
   }
-  
+
   // Toggle between rate and quantity fields
   void _toggleActiveField() {
     setState(() {
@@ -1308,7 +1380,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       }
     });
   }
-  
+
   // Clear the active input field
   void _clearActiveField() {
     if (_isRateFieldActive) {
@@ -1329,7 +1401,12 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   // Original single-column layout for mobile
-  Widget _buildMobileLayout(BuildContext context, double spacing, double headerFontSize, double standardFontSize) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    double spacing,
+    double headerFontSize,
+    double standardFontSize,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1469,9 +1546,11 @@ class _MobileCurrencyConverterLayoutState
 
       // For Statistics and Analytics screens, always recreate them with a new key
       // to force a full refresh when they're selected
-      if (index == 2 && currentUser?.role == 'admin') { // Statistics screen
+      if (index == 2 && currentUser?.role == 'admin') {
+        // Statistics screen
         _statisticsKey = UniqueKey();
-      } else if (index == 3 && currentUser?.role == 'admin') { // Analytics screen
+      } else if (index == 3 && currentUser?.role == 'admin') {
+        // Analytics screen
         _analyticsKey = UniqueKey();
       }
 
@@ -1604,7 +1683,7 @@ class _TabletCurrencyConverterLayoutState
   void _initNavigationDestinations() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-    
+
     // Basic navigation items available to all users - for NavigationBar
     _navigationBarDestinations = [
       const NavigationDestination(
@@ -1628,7 +1707,7 @@ class _TabletCurrencyConverterLayoutState
         label: Text('History'),
       ),
     ];
-    
+
     // Only add Analytics and Charts options for admin users
     if (isAdmin) {
       _navigationBarDestinations.add(
@@ -1637,7 +1716,7 @@ class _TabletCurrencyConverterLayoutState
           label: 'Statistics',
         ),
       );
-      
+
       _navigationBarDestinations.add(
         const NavigationDestination(
           icon: Icon(Icons.pie_chart, size: 24),
@@ -1651,7 +1730,7 @@ class _TabletCurrencyConverterLayoutState
           label: Text('Statistics'),
         ),
       );
-      
+
       _navigationRailDestinations.add(
         const NavigationRailDestination(
           icon: Icon(Icons.pie_chart, size: 24),
@@ -1687,9 +1766,11 @@ class _TabletCurrencyConverterLayoutState
 
       // For Statistics and Analytics screens, always recreate them with a new key
       // to force a full refresh when they're selected
-      if (index == 2 && currentUser?.role == 'admin') { // Statistics screen
+      if (index == 2 && currentUser?.role == 'admin') {
+        // Statistics screen
         _statisticsKey = UniqueKey();
-      } else if (index == 3 && currentUser?.role == 'admin') { // Analytics screen
+      } else if (index == 3 && currentUser?.role == 'admin') {
+        // Analytics screen
         _analyticsKey = UniqueKey();
       }
 
