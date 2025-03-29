@@ -72,6 +72,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Set up listeners for focus changes
     _currencyFocusNode.addListener(_handleFocusChange);
     _quantityFocusNode.addListener(_handleFocusChange);
+    
+    // Add listeners to the text controllers to update total when text changes
+    _currencyController.addListener(_calculateTotal);
+    _quantityController.addListener(_calculateTotal);
 
     // Ensure rate field is active initially
     _isRateFieldActive = true;
@@ -144,14 +148,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   void _calculateTotal() {
-    if (_currencyController.text.isNotEmpty &&
-        _quantityController.text.isNotEmpty) {
-      double currencyValue = double.parse(_currencyController.text);
-      double quantity = double.parse(_quantityController.text);
-      setState(() {
-        _totalSum = currencyValue * quantity;
-      });
-    }
+    // Convert empty fields to 0
+    double currencyValue = _currencyController.text.isEmpty 
+        ? 0.0 
+        : double.tryParse(_currencyController.text) ?? 0.0;
+    
+    double quantity = _quantityController.text.isEmpty 
+        ? 0.0 
+        : double.tryParse(_quantityController.text) ?? 0.0;
+    
+    setState(() {
+      _totalSum = currencyValue * quantity;
+    });
   }
 
   // Show brief notification (snackbar)
@@ -169,140 +177,114 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildCurrencyInputSection() {
-    // Get screen size to adjust sizing
     final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 360;
     final isPortrait = screenSize.height > screenSize.width;
+    final isTablet = MediaQuery.of(context).size.width > 600;
+    final isSmallScreen = screenSize.width < 360;
     final fontSize = isSmallScreen ? 13.0 : 14.0;
     final iconSize = isSmallScreen ? 18.0 : 24.0;
-    final verticalPadding = isSmallScreen ? 12.0 : 16.0;
-
-    // For portrait mode (both tablet and mobile), arrange fields in a row
+    
+    // For portrait mode, put the fields in a row
     if (isPortrait) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Exchange Rate Field
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _operationType == 'Purchase'
-                          ? 'Buy Rate (SOM per 1 $_selectedCurrency)'
-                          : 'Sell Rate (SOM per 1 $_selectedCurrency)',
-                      style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: _currencyController,
-                      focusNode: _currencyFocusNode,
-                      keyboardType: TextInputType.number,
-                      readOnly: widget.isWideLayout,
-                      showCursor: true,
-                      decoration: InputDecoration(
-                        labelText: 'Exchange Rate',
-                        hintText:
-                            _operationType == 'Purchase'
-                                ? 'Enter buy rate'
-                                : 'Enter sell rate',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        prefixIcon: Icon(
-                          Icons.attach_money,
-                          color: Colors.blue,
-                          size: iconSize,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: verticalPadding,
-                        ),
-                      ),
-                      onChanged: (_) => _calculateTotal(),
-                      style: TextStyle(fontSize: fontSize),
-                    ),
-                  ],
+          // Exchange Rate Field
+          Expanded(
+            child: TextField(
+              controller: _currencyController,
+              focusNode: _currencyFocusNode,
+              decoration: InputDecoration(
+                labelText: 'Exchange Rate',
+                hintText: _operationType == 'Purchase'
+                    ? 'Enter buy rate'
+                    : 'Enter sell rate',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                prefixIcon: Icon(
+                  Icons.attach_money,
+                  color: Colors.blue,
+                  size: iconSize,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 12,
                 ),
               ),
-              const SizedBox(width: 12),
-              // Quantity Field
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Amount to ${_operationType == 'Purchase' ? 'buy' : 'sell'}',
-                      style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: _quantityController,
-                      focusNode: _quantityFocusNode,
-                      keyboardType: TextInputType.number,
-                      readOnly: widget.isWideLayout,
-                      showCursor: true,
-                      decoration: InputDecoration(
-                        labelText: 'Quantity',
-                        hintText: 'Enter amount in $_selectedCurrency',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        prefixIcon: Icon(Icons.numbers, color: Colors.blue, size: iconSize),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: verticalPadding,
-                        ),
-                      ),
-                      onChanged: (_) => _calculateTotal(),
-                      style: TextStyle(fontSize: fontSize),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              // Show tablet keyboard when numpad is hidden and we're on a tablet
+              readOnly: isTablet && _isNumpadVisible,
+              showCursor: true,
+              // Always calculate total when text changes
+              onChanged: (_) => _calculateTotal(),
+              style: TextStyle(fontSize: fontSize),
+              onTap: () {
+                setState(() {
+                  _isRateFieldActive = true;
+                });
+              },
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(width: 16),
+          // Quantity Field
+          Expanded(
+            child: TextField(
+              controller: _quantityController,
+              focusNode: _quantityFocusNode,
+              decoration: InputDecoration(
+                labelText: 'Quantity',
+                hintText: 'Enter amount in $_selectedCurrency',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                prefixIcon: Icon(
+                  Icons.numbers,
+                  color: Colors.blue,
+                  size: iconSize,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 12,
+                ),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              // Show tablet keyboard when numpad is hidden and we're on a tablet
+              readOnly: isTablet && _isNumpadVisible,
+              showCursor: true,
+              // Always calculate total when text changes
+              onChanged: (_) => _calculateTotal(),
+              style: TextStyle(fontSize: fontSize),
+              onTap: () {
+                setState(() {
+                  _isRateFieldActive = false;
+                });
+              },
+            ),
+          ),
         ],
       );
     }
     
-    // Original code for landscape mode
+    // For landscape mode, stack the fields vertically
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          _operationType == 'Purchase'
-              ? 'Buy Rate (SOM per 1 $_selectedCurrency)'
-              : 'Sell Rate (SOM per 1 $_selectedCurrency)',
-          style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
-        ),
-        const SizedBox(height: 4),
+        // Exchange Rate field
         TextField(
           controller: _currencyController,
           focusNode: _currencyFocusNode,
-          keyboardType: TextInputType.number,
-          // Make input read-only when using numpad on tablets
-          readOnly: widget.isWideLayout,
-          showCursor: true,
           decoration: InputDecoration(
             labelText: 'Exchange Rate',
-            hintText:
-                _operationType == 'Purchase'
-                    ? 'Enter buy rate'
-                    : 'Enter sell rate',
+            hintText: _operationType == 'Purchase'
+                ? 'Enter buy rate'
+                : 'Enter sell rate',
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
             ),
             filled: true,
             fillColor: Colors.grey.shade50,
@@ -311,46 +293,58 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               color: Colors.blue,
               size: iconSize,
             ),
-            contentPadding: EdgeInsets.symmetric(
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12,
               horizontal: 12,
-              vertical: verticalPadding,
             ),
           ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          readOnly: isTablet,
+          showCursor: true,
+          // Always calculate total when text changes
           onChanged: (_) => _calculateTotal(),
           style: TextStyle(fontSize: fontSize),
+          onTap: () {
+            setState(() {
+              _isRateFieldActive = true;
+            });
+          },
         ),
         const SizedBox(height: 16),
-        Text(
-          'Amount to ${_operationType == 'Purchase' ? 'buy' : 'sell'}',
-          style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
-        ),
-        const SizedBox(height: 4),
+        // Quantity field
         TextField(
           controller: _quantityController,
           focusNode: _quantityFocusNode,
-          keyboardType: TextInputType.number,
-          // Make input read-only when using numpad on tablets
-          readOnly: widget.isWideLayout,
-          showCursor: true,
           decoration: InputDecoration(
             labelText: 'Quantity',
             hintText: 'Enter amount in $_selectedCurrency',
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
             ),
             filled: true,
             fillColor: Colors.grey.shade50,
-            prefixIcon: Icon(Icons.numbers, color: Colors.blue, size: iconSize),
-            contentPadding: EdgeInsets.symmetric(
+            prefixIcon: Icon(
+              Icons.numbers,
+              color: Colors.blue,
+              size: iconSize,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12,
               horizontal: 12,
-              vertical: verticalPadding,
             ),
           ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          readOnly: isTablet,
+          showCursor: true,
+          // Always calculate total when text changes
           onChanged: (_) => _calculateTotal(),
           style: TextStyle(fontSize: fontSize),
+          onTap: () {
+            setState(() {
+              _isRateFieldActive = false;
+            });
+          },
         ),
-        const SizedBox(height: 16),
       ],
     );
   }
@@ -732,9 +726,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           ),
           SizedBox(height: spacing),
           
-          _buildCurrencySelector(),
-          SizedBox(height: spacing),
-          
           // Exchange rate and quantity in one row for portrait mode
           _buildCurrencyInputSection(),
           
@@ -742,8 +733,12 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           _buildTotalSumCard(),
           SizedBox(height: spacing),
           
-          // Position numpad after total sum (with show/hide functionality)
-          if (isTablet) _buildPortraitNumpad(),
+          // Currency selector now below total amount
+          _buildCurrencySelector(),
+          SizedBox(height: spacing),
+          
+          // Position numpad after currency selector
+          if (isTablet && _isNumpadVisible) _buildPortraitNumpad(),
           SizedBox(height: spacing),
           
           // Operation type and finish button
@@ -853,18 +848,20 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 // Portrait tablet layout - make it more compact
                 return Column(
                   children: [
-                    // Currency input and selection
+                    // Currency input
                     _buildCurrencyInputSection(),
                     SizedBox(height: spacing),
+
+                    // Total sum card 
+                    _buildTotalSumCard(),
+                    SizedBox(height: spacing),
+                    
+                    // Currency selector below total
                     _buildCurrencySelector(),
                     SizedBox(height: spacing),
 
-                    // Total sum card above numpad
-                    _buildTotalSumCard(),
-                    SizedBox(height: spacing),
-
-                    // Position numpad after total sum
-                    if (isTablet) _buildPortraitNumpad(),
+                    // Position numpad after currency selector
+                    if (isTablet && _isNumpadVisible) _buildPortraitNumpad(),
                     SizedBox(height: spacing),
 
                     // Operation type and finish button
@@ -891,7 +888,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  // Original single-column layout for mobile
+  // Column layout for mobile devices
   Widget _buildMobileLayout(
     BuildContext context,
     double spacing,
@@ -913,15 +910,15 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         ),
         SizedBox(height: spacing),
         
-        // Currency selector (e.g. USD, EUR)
-        _buildCurrencySelector(),
-        SizedBox(height: spacing),
-        
-        // Input fields (now organized in a row for portrait mode)
+        // Input fields
         _buildCurrencyInputSection(),
         
         // Total amount card
         _buildTotalSumCard(),
+        SizedBox(height: spacing),
+        
+        // Currency selector (moved below total card)
+        _buildCurrencySelector(),
         SizedBox(height: spacing),
         
         // Operation type buttons (Buy/Sell)
@@ -1004,53 +1001,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header with active field display only
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              vertical: 8,
-              horizontal: 12,
-            ), // More padding
-            decoration: BoxDecoration(
-              color: activeColor,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: activeBorder),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isRateFieldActive ? 'Exchange Rate' : 'Quantity',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: activeBorder,
-                          fontSize: 12, // Slightly larger
-                        ),
-                      ),
-                      const SizedBox(height: 4), // More spacing
-                      Text(
-                        _isRateFieldActive
-                            ? (_currencyController.text.isEmpty
-                                ? '0'
-                                : _currencyController.text)
-                            : (_quantityController.text.isEmpty
-                                ? '0'
-                                : _quantityController.text),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14, // Slightly larger
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8), // More spacing
           // Numpad grid with side buttons - more spacing between buttons
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1134,7 +1084,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: const Icon(Icons.swap_vert, size: 20),
+                      child: const Icon(Icons.swap_horiz, size: 20),
                     ),
                   ),
                   const SizedBox(height: 12), // More spacing
@@ -1409,12 +1359,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.swap_vert, size: 16),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Switch',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                      
+                            
                           ],
                         ),
                       ),
@@ -1444,12 +1390,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Clear',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                            
                           ],
                         ),
                       ),
@@ -1647,6 +1588,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     } else {
       _quantityController.clear();
     }
+    // Ensure total is calculated immediately after clearing
     _calculateTotal();
   }
 
@@ -1795,7 +1737,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
-                          Icon(Icons.swap_vert),
+                          Icon(Icons.swap_horiz),
                           SizedBox(height: 8),
                           Text(
                             'Switch\nFields',
@@ -1831,12 +1773,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Clear',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12),
-                          ),
+                          
+                          
+                          
                         ],
                       ),
                     ),
