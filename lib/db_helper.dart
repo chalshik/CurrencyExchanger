@@ -115,8 +115,10 @@ class DatabaseHelper {
 
     // Insert if doesn't exist
     if (updateCount == 0) {
-      currency = currency.copyWith(
-        id: await db.insert('currencies', currency.toMap()),
+      // Force initial quantity to zero for new currencies
+      final initialCurrency = currency.copyWith(quantity: 0.0);
+      currency = initialCurrency.copyWith(
+        id: await db.insert('currencies', initialCurrency.toMap()),
       );
     }
 
@@ -178,11 +180,20 @@ class DatabaseHelper {
     if (result.isEmpty) {
       if (currencyCode != 'SOM' && isAddition) {
         // Create new currency entry if it doesn't exist (for non-SOM currencies)
+        // Always initialize with zero and then add the amount separately
         await txn.insert('currencies', {
           'code': currencyCode,
-          'quantity': amount,
+          'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
         });
+        
+        // Now update the newly created currency with the amount
+        await txn.update(
+          'currencies',
+          {'quantity': amount, 'updated_at': DateTime.now().toIso8601String()},
+          where: 'code = ?',
+          whereArgs: [currencyCode],
+        );
       }
       return;
     }
@@ -474,11 +485,23 @@ class DatabaseHelper {
           );
         } else {
           print("isnottarget");
+          // First create the currency with zero quantity
           await db.insert('currencies', {
             'code': currencyCode,
-            'quantity': quantity,
+            'quantity': 0.0,
             'updated_at': DateTime.now().toIso8601String(),
           });
+          
+          // Then update it with the purchased amount
+          await db.update(
+            'currencies',
+            {
+              'quantity': quantity,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            where: 'code = ?',
+            whereArgs: [currencyCode],
+          );
         }
       } else if (operationType == 'Sale') {
         print('sell');
@@ -1088,20 +1111,41 @@ class DatabaseHelper {
       // 1. Delete all history entries
       await txn.delete('history');
 
-      // 2. Delete all currencies
-      await txn.delete('currencies');
+      // 2. Get all currencies
+      final currencies = await txn.query('currencies');
+      
+      // 3. Reset all currency quantities to zero instead of deleting them
+      for (var currency in currencies) {
+        await txn.update(
+          'currencies',
+          {
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'code = ?',
+          whereArgs: [currency['code']],
+        );
+      }
+      
+      // 4. Ensure SOM currency exists (in case it was somehow missing)
+      final somCheck = await txn.query(
+        'currencies',
+        where: 'code = ?',
+        whereArgs: ['SOM'],
+      );
+      
+      if (somCheck.isEmpty) {
+        await txn.insert('currencies', {
+          'code': 'SOM',
+          'quantity': 0.0,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
 
-      // 3. Initialize SOM currency with zero balance
-      await txn.insert('currencies', {
-        'code': 'SOM',
-        'quantity': 0.0,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-
-      // 4. Delete all users except the admin user with login "a"
+      // 5. Delete all users except the admin user with login "a"
       await txn.delete('users', where: 'username != ?', whereArgs: ['a']);
 
-      // 5. Check if admin user "a" exists, create if not
+      // 6. Check if admin user "a" exists, create if not
       final adminCheck = await txn.query(
         'users',
         where: 'username = ?',

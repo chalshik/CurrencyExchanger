@@ -196,7 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showAddCurrencyDialog(BuildContext context) async {
     _newCurrencyCodeController.clear();
-    _quantityController.clear();
+    _quantityController.text = "0"; // Set default value to 0
 
     return showDialog(
       context: context,
