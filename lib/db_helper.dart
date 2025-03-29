@@ -532,36 +532,50 @@ class DatabaseHelper {
   }
 
   /// Calculate currency statistics for analytics
-  Future<Map<String, dynamic>> calculateAnalytics() async {
+  Future<Map<String, dynamic>> calculateAnalytics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
       final db = await database;
       List<Map<String, dynamic>> currencyStats = [];
       double totalProfit = 0.0;
-
+      String dateFilter = '';
+      if (startDate != null || endDate != null) {
+        final startFilter =
+            startDate != null
+                ? "AND date >= '${startDate.toIso8601String()}'"
+                : '';
+        final endFilter =
+            endDate != null
+                ? "AND date <= '${endDate.add(const Duration(days: 1)).toIso8601String()}'"
+                : '';
+        dateFilter = " $startFilter $endFilter ";
+      }
       // Query to get purchase stats
       final purchaseStats = await db.rawQuery('''
-        SELECT 
-          currency_code,
-          AVG(rate) as avg_purchase_rate,
-          SUM(quantity) as total_purchased,
-          SUM(total) as total_purchase_amount
-        FROM history
-        WHERE operation_type = 'Purchase'
-        GROUP BY currency_code
-      ''');
-
+      SELECT 
+        currency_code,
+        AVG(rate) as avg_purchase_rate,
+        SUM(quantity) as total_purchased,
+        SUM(total) as total_purchase_amount
+      FROM history
+      WHERE operation_type = 'Purchase'
+      $dateFilter
+      GROUP BY currency_code
+    ''');
       // Query to get sale stats
       final saleStats = await db.rawQuery('''
-        SELECT 
-          currency_code,
-          AVG(rate) as avg_sale_rate,
-          SUM(quantity) as total_sold,
-          SUM(total) as total_sale_amount
-        FROM history
-        WHERE operation_type = 'Sale'
-        GROUP BY currency_code
-      ''');
-
+      SELECT 
+        currency_code,
+        AVG(rate) as avg_sale_rate,
+        SUM(quantity) as total_sold,
+        SUM(total) as total_sale_amount
+      FROM history
+      WHERE operation_type = 'Sale'
+      $dateFilter
+      GROUP BY currency_code
+    ''');
       // Query to get current quantities
       final currentQuantities = await db.rawQuery('''
         SELECT code, quantity FROM currencies
@@ -655,7 +669,6 @@ class DatabaseHelper {
       };
     } catch (e) {
       debugPrint('Error calculating analytics: $e');
-      // Return empty data structure on error
       return {'currency_stats': [], 'total_profit': 0.0};
     }
   }
