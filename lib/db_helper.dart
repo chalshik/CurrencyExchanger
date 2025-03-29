@@ -231,8 +231,16 @@ class DatabaseHelper {
         history.quantity,
         isAddition: true,
       );
+    } else if (history.operationType == 'Deposit') {
+      // For deposit reversal:
+      // - Deduct the SOM that was deposited
+      await _updateCurrencyBalance(
+        txn,
+        'SOM',
+        history.total,
+        isAddition: false,
+      );
     }
-    // Deposits don't need reversal as they only affect SOM
   }
 
   Future<void> _applyTransactionEffect(
@@ -695,7 +703,7 @@ class DatabaseHelper {
       GROUP BY currency_code
     ''', whereArgs);
 
-      // Query to get current quantities
+      // Query to get current quantities - this is the accurate value
       final currentQuantities = await db.rawQuery('''
         SELECT code, quantity FROM currencies
       ''');
@@ -747,7 +755,7 @@ class DatabaseHelper {
         }
       }
 
-      // Add current quantities
+      // Add current quantities - these are the authoritative values
       for (var quantity in currentQuantities) {
         final currencyCode = quantity['code'] as String? ?? '';
         if (currencyCode.isEmpty) continue;
@@ -779,7 +787,9 @@ class DatabaseHelper {
 
         final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
         stats['profit'] = profit;
-        totalProfit += profit;
+        if (stats['currency'] != 'SOM') {
+          totalProfit += profit;
+        }
       }
 
       return {
