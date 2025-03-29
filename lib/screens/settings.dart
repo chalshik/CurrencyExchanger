@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:io';  // Add this import for File class
 import '../db_helper.dart';
 import '../models/currency.dart';
 import '../models/user.dart';
 import '../screens/login_screen.dart'; // Import to access currentUser
+import 'package:excel/excel.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,7 +31,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _roleController = TextEditingController();
   bool _showCurrencyManagement = false;
   bool _showUserManagement = false;
+  bool _showExportSection = false;
   Timer? _autoRefreshTimer;
+  bool _isAdmin = false;
+  final _currencyController = TextEditingController();
+  final TextEditingController _somController = TextEditingController();
+  final TextEditingController _startDateController = TextEditingController();
+  final TextEditingController _endDateController = TextEditingController();
+  
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -75,6 +89,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _roleController.dispose();
+    _currencyController.dispose();
+    _somController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
     super.dispose();
   }
 
@@ -521,11 +539,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _showCurrencyManagement 
-          ? _buildCurrencyManagement()
-          : _showUserManagement 
-              ? _buildUserManagement()
-              : _buildSettings(),
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Primary content based on what's selected
+              if (_showCurrencyManagement)
+                _buildCurrencyManagement()
+              else if (_showUserManagement)
+                _buildUserManagement()
+              else if (_showExportSection)
+                _buildExportSection()
+              else
+                _buildSettings(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -533,51 +567,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
     
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ListTile(
-          title: const Text('Currency Management'),
-          leading: const Icon(Icons.currency_exchange),
-          trailing: const Icon(Icons.arrow_forward_ios),
-          onTap: () {
-            setState(() {
-              _showCurrencyManagement = true;
-              // Start auto-refresh when navigating to currency management
-              _startAutoRefresh();
-            });
-          },
-        ),
-        // Only show User Accounts option to admin users
-        if (isAdmin)
+    return SizedBox(
+      height: 300, // Increase height to fit all options
+      child: ListView(
+        shrinkWrap: true,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
           ListTile(
-            title: const Text('User Accounts'),
-            leading: const Icon(Icons.people),
+            title: const Text('Currency Management'),
+            leading: const Icon(Icons.currency_exchange),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
               setState(() {
-                _showUserManagement = true;
+                _showCurrencyManagement = true;
+                _showUserManagement = false;
+                _showExportSection = false;
+                // Start auto-refresh when navigating to currency management
+                _startAutoRefresh();
               });
             },
           ),
-        
-        const Divider(),
-        
-        // Reset All Data option (admin only)
-        if (isAdmin)
+          
+          // Export Data option
           ListTile(
-            title: const Text('Reset All Data'),
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            onTap: _resetAllData,
+            title: const Text('Export Data'),
+            leading: const Icon(Icons.file_download),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              setState(() {
+                _showExportSection = true;
+                _showCurrencyManagement = false;
+                _showUserManagement = false;
+              });
+            },
           ),
-        
-        // Logout option
-        ListTile(
-          title: const Text('Logout'),
-          leading: const Icon(Icons.logout, color: Colors.red),
-          onTap: _logout,
-        ),
-      ],
+          
+          // Only show User Accounts option to admin users
+          if (isAdmin)
+            ListTile(
+              title: const Text('User Accounts'),
+              leading: const Icon(Icons.people),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                setState(() {
+                  _showUserManagement = true;
+                  _showCurrencyManagement = false;
+                  _showExportSection = false;
+                });
+              },
+            ),
+          
+          const Divider(),
+          
+          // Reset All Data option (admin only)
+          if (isAdmin)
+            ListTile(
+              title: const Text('Reset All Data'),
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              onTap: _resetAllData,
+            ),
+          
+          // Logout option
+          ListTile(
+            title: const Text('Logout'),
+            leading: const Icon(Icons.logout, color: Colors.red),
+            onTap: _logout,
+          ),
+        ],
+      ),
     );
   }
 
@@ -629,199 +687,541 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildCurrencyManagement() {
-    return Column(
-      children: [
-        // Header section
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    _showCurrencyManagement = false;
-                    _autoRefreshTimer?.cancel();
-                  });
-                },
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'Currency Management',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+    return SizedBox(
+      height: MediaQuery.of(context).size.height - 200, // Adjust height to fit the screen
+      child: Column(
+        children: [
+          // Header section
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _showCurrencyManagement = false;
+                      _autoRefreshTimer?.cancel();
+                    });
+                  },
+                ),
+                const SizedBox(width: 16),
+                const Text(
+                  'Currency Management',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Add SOM button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _showAddSomDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Add SOM'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade100,
+                  foregroundColor: Colors.blue.shade800,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-            ],
-          ),
-        ),
-        
-        // Add SOM button
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _showAddSomDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Add SOM'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade100,
-                foregroundColor: Colors.blue.shade800,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
             ),
           ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Currency list
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadCurrencies,
-            child: _currencies.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No currencies available',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _currencies.length,
-                    itemBuilder: (context, index) {
-                      final currency = _currencies[index];
-                      // Format quantity with 2 decimal places
-                      final formattedQuantity = NumberFormat.currency(
-                        decimalDigits: 2,
-                        symbol: '',
-                      ).format(currency.quantity);
+          
+          const SizedBox(height: 8),
+          
+          // Currency list
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadCurrencies,
+              child: _currencies.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No currencies available',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _currencies.length,
+                      itemBuilder: (context, index) {
+                        final currency = _currencies[index];
+                        // Format quantity with 2 decimal places
+                        final formattedQuantity = NumberFormat.currency(
+                          decimalDigits: 2,
+                          symbol: '',
+                        ).format(currency.quantity);
 
-                      // Use different style for SOM currency
-                      final bool isSom = currency.code == 'SOM';
+                        // Use different style for SOM currency
+                        final bool isSom = currency.code == 'SOM';
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        color: isSom ? Colors.blue.shade50 : null,
-                        child: ListTile(
-                          title: Text(
-                            currency.code ?? '',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isSom ? Colors.blue.shade800 : null,
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          color: isSom ? Colors.blue.shade50 : null,
+                          child: ListTile(
+                            title: Text(
+                              currency.code ?? '',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isSom ? Colors.blue.shade800 : null,
+                              ),
                             ),
+                            subtitle: Text(
+                              'Quantity: $formattedQuantity\n'
+                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
+                            ),
+                            trailing: isSom 
+                                ? const Icon(Icons.payments, color: Colors.blue)
+                                : IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
+                                  ),
                           ),
-                          subtitle: Text(
-                            'Quantity: $formattedQuantity\n'
-                            'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
-                          ),
-                          trailing: isSom 
-                              ? const Icon(Icons.payments, color: Colors.blue)
-                              : IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
-                                ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ),
-        
-        // Add New Currency button
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: () => _showAddCurrencyDialog(context),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
+                        );
+                      },
+                    ),
             ),
-            child: const Text('Add New Currency'),
           ),
-        ),
-      ],
+          
+          // Add New Currency button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () => _showAddCurrencyDialog(context),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('Add New Currency'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildUserManagement() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() {
-                    _showUserManagement = false;
-                    _autoRefreshTimer?.cancel();
-                  });
-                },
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'User Management',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+    return SizedBox(
+      height: MediaQuery.of(context).size.height - 200, // Adjust height to fit the screen
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _showUserManagement = false;
+                      _autoRefreshTimer?.cancel();
+                    });
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                const Text(
+                  'User Management',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadUsers,
-            child: _users.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No users available',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadUsers,
+              child: _users.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No users available',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _users.length,
+                      itemBuilder: (context, index) {
+                        final user = _users[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: 
+                              user.role == 'admin' ? Colors.orange : Colors.blue,
+                            child: Icon(
+                              user.role == 'admin' 
+                                  ? Icons.admin_panel_settings
+                                  : Icons.person,
+                              color: Colors.white,
+                            ),
+                          ),
+                          title: Text(user.username),
+                          subtitle: Text(
+                            'Role: ${user.role}\n'
+                            'Created: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteUser(user.id, user.username),
+                          ),
+                        );
+                      },
                     ),
-                  )
-                : ListView.builder(
-                    itemCount: _users.length,
-                    itemBuilder: (context, index) {
-                      final user = _users[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: 
-                            user.role == 'admin' ? Colors.orange : Colors.blue,
-                          child: Icon(
-                            user.role == 'admin' 
-                                ? Icons.admin_panel_settings
-                                : Icons.person,
-                            color: Colors.white,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () => _showAddUserDialog(context),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('Add New User'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add new method to build export section
+  Widget _buildExportSection() {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height - 200,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back button and header
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _showExportSection = false;
+                    });
+                  },
+                ),
+                const SizedBox(width: 16),
+                const Text(
+                  'Export Data',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Date range and export settings
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Date Range',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Date Range Selection
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _startDateController,
+                            decoration: const InputDecoration(
+                              labelText: 'Start Date',
+                              border: OutlineInputBorder(),
+                              suffixIcon: Icon(Icons.calendar_today),
+                            ),
+                            readOnly: true,
+                            onTap: () => _selectDate(true),
                           ),
                         ),
-                        title: Text(user.username),
-                        subtitle: Text(
-                          'Role: ${user.role}\n'
-                          'Created: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: _endDateController,
+                            decoration: const InputDecoration(
+                              labelText: 'End Date',
+                              border: OutlineInputBorder(),
+                              suffixIcon: Icon(Icons.calendar_today),
+                            ),
+                            readOnly: true,
+                            onTap: () => _selectDate(false),
+                          ),
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteUser(user.id, user.username),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    const Text(
+                      'Export Options',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Export Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _exportData(exportType: 'history'),
+                            icon: const Icon(Icons.history),
+                            label: const Text('Export History'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
                         ),
-                      );
-                    },
-                  ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: () => _showAddUserDialog(context),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _exportData(exportType: 'analytics'),
+                            icon: const Icon(Icons.analytics),
+                            label: const Text('Export Statistics'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: const Text('Add New User'),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  // Date selection method
+  Future<void> _selectDate(bool isStartDate) async {
+    final initialDate = isStartDate ? _startDate ?? DateTime.now() : _endDate ?? DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    
+    if (picked != null) {
+      setState(() {
+        if (isStartDate) {
+          _startDate = picked;
+          _startDateController.text = DateFormat('dd-MM-yyyy').format(picked);
+        } else {
+          _endDate = picked;
+          _endDateController.text = DateFormat('dd-MM-yyyy').format(picked);
+        }
+      });
+    }
+  }
+
+  // Method to export data
+  Future<void> _exportData({required String exportType}) async {
+    try {
+      // Check start and end dates
+      if (_startDate == null || _endDate == null) {
+        _showSnackBar('Please select start and end dates');
+        return;
+      }
+      
+      if (_endDate!.isBefore(_startDate!)) {
+        _showSnackBar('End date cannot be before start date');
+        return;
+      }
+
+      // Request storage permission
+      var status = await Permission.storage.request();
+      if (!status.isGranted) {
+        _showSnackBar('Storage permission is required to export data');
+        return;
+      }
+
+      // Create excel file
+      final excel = Excel.createExcel();
+      
+      if (exportType == 'history') {
+        await _exportHistoryData(excel);
+      } else {
+        await _exportAnalyticsData(excel);
+      }
+      
+      // Save the file
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        _showSnackBar('Could not access storage directory');
+        return;
+      }
+      
+      // Get save location from user
+      String? outputPath = await FilePicker.platform.getDirectoryPath();
+      if (outputPath == null) {
+        _showSnackBar('Export cancelled');
+        return;
+      }
+      
+      final fileName = '${exportType}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+      final filePath = '$outputPath/$fileName';
+      
+      final fileBytes = excel.encode();
+      if (fileBytes == null) {
+        _showSnackBar('Failed to generate Excel file');
+        return;
+      }
+      
+      final file = File(filePath);
+      await file.writeAsBytes(fileBytes);
+      
+      _showSnackBar('Data exported successfully to: $filePath');
+    } catch (e) {
+      _showSnackBar('Error exporting data: ${e.toString()}');
+    }
+  }
+  
+  // Export history data
+  Future<void> _exportHistoryData(Excel excel) async {
+    // Create a sheet for history data
+    final sheet = excel['History'];
+    
+    // Add headers
+    final headers = ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'];
+    for (var i = 0; i < headers.length; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = TextCellValue(headers[i]);
+    }
+    
+    // Get history data
+    final historyData = await _dbHelper.getFilteredHistoryByDate(
+      fromDate: _startDate!,
+      toDate: _endDate!,
+    );
+    
+    // Add data rows
+    for (var i = 0; i < historyData.length; i++) {
+      final entry = historyData[i];
+      final rowIndex = i + 1; // +1 because headers are at row 0
+      
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
+          TextCellValue(DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt));
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(entry.currencyCode);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = TextCellValue(entry.operationType);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = DoubleCellValue(entry.rate);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = DoubleCellValue(entry.quantity);
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = DoubleCellValue(entry.total);
+    }
+    
+    // Auto fit columns
+    for (var i = 0; i < headers.length; i++) {
+      sheet.setColumnWidth(i, 15);
+    }
+  }
+  
+  // Export analytics data
+  Future<void> _exportAnalyticsData(Excel excel) async {
+    // Get analytics data
+    final analyticsData = await _dbHelper.calculateAnalytics(
+      startDate: _startDate,
+      endDate: _endDate,
+    );
+    
+    // Create summary sheet
+    final summarySheet = excel['Summary'];
+    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = TextCellValue('Period');
+    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = 
+        TextCellValue('${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}');
+    
+    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1)).value = TextCellValue('Total Profit');
+    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 1)).value = 
+        DoubleCellValue(analyticsData['total_profit'] as double);
+    
+    // Create currencies sheet
+    final currencySheet = excel['Currency Statistics'];
+    
+    // Add headers
+    final headers = [
+      'Currency', 'Avg Purchase Rate', 'Total Purchased', 'Purchase Amount',
+      'Avg Sale Rate', 'Total Sold', 'Sale Amount', 'Current Quantity', 'Profit'
+    ];
+    
+    for (var i = 0; i < headers.length; i++) {
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = TextCellValue(headers[i]);
+    }
+    
+    // Add data rows
+    final currencyStats = analyticsData['currency_stats'] as List;
+    for (var i = 0; i < currencyStats.length; i++) {
+      final stat = currencyStats[i];
+      final rowIndex = i + 1;
+      
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
+          TextCellValue(stat['currency'] as String);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['avg_purchase_rate'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['total_purchased'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['total_purchase_amount'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['avg_sale_rate'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['total_sold'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['total_sale_amount'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['current_quantity'] as double);
+      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = 
+          DoubleCellValue(stat['profit'] as double);
+    }
+    
+    // Auto fit columns
+    for (var i = 0; i < headers.length; i++) {
+      currencySheet.setColumnWidth(i, 15);
+    }
+
+    // Get daily profit data
+    final dailyProfitData = await _dbHelper.getDailyProfitData(
+      startDate: _startDate!,
+      endDate: _endDate!,
+    );
+
+    // Create daily profit sheet
+    final dailySheet = excel['Daily Profit'];
+    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = TextCellValue('Date');
+    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = TextCellValue('Profit');
+
+    for (var i = 0; i < dailyProfitData.length; i++) {
+      final day = dailyProfitData[i];
+      final rowIndex = i + 1;
+      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
+          TextCellValue(day['day'] as String);
+      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
+          DoubleCellValue(day['profit'] as double);
+    }
+
+    dailySheet.setColumnWidth(0, 15);
+    dailySheet.setColumnWidth(1, 15);
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }
