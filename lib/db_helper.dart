@@ -123,6 +123,21 @@ class DatabaseHelper {
     return currency;
   }
 
+  Future<int> updateHistory(HistoryModel history) async {
+    final db = await database;
+    return await db.update(
+      'history',
+      history.toMap(),
+      where: 'id = ?',
+      whereArgs: [history.id],
+    );
+  }
+
+  Future<int> deleteHistory(int id) async {
+    final db = await database;
+    return await db.delete('history', where: 'id = ?', whereArgs: [id]);
+  }
+
   /// Get currency by code
   Future<CurrencyModel?> getCurrency(String code) async {
     final db = await instance.database;
