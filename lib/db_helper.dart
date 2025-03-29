@@ -425,10 +425,12 @@ class DatabaseHelper {
   }) async {
     final db = await instance.database;
 
-    final whereParts = <String>['created_at BETWEEN ? AND ?'];
+    final whereParts = <String>['created_at >= ? AND created_at <= ?'];
     final whereArgs = <dynamic>[
       fromDate.toIso8601String(),
-      toDate.toIso8601String(),
+      toDate
+          .add(Duration(days: 1))
+          .toIso8601String(), // Include the entire end date
     ];
 
     if (currencyCode != null && currencyCode.isNotEmpty) {
@@ -540,18 +542,24 @@ class DatabaseHelper {
       final db = await database;
       List<Map<String, dynamic>> currencyStats = [];
       double totalProfit = 0.0;
+
+      // Build date filter conditions
       String dateFilter = '';
+      List<String> whereArgs = [];
+
       if (startDate != null || endDate != null) {
-        final startFilter =
-            startDate != null
-                ? "AND date >= '${startDate.toIso8601String()}'"
-                : '';
-        final endFilter =
-            endDate != null
-                ? "AND date <= '${endDate.add(const Duration(days: 1)).toIso8601String()}'"
-                : '';
-        dateFilter = " $startFilter $endFilter ";
+        dateFilter = 'WHERE ';
+        if (startDate != null) {
+          dateFilter += 'created_at >= ? ';
+          whereArgs.add(startDate.toIso8601String());
+        }
+        if (endDate != null) {
+          if (startDate != null) dateFilter += 'AND ';
+          dateFilter += 'created_at <= ?';
+          whereArgs.add(endDate.add(Duration(days: 1)).toIso8601String());
+        }
       }
+
       // Query to get purchase stats
       final purchaseStats = await db.rawQuery('''
       SELECT 
@@ -560,10 +568,11 @@ class DatabaseHelper {
         SUM(quantity) as total_purchased,
         SUM(total) as total_purchase_amount
       FROM history
-      WHERE operation_type = 'Purchase'
-      $dateFilter
+      ${dateFilter.isNotEmpty ? dateFilter + ' AND ' : 'WHERE '} 
+      operation_type = 'Purchase'
       GROUP BY currency_code
-    ''');
+    ''', whereArgs);
+
       // Query to get sale stats
       final saleStats = await db.rawQuery('''
       SELECT 
@@ -572,10 +581,11 @@ class DatabaseHelper {
         SUM(quantity) as total_sold,
         SUM(total) as total_sale_amount
       FROM history
-      WHERE operation_type = 'Sale'
-      $dateFilter
+      ${dateFilter.isNotEmpty ? dateFilter + ' AND ' : 'WHERE '}
+      operation_type = 'Sale'
       GROUP BY currency_code
-    ''');
+    ''', whereArgs);
+
       // Query to get current quantities
       final currentQuantities = await db.rawQuery('''
         SELECT code, quantity FROM currencies
@@ -704,10 +714,10 @@ class DatabaseHelper {
 
     // Add date range filtering if provided
     if (startDate != null && endDate != null) {
-      whereClause = 'WHERE created_at BETWEEN ? AND ?';
+      whereClause = 'WHERE created_at >= ? AND created_at <= ?';
       whereArgs.addAll([
         startDate.toIso8601String(),
-        endDate.toIso8601String(),
+        endDate.add(Duration(days: 1)).toIso8601String(),
       ]);
     }
 
@@ -749,10 +759,10 @@ class DatabaseHelper {
     var whereClause = '';
 
     if (startDate != null && endDate != null) {
-      whereClause = 'WHERE h.created_at BETWEEN ? AND ?';
+      whereClause = 'WHERE h.created_at >= ? AND h.created_at <= ?';
       whereArgs.addAll([
         startDate.toIso8601String(),
-        endDate.toIso8601String(),
+        endDate.add(Duration(days: 1)).toIso8601String(),
       ]);
     }
 
@@ -824,13 +834,13 @@ class DatabaseHelper {
             FROM history p 
             WHERE p.currency_code = h.currency_code 
             AND p.operation_type = 'Purchase'
-            AND p.created_at BETWEEN ? AND ?
+            AND p.created_at >= ? AND p.created_at <= ?
           ))
           ELSE 0 
           END
         ) as profit
       FROM history h
-      WHERE h.created_at BETWEEN ? AND ?
+      WHERE h.created_at >= ? AND h.created_at <= ?
       AND (h.operation_type = 'Purchase' OR h.operation_type = 'Sale')
       GROUP BY h.currency_code
       ORDER BY profit DESC
@@ -838,9 +848,9 @@ class DatabaseHelper {
     ''',
         [
           startDate.toIso8601String(),
-          endDate.toIso8601String(),
+          endDate.add(Duration(days: 1)).toIso8601String(),
           startDate.toIso8601String(),
-          endDate.toIso8601String(),
+          endDate.add(Duration(days: 1)).toIso8601String(),
           limit,
         ],
       );
@@ -849,7 +859,6 @@ class DatabaseHelper {
       rethrow;
     }
   }
-
   // =====================
   // USER OPERATIONS
   // =====================

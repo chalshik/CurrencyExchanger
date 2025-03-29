@@ -49,15 +49,33 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     if (picked != null) {
       setState(() {
         if (isStartDate) {
-          _startDate = picked;
+          _startDate = DateTime(picked.year, picked.month, picked.day);
           _startDateController.text = _formatDate(picked);
         } else {
-          _endDate = picked;
+          _endDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            23,
+            59,
+            59,
+            999,
+          );
           _endDateController.text = _formatDate(picked);
         }
       });
       _loadCurrencyStats();
     }
+  }
+
+  void _clearDateFilters() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+      _startDateController.clear();
+      _endDateController.clear();
+    });
+    _loadCurrencyStats();
   }
 
   String _formatDate(DateTime date) {
@@ -171,6 +189,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               readOnly: true,
             ),
           ),
+          if (_startDate != null || _endDate != null)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: _clearDateFilters,
+              tooltip: 'Clear filters',
+            ),
         ],
       ),
     );
@@ -258,7 +282,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final columnCount = isWideTablet ? 3 : (isTablet ? 2 : 1);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Statistics')),
       body: RefreshIndicator(
         onRefresh: _loadCurrencyStats,
         child:
