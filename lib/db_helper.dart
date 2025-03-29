@@ -520,35 +520,6 @@ class DatabaseHelper {
   // Helper method to update or create currency
 
   // Helper method to create or update currency
-  Future<void> _updateOrCreateCurrency(
-    Transaction txn,
-    String code,
-    double newBalance,
-  ) async {
-    final existing = await txn.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: [code],
-    );
-
-    if (existing.isEmpty) {
-      await txn.insert('currencies', {
-        'code': code,
-        'quantity': newBalance,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-    } else {
-      await txn.update(
-        'currencies',
-        {
-          'quantity': newBalance,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'code = ?',
-        whereArgs: [code],
-      );
-    }
-  }
 
   // =====================
   // HISTORY OPERATIONS
@@ -884,6 +855,45 @@ class DatabaseHelper {
   ''', whereArgs);
 
     return {'purchases': purchaseData, 'sales': saleData};
+  }
+
+  Future<List<Map<String, dynamic>>> getDailyProfitData({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final db = await database;
+
+    final results = await db.rawQuery(
+      '''
+    SELECT 
+      date(created_at) as day,
+      SUM(
+        CASE WHEN operation_type = 'Sale' 
+        THEN quantity * (rate - (
+          SELECT AVG(rate) 
+          FROM history h2 
+          WHERE h2.currency_code = history.currency_code 
+          AND h2.operation_type = 'Purchase'
+          AND date(h2.created_at) <= date(history.created_at)
+        ))
+        ELSE 0 
+        END
+      ) as profit
+    FROM history
+    WHERE date(created_at) BETWEEN date(?) AND date(?)
+    GROUP BY day
+    ORDER BY day ASC
+  ''',
+      [startDate.toIso8601String(), endDate.toIso8601String()],
+    );
+
+    // Convert all numbers to double and handle nulls
+    return results.map((row) {
+      return {
+        'day': row['day'] as String,
+        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
+      };
+    }).toList();
   }
 
   /// Get profit by currency for charts
