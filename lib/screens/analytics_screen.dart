@@ -3,7 +3,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
 
-enum ChartType { distribution, profit }
+enum ChartType { distribution, bar }
 
 enum TimeRange { day, week, month }
 
@@ -24,6 +24,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     const Duration(days: 7),
   );
   DateTime _selectedEndDate = DateTime.now();
+  String _activeTab = 'purchases'; // Track active tab for distribution view
 
   @override
   void initState() {
@@ -124,8 +125,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 switch (_selectedChartType) {
                   case ChartType.distribution:
                     return _buildDistributionChart(snapshot.data!);
-                  case ChartType.profit:
-                    return _buildProfitChart(snapshot.data!);
+                  case ChartType.bar:
+                    return _buildBarChart(snapshot.data!);
                 }
               },
             ),
@@ -173,23 +174,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
-          children:
-              ChartType.values.map((type) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: FilterChip(
-                    label: Text(_getChartTypeName(type)),
-                    selected: _selectedChartType == type,
-                    onSelected: (selected) {
-                      setState(() => _selectedChartType = type);
-                    },
-                    selectedColor: Theme.of(
-                      context,
-                    ).primaryColor.withOpacity(0.2),
-                    checkmarkColor: Theme.of(context).primaryColor,
-                  ),
-                );
-              }).toList(),
+          children: [
+            // Pie chart icon for distribution
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: FilterChip(
+                avatar: const Icon(Icons.pie_chart, size: 18),
+                label: const Text('Distribution'),
+                selected: _selectedChartType == ChartType.distribution,
+                onSelected: (selected) {
+                  setState(() => _selectedChartType = ChartType.distribution);
+                },
+                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                checkmarkColor: Theme.of(context).primaryColor,
+              ),
+            ),
+            // Bar chart icon
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: FilterChip(
+                avatar: const Icon(Icons.bar_chart, size: 18),
+                label: const Text('Bar Chart'),
+                selected: _selectedChartType == ChartType.bar,
+                onSelected: (selected) {
+                  setState(() => _selectedChartType = ChartType.bar);
+                },
+                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                checkmarkColor: Theme.of(context).primaryColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -211,72 +225,191 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             (data['sales'] as List)
                 .where((item) => item['currency_code'] != 'SOM')
                 .toList();
-        return data;
-      case ChartType.profit:
-        final profitData = await _dbHelper.getMostProfitableCurrencies(
+        // Get profit data for the tab
+        data['profit'] = await _dbHelper.getMostProfitableCurrencies(
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
-        return {
-          'summary': profitData ?? [], // Provide empty list if null
-          'total': _calculateTotalProfit(profitData ?? []),
-        };
+        return data;
+      case ChartType.bar:
+        return await _dbHelper.getDailyProfitData(
+          startDate: _selectedStartDate,
+          endDate: _selectedEndDate,
+        );
     }
   }
 
-  double _calculateTotalProfit(List<Map<String, dynamic>> profitData) {
-    return profitData.fold<double>(
-      0,
-      (sum, item) => sum + (item['profit'] as double? ?? 0.0),
+  Widget _buildBarChart(dynamic data) {
+    final dailyData = List<Map<String, dynamic>>.from(data);
+
+    if (dailyData.isEmpty) {
+      return const Center(
+        child: Text('No profit data available', style: TextStyle(fontSize: 18)),
+      );
+    }
+
+    // Convert data to ensure proper types
+    final chartData =
+        dailyData.map((item) {
+          return {
+            'day': item['day'] as String,
+            'profit': (item['profit'] as num?)?.toDouble() ?? 0.0,
+          };
+        }).toList();
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text('Daily Profit', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Expanded(
+              child: SfCartesianChart(
+                primaryXAxis: CategoryAxis(title: AxisTitle(text: 'Date')),
+                primaryYAxis: NumericAxis(
+                  title: AxisTitle(text: 'Profit (SOM)'),
+                ),
+                tooltipBehavior: TooltipBehavior(enable: true),
+                series: <CartesianSeries>[
+                  ColumnSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (data, _) => data['day'],
+                    yValueMapper: (data, _) => data['profit'],
+                    name: 'Profit',
+                    color: Colors.blue,
+                    dataLabelSettings: const DataLabelSettings(
+                      isVisible: true,
+                      labelAlignment: ChartDataLabelAlignment.top,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                'Total Profit: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(_calculateTotalProfit(chartData))}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildDistributionChart(dynamic data) {
     final purchases = List<Map<String, dynamic>>.from(data['purchases']);
     final sales = List<Map<String, dynamic>>.from(data['sales']);
+    final profitData = List<Map<String, dynamic>>.from(data['profit'] ?? []);
+    final totalProfit = _calculateTotalProfit(profitData);
 
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          const TabBar(tabs: [Tab(text: 'PURCHASES'), Tab(text: 'SALES')]),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildPieChart(
-                  title: 'Purchased Currencies',
-                  data: purchases,
-                  valueKey: 'total_value',
-                  labelKey: 'currency_code',
-                  isCurrency: true,
-                ),
-                _buildPieChart(
-                  title: 'Sold Currencies',
-                  data: sales,
-                  valueKey: 'total_value',
-                  labelKey: 'currency_code',
-                  isCurrency: true,
-                ),
-              ],
+    return Column(
+      children: [
+        // Tab bar with purchases, sales, and profit
+        SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Expanded(child: _buildDistributionTab('purchases', 'Purchases')),
+              Expanded(child: _buildDistributionTab('sales', 'Sales')),
+              Expanded(child: _buildDistributionTab('profit', 'Profit')),
+            ],
+          ),
+        ),
+        // Chart area
+        Expanded(
+          child: _buildActiveTabContent(
+            activeTab: _activeTab,
+            purchases: purchases,
+            sales: sales,
+            profitData: profitData,
+            totalProfit: totalProfit,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDistributionTab(String tabName, String label) {
+    return InkWell(
+      onTap: () => setState(() => _activeTab = tabName),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color:
+                  _activeTab == tabName
+                      ? Theme.of(context).primaryColor
+                      : Colors.transparent,
+              width: 2,
             ),
           ),
-        ],
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight:
+                  _activeTab == tabName ? FontWeight.bold : FontWeight.normal,
+              color:
+                  _activeTab == tabName
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildProfitChart(dynamic data) {
-    final summaryData = List<Map<String, dynamic>>.from(data['summary'] ?? []);
-    final totalProfit = data['total'] as double? ?? 0.0;
+  Widget _buildActiveTabContent({
+    required String activeTab,
+    required List<Map<String, dynamic>> purchases,
+    required List<Map<String, dynamic>> sales,
+    required List<Map<String, dynamic>> profitData,
+    required double totalProfit,
+  }) {
+    switch (activeTab) {
+      case 'purchases':
+        return _buildPieChart(
+          title: 'Purchased Currencies',
+          data: purchases,
+          valueKey: 'total_value',
+          labelKey: 'currency_code',
+          isCurrency: true,
+        );
+      case 'sales':
+        return _buildPieChart(
+          title: 'Sold Currencies',
+          data: sales,
+          valueKey: 'total_value',
+          labelKey: 'currency_code',
+          isCurrency: true,
+        );
+      case 'profit':
+        return _buildProfitPieChart(profitData, totalProfit);
+      default:
+        return const Center(child: Text('No data available'));
+    }
+  }
 
-    return _buildProfitPieChart(summaryData, totalProfit);
+  double _calculateTotalProfit(List<Map<String, dynamic>> profitData) {
+    return profitData.fold<double>(
+      0,
+      (sum, item) => sum + ((item['profit'] as num?)?.toDouble() ?? 0.0),
+    );
   }
 
   Widget _buildProfitPieChart(
     List<Map<String, dynamic>> data,
     double totalProfit,
   ) {
-    // If no data, show no profit message
     if (data.isEmpty) {
       return const Center(
         child: Text('No profit data available', style: TextStyle(fontSize: 18)),
@@ -285,7 +418,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     return Column(
       children: [
-        // Main profit pie chart (with all currencies)
         Expanded(
           child: _buildPieChart(
             title: 'Total Profit by Currency',
@@ -298,7 +430,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             showTotal: true,
           ),
         ),
-        // Net profit
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Card(
@@ -338,7 +469,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     double? total,
     bool showTotal = false,
   }) {
-    // If no data, show message
     if (data.isEmpty) {
       return Center(
         child: Text(
@@ -348,7 +478,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       );
     }
 
-    // Use provided total or calculate if not provided
     final displayTotal =
         total ??
         data.fold<double>(
@@ -382,7 +511,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     dataSource: data,
                     xValueMapper: (data, _) => data[labelKey],
                     yValueMapper: (data, _) {
-                      // Add null check and default to 0.0 if null
                       final value = data[valueKey];
                       return value is double ? value : 0.0;
                     },
@@ -392,7 +520,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       useSeriesColor: true,
                     ),
                     enableTooltip: true,
-                    // Color mapping for profit (green) vs loss (red)
                     pointColorMapper:
                         isProfit
                             ? (data, _) {
@@ -410,14 +537,5 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ),
       ),
     );
-  }
-
-  String _getChartTypeName(ChartType type) {
-    switch (type) {
-      case ChartType.distribution:
-        return 'Distribution';
-      case ChartType.profit:
-        return 'Profit';
-    }
   }
 }
