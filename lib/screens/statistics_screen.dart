@@ -309,77 +309,78 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final isTablet = screenSize.width >= 600;
     final isLandscape = screenSize.width > screenSize.height;
     final isWideTablet = isTablet && isLandscape;
-    
+
     // Determine column count based on screen width
     final columnCount = isWideTablet ? 3 : (isTablet ? 2 : 1);
-    
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadCurrencyStats,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24, top: 16),
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Title with refresh button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Statistics & Balance',
-                            style: TextStyle(
-                              fontSize: isTablet ? 24 : 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade800,
+        child:
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 24, top: 16),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Title with refresh button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Statistics & Balance',
+                              style: TextStyle(
+                                fontSize: isTablet ? 24 : 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade800,
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh),
-                            onPressed: _loadCurrencyStats,
-                            tooltip: 'Refresh Statistics',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Date filter row
-                    _buildDateFilterRow(),
-                    
-                    // Total profit card
-                    isWideTablet
-                        ? _buildWideTabletSummary()
-                        : _buildSummaryCards(),
-                    
-                    // Currency statistics section
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Text(
-                        'Currency Statistics',
-                        style: TextStyle(
-                          fontSize: isTablet ? 20 : 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
+                            IconButton(
+                              icon: const Icon(Icons.refresh),
+                              onPressed: _loadCurrencyStats,
+                              tooltip: 'Refresh Statistics',
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    
-                    // Currency display: table for tablets, list for mobile
-                    isTablet
-                        ? _buildCurrencyTable()
-                        : _buildCurrencyCardsList(),
-                  ],
+                      const SizedBox(height: 8),
+
+                      // Date filter row
+                      _buildDateFilterRow(),
+
+                      // Total profit card
+                      isWideTablet
+                          ? _buildWideTabletSummary()
+                          : _buildSummaryCards(),
+
+                      // Currency statistics section
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          'Currency Statistics',
+                          style: TextStyle(
+                            fontSize: isTablet ? 20 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+
+                      // Currency display: table for tablets, list for mobile
+                      isTablet
+                          ? _buildCurrencyTable()
+                          : _buildCurrencyCardsList(),
+                    ],
+                  ),
                 ),
-              ),
       ),
     );
   }
-  
+
   // Wide tablet layout with all summary cards in one row
   Widget _buildWideTabletSummary() {
     return Card(
@@ -423,7 +424,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
             ),
             const SizedBox(width: 16),
-            
+
             // Foreign Currency Value
             Expanded(
               child: Container(
@@ -457,7 +458,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
             ),
             const SizedBox(width: 16),
-            
+
             // Total Profit
             Expanded(
               child: Container(
@@ -483,9 +484,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: _totalProfit >= 0 
-                            ? Colors.green.shade800
-                            : Colors.red.shade800,
+                        color:
+                            _totalProfit >= 0
+                                ? Colors.green.shade800
+                                : Colors.red.shade800,
                       ),
                     ),
                   ],
@@ -497,7 +499,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
     );
   }
-  
+
   // Grid layout for currency cards on tablets
   Widget _buildCurrencyCardsGrid(int columnCount) {
     return Padding(
@@ -518,12 +520,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
     );
   }
-  
+
   // Table layout for tablet view
   Widget _buildCurrencyTable() {
     // Filter out SOM from the display list for table
-    final currenciesToDisplay = _currencyStats.where((stat) => stat['currency'] != 'SOM').toList();
-    
+    final currenciesToDisplay =
+        _currencyStats.where((stat) => stat['currency'] != 'SOM').toList();
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 4,
@@ -555,7 +558,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 ],
               ),
             ),
-            
+
             // Table body
             Container(
               decoration: BoxDecoration(
@@ -569,21 +572,26 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: currenciesToDisplay.length,
-                separatorBuilder: (context, index) => Divider(
-                  height: 1,
-                  color: Colors.grey.shade300,
-                ),
+                separatorBuilder:
+                    (context, index) =>
+                        Divider(height: 1, color: Colors.grey.shade300),
                 itemBuilder: (context, index) {
                   final stat = currenciesToDisplay[index];
-                  final avgPurchaseRate = stat['avg_purchase_rate'] as double? ?? 0.0;
+                  final avgPurchaseRate =
+                      stat['avg_purchase_rate'] as double? ?? 0.0;
                   final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
-                  final totalPurchased = stat['total_purchased'] as double? ?? 0.0;
+                  final totalPurchased =
+                      stat['total_purchased'] as double? ?? 0.0;
                   final totalSold = stat['total_sold'] as double? ?? 0.0;
-                  final currentQuantity = stat['current_quantity'] as double? ?? 0.0;
+                  final currentQuantity =
+                      stat['current_quantity'] as double? ?? 0.0;
                   final profit = stat['profit'] as double? ?? 0.0;
-                  
+
                   return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 8,
+                    ),
                     color: index % 2 == 0 ? Colors.grey.shade50 : Colors.white,
                     child: Row(
                       children: [
@@ -594,45 +602,45 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           color: Colors.blue.shade800,
                           flex: 2,
                         ),
-                        
+
                         // Balance
                         _buildTableCell(
                           currentQuantity.toStringAsFixed(2),
                           bold: true,
                           flex: 2,
                         ),
-                        
+
                         // Purchased
                         _buildTableCell(
                           totalPurchased.toStringAsFixed(2),
                           flex: 2,
                         ),
-                        
+
                         // Sold
-                        _buildTableCell(
-                          totalSold.toStringAsFixed(2),
-                          flex: 2,
-                        ),
-                        
+                        _buildTableCell(totalSold.toStringAsFixed(2), flex: 2),
+
                         // Avg Buy Rate
                         _buildTableCell(
                           avgPurchaseRate.toStringAsFixed(4),
                           color: Colors.red.shade700,
                           flex: 2,
                         ),
-                        
+
                         // Avg Sell Rate
                         _buildTableCell(
                           avgSaleRate.toStringAsFixed(4),
                           color: Colors.green.shade700,
                           flex: 2,
                         ),
-                        
+
                         // Profit
                         _buildTableCell(
                           formatProfit(profit),
                           bold: true,
-                          color: profit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                          color:
+                              profit >= 0
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
                           flex: 2,
                         ),
                       ],
@@ -641,7 +649,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 },
               ),
             ),
-            
+
             // Table footer with totals
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -656,37 +664,40 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               child: Row(
                 children: [
                   _buildTableCell('TOTAL', bold: true, flex: 2),
-                  
+
                   // Total Balance
                   _buildTableCell(
                     _calculateTotal('current_quantity').toStringAsFixed(2),
                     bold: true,
                     flex: 2,
                   ),
-                  
+
                   // Total Purchased
                   _buildTableCell(
                     _calculateTotal('total_purchased').toStringAsFixed(2),
                     bold: true,
                     flex: 2,
                   ),
-                  
+
                   // Total Sold
                   _buildTableCell(
                     _calculateTotal('total_sold').toStringAsFixed(2),
                     bold: true,
                     flex: 2,
                   ),
-                  
+
                   // Empty cells for avg rates
                   _buildTableCell('', flex: 2),
                   _buildTableCell('', flex: 2),
-                  
+
                   // Total Profit
                   _buildTableCell(
                     formatProfit(_totalProfit),
                     bold: true,
-                    color: _totalProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                    color:
+                        _totalProfit >= 0
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
                     flex: 2,
                   ),
                 ],
@@ -697,7 +708,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
     );
   }
-  
+
   // Helper for building table header cells
   Widget _buildTableHeaderCell(String text, {int flex = 1}) {
     return Expanded(
@@ -713,7 +724,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
     );
   }
-  
+
   // Helper for building table cells
   Widget _buildTableCell(
     String text, {
@@ -725,7 +736,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     if (text == "-0.00") {
       text = "0.00";
     }
-    
+
     return Expanded(
       flex: flex,
       child: Text(
@@ -739,14 +750,128 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
     );
   }
-  
+
   // Helper to calculate totals for the specified field
   double _calculateTotal(String field) {
     return _currencyStats
         .where((stat) => stat['currency'] != 'SOM')
         .fold(0.0, (sum, stat) => sum + (stat[field] as double? ?? 0.0));
   }
-  
+
+  Widget _buildCurrencyCard(Map<String, dynamic> stat) {
+    final isSom = stat['currency'] == 'SOM';
+    final avgPurchaseRate = stat['avg_purchase_rate'] as double? ?? 0.0;
+    final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
+    final totalPurchased = stat['total_purchased'] as double? ?? 0.0;
+    final totalSold = stat['total_sold'] as double? ?? 0.0;
+    final currentQuantity = stat['current_quantity'] as double? ?? 0.0;
+    final profit = stat['profit'] as double? ?? 0.0;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  stat['currency'].toString(),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isSom ? Colors.blue : Colors.blue.shade800,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        profit >= 0
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    formatProfit(profit),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color:
+                          profit >= 0
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Current Balance
+            _buildStatRow(
+              'Current Balance',
+              '${currentQuantity.toStringAsFixed(2)} ${stat['currency']}',
+            ),
+            const Divider(height: 16),
+
+            // Purchase Info
+            Text(
+              'Purchase Info',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              'Total Purchased',
+              '${totalPurchased.toStringAsFixed(2)} ${stat['currency']}',
+            ),
+            _buildStatRow(
+              'Avg Purchase Rate',
+              avgPurchaseRate.toStringAsFixed(4),
+            ),
+            _buildStatRow(
+              'Total Spent',
+              '${(avgPurchaseRate * totalPurchased).toStringAsFixed(2)} SOM',
+            ),
+            const SizedBox(height: 8),
+
+            // Sale Info (only show if not SOM)
+            if (!isSom) ...[
+              Text(
+                'Sale Info',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildStatRow(
+                'Total Sold',
+                '${totalSold.toStringAsFixed(2)} ${stat['currency']}',
+              ),
+              _buildStatRow('Avg Sale Rate', avgSaleRate.toStringAsFixed(4)),
+              _buildStatRow(
+                'Total Earned',
+                '${(avgSaleRate * totalSold).toStringAsFixed(2)} SOM',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   // Modified currency card for grid layout with more compact stats
   Widget _buildCurrencyCardForGrid(Map<String, dynamic> stat) {
     final isSom = stat['currency'] == 'SOM';
