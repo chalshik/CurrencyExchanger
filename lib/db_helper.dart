@@ -123,19 +123,154 @@ class DatabaseHelper {
     return currency;
   }
 
-  Future<int> updateHistory(HistoryModel history) async {
+  Future<int> updateHistory({
+    required HistoryModel newHistory,
+    required HistoryModel oldHistory,
+  }) async {
     final db = await database;
-    return await db.update(
-      'history',
-      history.toMap(),
-      where: 'id = ?',
-      whereArgs: [history.id],
+
+    return await db.transaction((txn) async {
+      // 1. First revert the old transaction's effect on balances
+      await _revertTransactionEffect(txn, oldHistory);
+
+      // 2. Apply the new transaction's effect on balances
+      await _applyTransactionEffect(txn, newHistory);
+
+      // 3. Update the history record
+      return await txn.update(
+        'history',
+        newHistory.toMap(),
+        where: 'id = ?',
+        whereArgs: [newHistory.id],
+      );
+    });
+  }
+
+  Future<int> deleteHistory(dynamic history) async {
+    final db = await database;
+
+    // Handle both HistoryModel or just ID
+    final id = history is HistoryModel ? history.id : history as int;
+
+    return await db.transaction((txn) async {
+      // If we have full HistoryModel, revert its effect
+      if (history is HistoryModel) {
+        await _revertTransactionEffect(txn, history);
+      }
+
+      return await txn.delete('history', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<void> _updateCurrencyBalance(
+    Transaction txn,
+    String currencyCode,
+    double amount, {
+    required bool isAddition,
+  }) async {
+    // Get current balance
+    final result = await txn.query(
+      'currencies',
+      where: 'code = ?',
+      whereArgs: [currencyCode],
+    );
+
+    if (result.isEmpty) {
+      if (currencyCode != 'SOM' && isAddition) {
+        // Create new currency entry if it doesn't exist (for non-SOM currencies)
+        await txn.insert('currencies', {
+          'code': currencyCode,
+          'quantity': amount,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+      return;
+    }
+
+    final currentBalance = (result.first['quantity'] as num).toDouble();
+    final newBalance =
+        isAddition ? currentBalance + amount : currentBalance - amount;
+
+    // Update balance
+    await txn.update(
+      'currencies',
+      {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'code = ?',
+      whereArgs: [currencyCode],
     );
   }
 
-  Future<int> deleteHistory(int id) async {
-    final db = await database;
-    return await db.delete('history', where: 'id = ?', whereArgs: [id]);
+  Future<void> _revertTransactionEffect(
+    Transaction txn,
+    HistoryModel history,
+  ) async {
+    if (history.operationType == 'Purchase') {
+      // For purchase reversal:
+      // - Add back the SOM that was spent
+      // - Deduct the currency that was bought
+      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
+      await _updateCurrencyBalance(
+        txn,
+        history.currencyCode,
+        history.quantity,
+        isAddition: false,
+      );
+    } else if (history.operationType == 'Sale') {
+      // For sale reversal:
+      // - Deduct the SOM that was gained
+      // - Add back the currency that was sold
+      await _updateCurrencyBalance(
+        txn,
+        'SOM',
+        history.total,
+        isAddition: false,
+      );
+      await _updateCurrencyBalance(
+        txn,
+        history.currencyCode,
+        history.quantity,
+        isAddition: true,
+      );
+    }
+    // Deposits don't need reversal as they only affect SOM
+  }
+
+  Future<void> _applyTransactionEffect(
+    Transaction txn,
+    HistoryModel history,
+  ) async {
+    if (history.operationType == 'Purchase') {
+      // For purchase:
+      // - Deduct the SOM being spent
+      // - Add the currency being bought
+      await _updateCurrencyBalance(
+        txn,
+        'SOM',
+        history.total,
+        isAddition: false,
+      );
+      await _updateCurrencyBalance(
+        txn,
+        history.currencyCode,
+        history.quantity,
+        isAddition: true,
+      );
+    } else if (history.operationType == 'Sale') {
+      // For sale:
+      // - Add the SOM being gained
+      // - Deduct the currency being sold
+      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
+      await _updateCurrencyBalance(
+        txn,
+        history.currencyCode,
+        history.quantity,
+        isAddition: false,
+      );
+    } else if (history.operationType == 'Deposit') {
+      // For deposit:
+      // - Just add to SOM balance
+      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
+    }
   }
 
   /// Get currency by code
@@ -383,18 +518,6 @@ class DatabaseHelper {
   }
 
   // Helper method to update or create currency
-  Future<void> _updateCurrencyBalance(
-    Transaction txn,
-    String code,
-    double newBalance,
-  ) async {
-    await txn.update(
-      'currencies',
-      {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
-      where: 'code = ?',
-      whereArgs: [code],
-    );
-  }
 
   // Helper method to create or update currency
   Future<void> _updateOrCreateCurrency(

@@ -184,7 +184,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  await _dbHelper.deleteHistory(entry.id!);
+                  await _dbHelper.deleteHistory(
+                    entry,
+                  ); // Pass full HistoryModel
                   if (mounted) {
                     Navigator.pop(context);
                     _loadHistory();
@@ -198,6 +200,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ],
           ),
     );
+  }
+
+  void _confirmDelete(HistoryModel entry) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Transaction'),
+            content: const Text(
+              'Are you sure you want to delete this transaction?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldDelete == true) {
+      await _dbHelper.deleteHistory(entry);
+      if (mounted) {
+        _loadHistory();
+      }
+    }
+  }
+
+  void _saveEditedEntry(HistoryModel oldEntry, HistoryModel newEntry) async {
+    await _dbHelper.updateHistory(newHistory: newEntry, oldHistory: oldEntry);
+    if (mounted) {
+      Navigator.pop(context);
+      _loadHistory();
+    }
   }
 
   Future<void> _showEditDialog(BuildContext context, HistoryModel entry) async {
@@ -384,11 +427,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         createdAt: selectedDate,
                       );
 
-                      await _dbHelper.updateHistory(updatedEntry);
-                      if (mounted) {
-                        Navigator.pop(context);
-                        _loadHistory();
-                      }
+                      _saveEditedEntry(entry, updatedEntry);
                     },
                     child: const Text('Save'),
                   ),
