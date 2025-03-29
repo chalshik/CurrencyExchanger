@@ -25,6 +25,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void initState() {
     super.initState();
+    // Set default date to today
+    final today = DateTime.now();
+    _startDate = DateTime(today.year, today.month, today.day);
+    _endDate = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    _startDateController.text = _formatDate(_startDate!);
+    _endDateController.text = _formatDate(_endDate!);
     _loadCurrencyStats();
   }
 
@@ -38,7 +44,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: isStartDate ? _startDate ?? DateTime.now() : _endDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
@@ -55,7 +61,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             23,
             59,
             59,
-            999,
           );
           _endDateController.text = _formatDate(picked);
         }
@@ -75,7 +80,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year.toString().substring(2, 4)}";
   }
 
   Future<void> _loadCurrencyStats() async {

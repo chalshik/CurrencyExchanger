@@ -169,42 +169,55 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildChartTypeSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children: [
-            // Pie chart icon for distribution
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: FilterChip(
-                avatar: const Icon(Icons.pie_chart, size: 18),
-                label: const Text('Distribution'),
-                selected: _selectedChartType == ChartType.distribution,
-                onSelected: (selected) {
-                  setState(() => _selectedChartType = ChartType.distribution);
-                },
-                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                checkmarkColor: Theme.of(context).primaryColor,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Pie chart icon for distribution
+          Material(
+            color: _selectedChartType == ChartType.distribution 
+                ? Theme.of(context).primaryColor.withOpacity(0.2) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _selectedChartType = ChartType.distribution),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(
+                  Icons.pie_chart,
+                  size: 24,
+                  color: _selectedChartType == ChartType.distribution
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+                ),
               ),
             ),
-            // Bar chart icon
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: FilterChip(
-                avatar: const Icon(Icons.bar_chart, size: 18),
-                label: const Text('Bar Chart'),
-                selected: _selectedChartType == ChartType.bar,
-                onSelected: (selected) {
-                  setState(() => _selectedChartType = ChartType.bar);
-                },
-                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                checkmarkColor: Theme.of(context).primaryColor,
+          ),
+          const SizedBox(width: 16),
+          // Bar chart icon
+          Material(
+            color: _selectedChartType == ChartType.bar 
+                ? Theme.of(context).primaryColor.withOpacity(0.2) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => setState(() => _selectedChartType = ChartType.bar),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(
+                  Icons.bar_chart,
+                  size: 24,
+                  color: _selectedChartType == ChartType.bar
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
