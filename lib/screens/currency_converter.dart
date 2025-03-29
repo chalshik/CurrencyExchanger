@@ -57,6 +57,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   // Track which field is currently active for the numpad
   bool _isRateFieldActive = true;
 
+  // Track numpad visibility for tablet portrait mode
+  bool _isNumpadVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -166,13 +169,114 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildCurrencyInputSection() {
-    // Get screen width to adjust sizing
+    // Get screen size to adjust sizing
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
+    final isPortrait = screenSize.height > screenSize.width;
     final fontSize = isSmallScreen ? 13.0 : 14.0;
     final iconSize = isSmallScreen ? 18.0 : 24.0;
     final verticalPadding = isSmallScreen ? 12.0 : 16.0;
 
+    // For portrait mode (both tablet and mobile), arrange fields in a row
+    if (isPortrait) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Exchange Rate Field
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _operationType == 'Purchase'
+                          ? 'Buy Rate (SOM per 1 $_selectedCurrency)'
+                          : 'Sell Rate (SOM per 1 $_selectedCurrency)',
+                      style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _currencyController,
+                      focusNode: _currencyFocusNode,
+                      keyboardType: TextInputType.number,
+                      readOnly: widget.isWideLayout,
+                      showCursor: true,
+                      decoration: InputDecoration(
+                        labelText: 'Exchange Rate',
+                        hintText:
+                            _operationType == 'Purchase'
+                                ? 'Enter buy rate'
+                                : 'Enter sell rate',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        prefixIcon: Icon(
+                          Icons.attach_money,
+                          color: Colors.blue,
+                          size: iconSize,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: verticalPadding,
+                        ),
+                      ),
+                      onChanged: (_) => _calculateTotal(),
+                      style: TextStyle(fontSize: fontSize),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Quantity Field
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amount to ${_operationType == 'Purchase' ? 'buy' : 'sell'}',
+                      style: TextStyle(fontSize: fontSize, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _quantityController,
+                      focusNode: _quantityFocusNode,
+                      keyboardType: TextInputType.number,
+                      readOnly: widget.isWideLayout,
+                      showCursor: true,
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        hintText: 'Enter amount in $_selectedCurrency',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        prefixIcon: Icon(Icons.numbers, color: Colors.blue, size: iconSize),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: verticalPadding,
+                        ),
+                      ),
+                      onChanged: (_) => _calculateTotal(),
+                      style: TextStyle(fontSize: fontSize),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+      );
+    }
+    
+    // Original code for landscape mode
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -602,6 +706,64 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     double standardFontSize,
     bool isTablet,
   ) {
+    final screenSize = MediaQuery.of(context).size;
+    final isPortrait = screenSize.height > screenSize.width;
+
+    // For tablet in portrait orientation:
+    if (isPortrait) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Currency Exchange',
+                  style: TextStyle(
+                    fontSize: headerFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+              // Toggle numpad button for tablet portrait mode
+              _buildNumpadToggleButton(),
+            ],
+          ),
+          SizedBox(height: spacing),
+          
+          _buildCurrencySelector(),
+          SizedBox(height: spacing),
+          
+          // Exchange rate and quantity in one row for portrait mode
+          _buildCurrencyInputSection(),
+          
+          // Total sum display
+          _buildTotalSumCard(),
+          SizedBox(height: spacing),
+          
+          // Position numpad after total sum (with show/hide functionality)
+          if (isTablet) _buildPortraitNumpad(),
+          SizedBox(height: spacing),
+          
+          // Operation type and finish button
+          Text(
+            'Operation Type:',
+            style: TextStyle(
+              fontSize: standardFontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade800,
+            ),
+          ),
+          SizedBox(height: 4),
+          _buildOperationTypeButtons(),
+          SizedBox(height: spacing),
+          _buildFinishButton(),
+        ],
+      );
+    }
+
+    // Landscape tablet layout with positioned finish button
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -642,9 +804,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               children: [
                                 _buildCurrencyInputSection(),
                                 SizedBox(height: spacing),
-                                _buildCurrencySelector(),
-                                SizedBox(height: spacing),
                                 _buildTotalSumCard(),
+                                SizedBox(height: spacing),
+                                _buildCurrencySelector(),
                                 SizedBox(height: spacing),
                                 Text(
                                   'Operation Type:',
@@ -729,17 +891,100 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
+  // Original single-column layout for mobile
+  Widget _buildMobileLayout(
+    BuildContext context,
+    double spacing,
+    double headerFontSize,
+    double standardFontSize,
+  ) {
+    final isPortrait = MediaQuery.of(context).size.height > MediaQuery.of(context).size.width;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Currency Exchange',
+          style: TextStyle(
+            fontSize: headerFontSize,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue.shade800,
+          ),
+        ),
+        SizedBox(height: spacing),
+        
+        // Currency selector (e.g. USD, EUR)
+        _buildCurrencySelector(),
+        SizedBox(height: spacing),
+        
+        // Input fields (now organized in a row for portrait mode)
+        _buildCurrencyInputSection(),
+        
+        // Total amount card
+        _buildTotalSumCard(),
+        SizedBox(height: spacing),
+        
+        // Operation type buttons (Buy/Sell)
+        Text(
+          'Operation Type:',
+          style: TextStyle(
+            fontSize: standardFontSize,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue.shade800,
+          ),
+        ),
+        SizedBox(height: 4),
+        _buildOperationTypeButtons(),
+        SizedBox(height: spacing),
+        
+        // Submit button
+        _buildFinishButton(),
+      ],
+    );
+  }
+
+  // Add method to create toggle numpad button
+  Widget _buildNumpadToggleButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ElevatedButton.icon(
+        onPressed: () {
+          setState(() {
+            _isNumpadVisible = !_isNumpadVisible;
+          });
+        },
+        icon: Icon(
+          _isNumpadVisible ? Icons.keyboard_hide : Icons.keyboard,
+          size: 20,
+        ),
+        label: Text(_isNumpadVisible ? 'Hide Numpad' : 'Show Numpad'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey.shade200,
+          foregroundColor: Colors.grey.shade800,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Special numpad layout for portrait mode with buttons on the side
   Widget _buildPortraitNumpad() {
+    // If numpad is hidden, return empty container
+    if (!_isNumpadVisible) {
+      return const SizedBox.shrink();
+    }
+    
     final activeColor =
         _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
     final activeBorder =
         _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
 
-    // Calculate optimal button size based on available width - make buttons larger
+    // Calculate optimal button size - make buttons smaller
     final screenWidth = MediaQuery.of(context).size.width;
-    final buttonSize =
-        (screenWidth - 200) / 8; // Make buttons larger (was -350)
+    final buttonSize = (screenWidth - 250) / 8; // Smaller buttons
 
     return Container(
       key: const ValueKey('portrait_numpad'),
@@ -754,8 +999,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(4), // Minimal padding
-      margin: const EdgeInsets.symmetric(vertical: 4), // Minimal margin
+      padding: const EdgeInsets.all(8), // More padding
+      margin: const EdgeInsets.symmetric(vertical: 8), // More margin
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -763,9 +1008,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(
-              vertical: 4,
-              horizontal: 6,
-            ), // Tiny padding
+              vertical: 8,
+              horizontal: 12,
+            ), // More padding
             decoration: BoxDecoration(
               color: activeColor,
               borderRadius: BorderRadius.circular(6),
@@ -782,10 +1027,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: activeBorder,
-                          fontSize: 10, // Slight increase
+                          fontSize: 12, // Slightly larger
                         ),
                       ),
-                      const SizedBox(height: 1), // Minimal spacing
+                      const SizedBox(height: 4), // More spacing
                       Text(
                         _isRateFieldActive
                             ? (_currencyController.text.isEmpty
@@ -796,7 +1041,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                 : _quantityController.text),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 12, // Slight increase
+                          fontSize: 14, // Slightly larger
                         ),
                       ),
                     ],
@@ -805,8 +1050,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ],
             ),
           ),
-          const SizedBox(height: 4), // Minimal spacing
-          // Numpad grid with side buttons - extremely compact layout
+          const SizedBox(height: 8), // More spacing
+          // Numpad grid with side buttons - more spacing between buttons
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -821,68 +1066,64 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPortraitNumpadButton('7', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('8', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('9', size: buttonSize),
                     ],
                   ),
-                  const SizedBox(height: 1), // Minimal spacing
+                  const SizedBox(height: 12), // More spacing
                   // Second row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPortraitNumpadButton('4', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('5', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('6', size: buttonSize),
                     ],
                   ),
-                  const SizedBox(height: 1), // Minimal spacing
+                  const SizedBox(height: 12), // More spacing
                   // Third row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPortraitNumpadButton('1', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('2', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('3', size: buttonSize),
                     ],
                   ),
-                  const SizedBox(height: 1), // Minimal spacing
-                  // Fourth row
+                  const SizedBox(height: 12), // More spacing
+                  // Fourth row (replaced backspace with 00)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPortraitNumpadButton('.', size: buttonSize),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 12), // More spacing
                       _buildPortraitNumpadButton('0', size: buttonSize),
-                      const SizedBox(width: 6),
-                      _buildPortraitNumpadButton(
-                        '⌫',
-                        size: buttonSize,
-                        isSpecial: true,
-                      ),
+                      const SizedBox(width: 12), // More spacing
+                      _buildPortraitNumpadButton('00', size: buttonSize),
                     ],
                   ),
                 ],
               ),
 
-              // Side buttons
-              const SizedBox(width: 2), // Minimal spacing
+              // Side buttons (same size as other buttons, no text)
+              const SizedBox(width: 12), // More spacing
               Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Toggle button
                   SizedBox(
-                    width: 30, // Tiny width
-                    height: buttonSize * 2 + 1, // Reduced height
+                    width: buttonSize,
+                    height: buttonSize,
                     child: ElevatedButton(
                       onPressed: _toggleActiveField,
                       style: ElevatedButton.styleFrom(
@@ -890,59 +1131,52 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            4,
-                          ), // Smaller radius
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.swap_vert,
-                            size: 8, // Tiny icon
-                          ),
-                          const SizedBox(height: 1), // Minimal spacing
-                          Text(
-                            'Switch',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 6), // Tiny text
-                          ),
-                        ],
-                      ),
+                      child: const Icon(Icons.swap_vert, size: 20),
                     ),
                   ),
-                  const SizedBox(height: 2), // Minimal spacing
-                  // Clear button
+                  const SizedBox(height: 12), // More spacing
+                  // Backspace button (was previously clear button - swapped positions)
                   SizedBox(
-                    width: 30, // Tiny width
-                    height: buttonSize * 2 + 1, // Reduced height
+                    width: buttonSize,
+                    height: buttonSize,
+                    child: ElevatedButton(
+                      onPressed: () => _handleNumpadInput('⌫'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade100,
+                        foregroundColor: Colors.orange.shade900,
+                        padding: EdgeInsets.zero, // No padding
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          side: BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                      ),
+                      child: const Icon(Icons.backspace, size: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 12), // More spacing
+                  // Clear button (was previously backspace - swapped positions)
+                  SizedBox(
+                    width: buttonSize,
+                    height: buttonSize,
                     child: ElevatedButton(
                       onPressed: _clearActiveField,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
+                        backgroundColor: Colors.red.shade400,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            4,
-                          ), // Smaller radius
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.clear,
-                            size: 8, // Tiny icon
-                          ),
-                          const SizedBox(height: 1), // Minimal spacing
-                          Text(
-                            'Clear',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 6), // Tiny text
-                          ),
-                        ],
+                      child: const Text(
+                        'C',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -969,18 +1203,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         style: ElevatedButton.styleFrom(
           backgroundColor: isSpecial ? Colors.orange.shade100 : Colors.white,
           foregroundColor: isSpecial ? Colors.orange.shade900 : Colors.black,
-          elevation: 0.5,
+          elevation: 2,
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-            side: BorderSide(color: Colors.grey.shade300, width: 0.5),
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(color: Colors.grey.shade300, width: 1),
           ),
         ),
         child: Center(
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 14, // Larger font relative to button size
+              fontSize: 18, // Larger font relative to button size
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -1203,7 +1437,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.clear, size: 16),
+                            const Text(
+                              'C',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               'Clear',
@@ -1236,7 +1476,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Clear', style: TextStyle(fontSize: 16)),
+                child: const Text('C', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -1342,6 +1582,25 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         final newPosition = selectionStart + (currentText.isEmpty ? 2 : 1);
         controller.selection = TextSelection.collapsed(offset: newPosition);
       }
+    } else if (value == '00') {
+      // Handle double zero input - only add if there's already a non-zero number
+      if (currentText.isNotEmpty && currentText != '0') {
+        String newText;
+        if (selectionStart != selectionEnd) {
+          // Replace selected text
+          newText = currentText.substring(0, selectionStart) + '00' + currentText.substring(selectionEnd);
+        } else {
+          // Insert at cursor
+          newText = currentText.substring(0, selectionStart) + '00' + currentText.substring(selectionEnd);
+        }
+        
+        controller.text = newText;
+        controller.selection = TextSelection.collapsed(offset: selectionStart + 2);
+      } else if (currentText.isEmpty) {
+        // Just insert a single 0 if the field is empty
+        controller.text = '0';
+        controller.selection = TextSelection.collapsed(offset: 1);
+      }
     } else {
       // Handle number input
       String newText;
@@ -1400,47 +1659,293 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     super.dispose();
   }
 
-  // Original single-column layout for mobile
-  Widget _buildMobileLayout(
-    BuildContext context,
-    double spacing,
-    double headerFontSize,
-    double standardFontSize,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          _operationType == 'Purchase'
-              ? 'Buy Foreign Currency'
-              : 'Sell Foreign Currency',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.blue.shade800,
-            fontWeight: FontWeight.bold,
-            fontSize: headerFontSize,
+  // Custom tablet numpad for landscape mode
+  Widget _buildTabletNumpad() {
+    final activeColor = _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
+    final activeBorder = _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: spacing),
-        _buildCurrencyInputSection(),
-        SizedBox(height: spacing),
-        _buildTotalSumCard(),
-        SizedBox(height: spacing),
-        _buildCurrencySelector(),
-        SizedBox(height: spacing),
-        Text(
-          'Operation Type:',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.blue.shade700,
-            fontWeight: FontWeight.bold,
-            fontSize: standardFontSize,
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with field selection
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: activeColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: activeBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _isRateFieldActive ? 'Exchange Rate' : 'Quantity',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: activeBorder,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _toggleActiveField,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: activeBorder,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    _isRateFieldActive ? 'To Quantity' : 'To Rate',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 12),
+          
+          // Current value display
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade50,
+            ),
+            child: Text(
+              _isRateFieldActive
+                  ? (_currencyController.text.isEmpty ? '0' : _currencyController.text)
+                  : (_quantityController.text.isEmpty ? '0' : _quantityController.text),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Numpad grid
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Numpad columns
+              Expanded(
+                child: GridView.count(
+                  shrinkWrap: true,
+                  crossAxisCount: 3,
+                  childAspectRatio: 1.5,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildNumpadButton('7'),
+                    _buildNumpadButton('8'),
+                    _buildNumpadButton('9'),
+                    _buildNumpadButton('4'),
+                    _buildNumpadButton('5'),
+                    _buildNumpadButton('6'),
+                    _buildNumpadButton('1'),
+                    _buildNumpadButton('2'),
+                    _buildNumpadButton('3'),
+                    _buildNumpadButton('.'),
+                    _buildNumpadButton('0'),
+                    _buildNumpadButton('⌫', isSpecial: true),
+                  ],
+                ),
+              ),
+              
+              // Side buttons
+              const SizedBox(width: 8),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  // Switch fields button
+                  SizedBox(
+                    width: 60,
+                    height: 100,
+                    child: ElevatedButton(
+                      onPressed: _toggleActiveField,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: activeBorder,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.swap_vert),
+                          SizedBox(height: 8),
+                          Text(
+                            'Switch\nFields',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Clear button
+                  SizedBox(
+                    width: 60,
+                    height: 100,
+                    child: ElevatedButton(
+                      onPressed: _clearActiveField,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'C',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Clear',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Numpad button for tablet landscape view
+  Widget _buildNumpadButton(String value, {bool isSpecial = false}) {
+    return ElevatedButton(
+      onPressed: () => _handleNumpadInput(value),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSpecial ? Colors.orange.shade100 : Colors.white,
+        foregroundColor: isSpecial ? Colors.orange.shade900 : Colors.black,
+        elevation: 2,
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey.shade300),
         ),
-        SizedBox(height: 4),
-        _buildOperationTypeButtons(),
-        SizedBox(height: spacing),
-        _buildFinishButton(),
-      ],
+      ),
+      child: Center(
+        child: Text(
+          value,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // Format the date for display
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Unknown';
+    return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year.toString().substring(2)}';
+  }
+
+  // Build the current page directly rather than using IndexedStack
+  Widget _buildCurrentPage() {
+    // No implementation needed in the core state as this is handled by the layout classes
+    return Container(); // This should never be called in the core state
+  }
+
+  // Recent transaction history list (defined but not used in the main view)
+  Widget _buildHistoryList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recentHistory.length,
+      itemBuilder: (context, index) {
+        final history = _recentHistory[index];
+        final isPositive = history.operationType == 'Sale';
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 1,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            leading: CircleAvatar(
+              backgroundColor: isPositive 
+                  ? Colors.green.shade100
+                  : Colors.red.shade100,
+              child: Icon(
+                isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+              ),
+            ),
+            title: Text(
+              '${history.operationType} - ${history.currencyCode}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Rate: ${history.rate} SOM | Amount: ${history.quantity}',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${history.rate * history.quantity} SOM',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
+                ),
+                Text(
+                  _formatDate(history.createdAt),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

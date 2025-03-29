@@ -21,6 +21,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   DateTime? _endDate;
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
+  
+  // Currency filter variables
+  Set<String> _selectedCurrencies = {}; // Track selected currency codes
 
   @override
   void initState() {
@@ -313,6 +316,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isTablet = screenSize.width >= 600;
+    final isLandscape = screenSize.width > screenSize.height;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -349,7 +353,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       ),
                       const SizedBox(height: 8),
                       _buildDateFilterRow(),
-                      _buildSummaryCards(isTablet),
+                      isLandscape
+                          ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
+                          : _buildSummaryCards(isTablet), // Vertical cards for portrait mode
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: Text(
@@ -361,6 +367,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           ),
                         ),
                       ),
+                      _buildCurrencyFilterButtons(), // Now visible in all modes
                       isTablet
                           ? _buildCurrencyTable()
                           : _buildCurrencyCardsList(),
@@ -371,9 +378,125 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  Widget _buildCurrencyFilterButtons() {
+    // Get unique currency codes (excluding SOM)
+    final currencyCodes = _currencyStats
+        .where((stat) => stat['currency'] != 'SOM')
+        .map((stat) => stat['currency'].toString())
+        .toSet()
+        .toList();
+
+    if (currencyCodes.isEmpty) {
+      return const SizedBox.shrink(); // No currencies to filter
+    }
+
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 400;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filter by Currency',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: isSmallScreen ? 14 : 16,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+                if (_selectedCurrencies.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedCurrencies.clear();
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 8 : 12,
+                        vertical: isSmallScreen ? 4 : 8,
+                      ),
+                    ),
+                    child: Text(
+                      'Show All',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: isSmallScreen ? 12 : 14,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: isSmallScreen ? 4 : 8,
+              runSpacing: isSmallScreen ? 4 : 8,
+              children: [
+                ...currencyCodes.map((code) {
+                  final isSelected = _selectedCurrencies.contains(code);
+                  // If no selections, all are effectively selected
+                  final isActive = isSelected || _selectedCurrencies.isEmpty;
+                  
+                  return FilterChip(
+                    label: Text(
+                      code,
+                      style: TextStyle(
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        fontSize: isSmallScreen ? 12 : 14,
+                      ),
+                    ),
+                    selected: isActive,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (_selectedCurrencies.isEmpty && !selected) {
+                          // If showing all and deselecting one, select all others
+                          _selectedCurrencies.addAll(currencyCodes);
+                          _selectedCurrencies.remove(code);
+                        } else if (_selectedCurrencies.length == 1 && 
+                                  _selectedCurrencies.contains(code) && 
+                                  !selected) {
+                          // If deselecting the last selected currency, show all
+                          _selectedCurrencies.clear();
+                        } else if (selected) {
+                          _selectedCurrencies.add(code);
+                        } else {
+                          _selectedCurrencies.remove(code);
+                        }
+                      });
+                    },
+                    selectedColor: Colors.blue.shade100,
+                    backgroundColor: Colors.grey.shade200,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 4 : 8,
+                      vertical: isSmallScreen ? 2 : 4,
+                    ),
+                    checkmarkColor: Colors.blue.shade700,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCurrencyTable() {
-    final currenciesToDisplay =
-        _currencyStats.where((stat) => stat['currency'] != 'SOM').toList();
+    // Apply currency filter if any currencies are selected
+    final currenciesToDisplay = _currencyStats
+        .where((stat) => 
+            stat['currency'] != 'SOM' && 
+            (_selectedCurrencies.isEmpty || _selectedCurrencies.contains(stat['currency'])))
+        .toList();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -680,9 +803,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildCurrencyCardsList() {
-    // Filter out SOM from the display list
-    final currenciesToDisplay =
-        _currencyStats.where((stat) => stat['currency'] != 'SOM').toList();
+    // Apply currency filter if any currencies are selected, just like in the table view
+    final currenciesToDisplay = _currencyStats
+        .where((stat) => 
+            stat['currency'] != 'SOM' && 
+            (_selectedCurrencies.isEmpty || _selectedCurrencies.contains(stat['currency'])))
+        .toList();
 
     return ListView.builder(
       shrinkWrap: true,
@@ -691,6 +817,100 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       itemBuilder: (context, index) {
         return _buildCurrencyCard(currenciesToDisplay[index]);
       },
+    );
+  }
+
+  Widget _buildLandscapeSummaryCards() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.all(8),
+              color: Colors.blue.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'SOM Balance',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      'Amount',
+                      '${_somBalance.toStringAsFixed(2)} SOM',
+                      valueColor: Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.all(8),
+              color: Colors.green.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Foreign Currency Value',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      'Total Value',
+                      '${_kassaValue.toStringAsFixed(2)} SOM',
+                      valueColor: Colors.green,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.all(8),
+              color: Colors.amber.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total Profit',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      'Amount',
+                      '${formatProfit(_totalProfit)} SOM',
+                      valueColor: _totalProfit >= 0 ? Colors.green : Colors.red,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

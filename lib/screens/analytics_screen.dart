@@ -429,46 +429,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: _buildPieChart(
-            title: 'Total Profit by Currency',
-            data: data,
-            valueKey: 'profit',
-            labelKey: 'currency_code',
-            isCurrency: true,
-            isProfit: true,
-            total: totalProfit,
-            showTotal: true,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Card(
-            color: totalProfit >= 0 ? Colors.green[50] : Colors.red[50],
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    totalProfit >= 0 ? Icons.trending_up : Icons.trending_down,
-                    color: totalProfit >= 0 ? Colors.green : Colors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Net ${totalProfit >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(totalProfit.abs())}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: totalProfit >= 0 ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return _buildPieChart(
+      title: 'Total Profit by Currency',
+      data: data,
+      valueKey: 'profit',
+      labelKey: 'currency_code',
+      isCurrency: true,
+      isProfit: true,
+      total: totalProfit,
+      showTotal: true,
     );
   }
 
@@ -505,13 +474,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            if (showTotal)
-              Text(
-                'Total: ${NumberFormat.currency(symbol: isCurrency ? 'SOM ' : '', decimalDigits: isProfit ? 2 : 0).format(displayTotal)}',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            const SizedBox(height: 8),
             Expanded(
               child: SfCircularChart(
                 legend: Legend(
@@ -533,17 +495,43 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       useSeriesColor: true,
                     ),
                     enableTooltip: true,
-                    pointColorMapper:
-                        isProfit
-                            ? (data, _) {
-                              final value = data[valueKey];
-                              return (value is double && value > 0)
-                                  ? Colors.green
-                                  : Colors.red;
-                            }
-                            : null,
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Card(
+                color: isProfit 
+                    ? (displayTotal >= 0 ? Colors.green[50] : Colors.red[50])
+                    : Colors.blue[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isProfit
+                            ? (displayTotal >= 0 ? Icons.trending_up : Icons.trending_down)
+                            : Icons.currency_exchange,
+                        color: isProfit 
+                            ? (displayTotal >= 0 ? Colors.green : Colors.red)
+                            : Colors.blue,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isProfit
+                            ? 'Net ${displayTotal >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}'
+                            : 'Total: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal)}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: isProfit 
+                              ? (displayTotal >= 0 ? Colors.green : Colors.red)
+                              : Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
