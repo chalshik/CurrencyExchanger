@@ -38,6 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _somController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
+  final TextEditingController _defaultBuyRateController = TextEditingController();
+  final TextEditingController _defaultSellRateController = TextEditingController();
   
   DateTime? _startDate;
   DateTime? _endDate;
@@ -93,6 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _somController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
+    _defaultBuyRateController.dispose();
+    _defaultSellRateController.dispose();
     super.dispose();
   }
 
@@ -215,6 +219,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _showAddCurrencyDialog(BuildContext context) async {
     _newCurrencyCodeController.clear();
     _quantityController.text = "0"; // Set default value to 0
+    _defaultBuyRateController.text = "0.0";
+    _defaultSellRateController.text = "0.0";
 
     return showDialog(
       context: context,
@@ -242,6 +248,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 keyboardType: TextInputType.number,
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _defaultBuyRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Buy Rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _defaultSellRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Sell Rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
             ],
           ),
           actions: [
@@ -252,11 +276,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (_newCurrencyCodeController.text.isNotEmpty &&
-                    _quantityController.text.isNotEmpty) {
+                    _quantityController.text.isNotEmpty &&
+                    _defaultBuyRateController.text.isNotEmpty &&
+                    _defaultSellRateController.text.isNotEmpty) {
                   try {
                     final newCurrency = CurrencyModel(
                       code: _newCurrencyCodeController.text.toUpperCase(),
                       quantity: double.parse(_quantityController.text),
+                      defaultBuyRate: double.parse(_defaultBuyRateController.text),
+                      defaultSellRate: double.parse(_defaultSellRateController.text),
                     );
 
                     await _dbHelper.insertCurrency(newCurrency);
@@ -539,9 +567,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
