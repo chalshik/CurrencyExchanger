@@ -124,6 +124,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           for (var currency in currencies) {
             if (currency.code != 'SOM') {
               _selectedCurrency = currency.code!;
+              // Set the default exchange rate based on operation type
+              _currencyController.text = _operationType == 'Purchase' 
+                  ? currency.defaultBuyRate.toString()
+                  : currency.defaultSellRate.toString();
+              _calculateTotal();
               break;
             }
           }

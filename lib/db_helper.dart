@@ -1191,6 +1191,16 @@ class DatabaseHelper {
       }
     });
   }
+
+  Future<void> updateCurrency(CurrencyModel currency) async {
+    final db = await database;
+    await db.update(
+      'currencies',
+      currency.toMap(),
+      where: 'id = ?',
+      whereArgs: [currency.id],
+    );
+  }
 }
 
 // Extension methods for model copying

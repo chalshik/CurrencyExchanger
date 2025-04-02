@@ -117,6 +117,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? currency.quantity
                         : double.tryParse(currency.quantity.toString()) ?? 0.0,
                 updatedAt: currency.updatedAt,
+                defaultBuyRate: currency.defaultBuyRate,
+                defaultSellRate: currency.defaultSellRate,
               );
             }).toList();
       });
@@ -800,14 +802,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             subtitle: Text(
                               'Quantity: $formattedQuantity\n'
-                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
+                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}\n'
+                              'Buy Rate: ${currency.defaultBuyRate}\n'
+                              'Sell Rate: ${currency.defaultSellRate}',
                             ),
-                            trailing: isSom 
-                                ? const Icon(Icons.payments, color: Colors.blue)
-                                : IconButton(
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isSom) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditCurrencyDialog(currency),
+                                  ),
+                                  IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
                                   ),
+                                ] else
+                                  const Icon(Icons.payments, color: Colors.blue),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -1249,4 +1263,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
       SnackBar(content: Text(message)),
     );
   }
+
+  Future<void> _showEditCurrencyDialog(CurrencyModel currency) async {
+    final TextEditingController codeController = TextEditingController(text: currency.code);
+    final TextEditingController quantityController = TextEditingController(text: currency.quantity.toString());
+    final TextEditingController defaultBuyRateController = TextEditingController(text: currency.defaultBuyRate.toString());
+    final TextEditingController defaultSellRateController = TextEditingController(text: currency.defaultSellRate.toString());
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit ${currency.code}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: codeController,
+                decoration: const InputDecoration(
+                  labelText: 'Currency Code',
+                  hintText: 'Enter currency code (e.g. USD)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLength: 3,
+                textCapitalization: TextCapitalization.characters,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: quantityController,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity',
+                  hintText: 'Enter current quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: defaultBuyRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Buy Rate',
+                  hintText: 'Enter default buy rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: defaultSellRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Sell Rate',
+                  hintText: 'Enter default sell rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final newCode = codeController.text.toUpperCase();
+                final newQuantity = double.parse(quantityController.text);
+                final newBuyRate = double.parse(defaultBuyRateController.text);
+                final newSellRate = double.parse(defaultSellRateController.text);
+
+                if (newQuantity < 0 || newBuyRate <= 0 || newSellRate <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid values: Quantity cannot be negative, rates must be greater than 0'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Check if the new code already exists (if it's different from current code)
+                if (newCode != currency.code) {
+                  final existingCurrency = await _dbHelper.getCurrency(newCode);
+                  if (existingCurrency != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Currency code already exists'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
+                // Update currency with new values
+                final updatedCurrency = currency.copyWith(
+                  code: newCode,
+                  quantity: newQuantity,
+                  defaultBuyRate: newBuyRate,
+                  defaultSellRate: newSellRate,
+                );
+
+                await _dbHelper.updateCurrency(updatedCurrency);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _loadCurrencies(); // Refresh the list
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter valid numbers'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
