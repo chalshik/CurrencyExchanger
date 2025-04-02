@@ -13,8 +13,11 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   List<HistoryModel> _historyEntries = [];
+  List<HistoryModel> _filteredEntries = [];
   bool _isLoading = true;
   int _netBalance = 0;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   // Date filters
   DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30));
@@ -42,6 +45,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _toDateController.text = DateFormat('dd-MM-yy').format(_toDate);
     _loadFilters();
     _loadHistory();
+    _searchController.addListener(_filterEntries);
   }
 
   @override
@@ -51,6 +55,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _editQuantityController.dispose();
     _editRateController.dispose();
     _editDateController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -68,6 +73,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } catch (e) {
       debugPrint('Error loading filters: $e');
     }
+  }
+
+  void _filterEntries() {
+    final query = _searchController.text.toLowerCase();
+    if (query.isEmpty) {
+      setState(() {
+        _filteredEntries = List.from(_historyEntries);
+      });
+      return;
+    }
+
+    setState(() {
+      _filteredEntries = _historyEntries.where((entry) {
+        // Search by currency code or operation type
+        final basicMatch = entry.currencyCode.toLowerCase().contains(query) ||
+                          entry.operationType.toLowerCase().contains(query);
+        
+        // Search by amount - check if query is part of formatted amount string
+        final amountString = entry.quantity.toStringAsFixed(2);
+        final totalString = entry.total.toStringAsFixed(2);
+        final amountMatch = amountString.contains(query) || 
+                           totalString.contains(query);
+        
+        return basicMatch || amountMatch;
+      }).toList();
+    });
   }
 
   Future<void> _loadHistory() async {
@@ -105,9 +136,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (!mounted) return;
       setState(() {
         _historyEntries = entries;
+        _filteredEntries = List.from(entries);
         _isLoading = false;
         _calculateTotals();
       });
+      _filterEntries();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -438,6 +471,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -446,22 +488,42 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final isWideTablet = isTablet && isLandscape;
 
     return Scaffold(
+      appBar: AppBar(
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: "Search transactions...",
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white70),
+                ),
+                style: TextStyle(color: Colors.white),
+                cursorColor: Colors.white,
+                autofocus: true,
+              )
+            : const Text('Transaction History'),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: _toggleSearch,
+          ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilterDialog,
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
-            child: isWideTablet ? _buildTabletFilters() : _buildMobileFilters(),
-          ),
-          _buildNetBalanceDisplay(),
+          _buildSummaryCard(),
           Expanded(
-            child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _historyEntries.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredEntries.isEmpty
                     ? _buildEmptyHistoryMessage()
                     : isWideTablet
-                    ? _buildTabletHistoryTable()
-                    : _buildMobileHistoryList(),
+                        ? _buildTabletHistoryTable()
+                        : _buildMobileHistoryList(),
           ),
         ],
       ),
@@ -649,7 +711,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         const SizedBox(width: 8),
         InkWell(
-          onTap: () => _showFilterDialog(context),
+          onTap: _showFilterDialog,
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -752,7 +814,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ],
           rows:
-              _historyEntries.map((entry) {
+              _filteredEntries.map((entry) {
                 final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
                 final formattedDate = dateFormat.format(entry.createdAt);
                 final backgroundColor =
@@ -810,10 +872,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildMobileHistoryList() {
     return ListView.builder(
-      itemCount: _historyEntries.length,
+      itemCount: _filteredEntries.length,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       itemBuilder: (context, index) {
-        final entry = _historyEntries[index];
+        final entry = _filteredEntries[index];
         final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
         final formattedDate = dateFormat.format(entry.createdAt);
 
@@ -843,7 +905,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: InkWell(
-            onTap: () => _showEditDialog(context, entry),
+            onTap: () {
+              _showEditDialog(context, entry);
+            },
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(
@@ -965,10 +1029,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildNetBalanceDisplay() {
+  Widget _buildSummaryCard() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.shade600, Colors.blue.shade800],
@@ -984,35 +1048,86 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          const Text(
-            'Net SOM Balance:',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-              fontSize: 16,
-            ),
-          ),
-          Text(
-            '${_netBalance.toString()} SOM',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              letterSpacing: 0.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Net SOM Balance:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
                 ),
-              ],
-            ),
+              ),
+              Text(
+                '${_netBalance.toString()} SOM',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  letterSpacing: 0.5,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Divider(color: Colors.white.withOpacity(0.3), height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem(
+                'Transactions',
+                _filteredEntries.length.toString(),
+                Icons.swap_horiz,
+              ),
+              _buildStatItem(
+                'Currencies',
+                _currencyCodes.length.toString(),
+                Icons.monetization_on,
+              ),
+              _buildStatItem(
+                'Date Range',
+                '${_fromDateController.text} - ${_toDateController.text}',
+                Icons.date_range,
+                fontSize: 12,
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, {double fontSize = 14}) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: fontSize,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1021,70 +1136,122 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history, size: 64, color: Colors.grey.shade400),
+          const Icon(
+            Icons.history,
+            size: 48,
+            color: Colors.grey,
+          ),
           const SizedBox(height: 16),
           Text(
-            'No History Found',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
+            _searchController.text.isNotEmpty
+                ? 'No results found for "${_searchController.text}"'
+                : 'No transaction history found for the selected filters',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'There are no transactions matching your filters',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 16),
+          if (_searchController.text.isEmpty)
+            ElevatedButton(
+              onPressed: _resetFilters,
+              child: const Text('Reset Filters'),
+            ),
         ],
       ),
     );
   }
 
-  void _showFilterDialog(BuildContext context) {
+  void _showFilterDialog() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Filter History'),
-            content: Column(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setStateDialog) => AlertDialog(
+          title: const Text('Filter History'),
+          content: SingleChildScrollView(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('Date Range', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _fromDateController,
+                        decoration: const InputDecoration(
+                          labelText: 'From',
+                          suffixIcon: Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(),
+                        ),
+                        readOnly: true,
+                        onTap: () {
+                          _selectDate(dialogContext, true);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _toDateController,
+                        decoration: const InputDecoration(
+                          labelText: 'To',
+                          suffixIcon: Icon(Icons.calendar_today),
+                          border: OutlineInputBorder(),
+                        ),
+                        readOnly: true,
+                        onTap: () {
+                          _selectDate(dialogContext, false);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Currency', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedCurrency,
                   decoration: const InputDecoration(
-                    labelText: 'Currency',
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
+                  value: _selectedCurrency,
+                  hint: const Text('All Currencies'),
+                  isExpanded: true,
                   items: [
                     const DropdownMenuItem<String>(
-                      value: '',
+                      value: null,
                       child: Text('All Currencies'),
                     ),
-                    ..._currencyCodes.map((String currency) {
+                    ..._currencyCodes.map((String code) {
                       return DropdownMenuItem<String>(
-                        value: currency,
-                        child: Text(currency),
+                        value: code,
+                        child: Text(code),
                       );
                     }).toList(),
                   ],
-                  onChanged: (String? value) {
-                    setState(() {
+                  onChanged: (value) {
+                    setStateDialog(() {
                       _selectedCurrency = value;
                     });
                   },
                 ),
                 const SizedBox(height: 16),
+                const Text('Transaction Type', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedOperationType,
                   decoration: const InputDecoration(
-                    labelText: 'Operation Type',
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
+                  value: _selectedOperationType,
+                  hint: const Text('All Types'),
+                  isExpanded: true,
                   items: [
                     const DropdownMenuItem<String>(
-                      value: '',
+                      value: null,
                       child: Text('All Types'),
                     ),
                     ..._operationTypes.map((String type) {
@@ -1094,30 +1261,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       );
                     }).toList(),
                   ],
-                  onChanged: (String? value) {
-                    setState(() {
+                  onChanged: (value) {
+                    setStateDialog(() {
                       _selectedOperationType = value;
                     });
                   },
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _loadHistory();
-                },
-                child: const Text('Apply'),
-              ),
-            ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _resetFilters();
+              },
+              child: const Text('Reset'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _loadHistory();
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
