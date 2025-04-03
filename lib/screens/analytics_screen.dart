@@ -25,12 +25,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   );
   DateTime _selectedEndDate = DateTime.now();
   String _activeTab = 'purchases'; // Track active tab for distribution view
+  String? _selectedCurrency;
+  List<String> _availableCurrencies = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _updateDateRange();
+    _loadCurrencies();
     _refreshData();
   }
 
@@ -60,6 +63,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     });
   }
 
+  Future<void> _loadCurrencies() async {
+    final currencies = await _dbHelper.getHistoryCurrencyCodes();
+    setState(() {
+      _availableCurrencies =
+          ['All Currencies'] + currencies.where((c) => c != 'SOM').toList();
+      if (_availableCurrencies.isNotEmpty && _selectedCurrency == null) {
+        _selectedCurrency = _availableCurrencies.first;
+      }
+    });
+  }
+
   void _refreshData() {
     setState(() => _forceRefresh = !_forceRefresh);
   }
@@ -67,16 +81,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-            tooltip: 'Refresh data',
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Time range selector
@@ -176,21 +180,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         children: [
           // Pie chart icon for distribution
           Material(
-            color: _selectedChartType == ChartType.distribution 
-                ? Theme.of(context).primaryColor.withOpacity(0.2) 
-                : Colors.transparent,
+            color:
+                _selectedChartType == ChartType.distribution
+                    ? Theme.of(context).primaryColor.withOpacity(0.2)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => setState(() => _selectedChartType = ChartType.distribution),
+              onTap:
+                  () => setState(
+                    () => _selectedChartType = ChartType.distribution,
+                  ),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Icon(
                   Icons.pie_chart,
                   size: 24,
-                  color: _selectedChartType == ChartType.distribution
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey,
+                  color:
+                      _selectedChartType == ChartType.distribution
+                          ? Theme.of(context).primaryColor
+                          : Colors.grey,
                 ),
               ),
             ),
@@ -198,9 +207,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           const SizedBox(width: 16),
           // Bar chart icon
           Material(
-            color: _selectedChartType == ChartType.bar 
-                ? Theme.of(context).primaryColor.withOpacity(0.2) 
-                : Colors.transparent,
+            color:
+                _selectedChartType == ChartType.bar
+                    ? Theme.of(context).primaryColor.withOpacity(0.2)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
@@ -210,9 +220,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 child: Icon(
                   Icons.bar_chart,
                   size: 24,
-                  color: _selectedChartType == ChartType.bar
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey,
+                  color:
+                      _selectedChartType == ChartType.bar
+                          ? Theme.of(context).primaryColor
+                          : Colors.grey,
                 ),
               ),
             ),
@@ -229,7 +240,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
-        // Filter out SOM currency
         data['purchases'] =
             (data['purchases'] as List)
                 .where((item) => item['currency_code'] != 'SOM')
@@ -238,14 +248,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             (data['sales'] as List)
                 .where((item) => item['currency_code'] != 'SOM')
                 .toList();
-        // Get profit data for the tab
         data['profit'] = await _dbHelper.getMostProfitableCurrencies(
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
         return data;
       case ChartType.bar:
-        return await _dbHelper.getDailyProfitData(
+        if (_selectedCurrency != null &&
+            _selectedCurrency != 'All Currencies') {
+          return await _dbHelper.getDailyDataByCurrency(
+            startDate: _selectedStartDate,
+            endDate: _selectedEndDate,
+            currencyCode: _selectedCurrency!,
+          );
+        }
+        return await _dbHelper.getDailyData(
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
@@ -261,14 +278,158 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       );
     }
 
+    return Column(
+      children: [
+        // Compact currency selector
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          child: Row(
+            children: [
+              const Text(
+                'Currency:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedCurrency,
+                  underline: const SizedBox(),
+                  isDense: true,
+                  items:
+                      _availableCurrencies.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Text(
+                            currency,
+                            style: TextStyle(
+                              fontWeight:
+                                  currency == 'All Currencies'
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCurrency = value;
+                      _refreshData();
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Expanded(child: _buildBarChartTab('purchases', 'Purchases')),
+              Expanded(child: _buildBarChartTab('sales', 'Sales')),
+              Expanded(child: _buildBarChartTab('profit', 'Profit')),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _buildBarChartContent(activeTab: _activeTab, data: dailyData),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBarChartTab(String tabName, String label) {
+    return InkWell(
+      onTap: () => setState(() => _activeTab = tabName),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color:
+                  _activeTab == tabName
+                      ? Theme.of(context).primaryColor
+                      : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight:
+                  _activeTab == tabName ? FontWeight.bold : FontWeight.normal,
+              color:
+                  _activeTab == tabName
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBarChartContent({
+    required String activeTab,
+    required List<Map<String, dynamic>> data,
+  }) {
     // Convert data to ensure proper types
     final chartData =
-        dailyData.map((item) {
+        data.map((item) {
           return {
             'day': item['day'] as String,
+            'purchases': (item['purchases'] as num?)?.toDouble() ?? 0.0,
+            'sales': (item['sales'] as num?)?.toDouble() ?? 0.0,
             'profit': (item['profit'] as num?)?.toDouble() ?? 0.0,
           };
         }).toList();
+
+    String title;
+    String valueKey;
+    Color color;
+    IconData icon;
+    bool isProfit;
+
+    switch (activeTab) {
+      case 'purchases':
+        title = 'Daily Purchases';
+        valueKey = 'purchases';
+        color = Colors.blue;
+        icon = Icons.shopping_cart;
+        isProfit = false;
+        break;
+      case 'sales':
+        title = 'Daily Sales';
+        valueKey = 'sales';
+        color = Colors.orange;
+        icon = Icons.sell;
+        isProfit = false;
+        break;
+      case 'profit':
+        title = 'Daily Profit';
+        valueKey = 'profit';
+        color = Colors.green;
+        icon = Icons.trending_up;
+        isProfit = true;
+        break;
+      default:
+        title = 'Daily Data';
+        valueKey = 'profit';
+        color = Colors.blue;
+        icon = Icons.bar_chart;
+        isProfit = false;
+    }
+
+    final total = chartData.fold<double>(
+      0,
+      (sum, item) => sum + (item[valueKey] as double),
+    );
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -277,22 +438,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text('Daily Profit', style: Theme.of(context).textTheme.titleLarge),
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Expanded(
               child: SfCartesianChart(
                 primaryXAxis: CategoryAxis(title: AxisTitle(text: 'Date')),
                 primaryYAxis: NumericAxis(
-                  title: AxisTitle(text: 'Profit (SOM)'),
+                  title: AxisTitle(text: 'Amount (SOM)'),
                 ),
                 tooltipBehavior: TooltipBehavior(enable: true),
                 series: <CartesianSeries>[
                   ColumnSeries<Map<String, dynamic>, String>(
                     dataSource: chartData,
                     xValueMapper: (data, _) => data['day'],
-                    yValueMapper: (data, _) => data['profit'],
-                    name: 'Profit',
-                    color: Colors.blue,
+                    yValueMapper: (data, _) => data[valueKey],
+                    name: activeTab.capitalize(),
+                    color: color,
                     dataLabelSettings: const DataLabelSettings(
                       isVisible: true,
                       labelAlignment: ChartDataLabelAlignment.top,
@@ -302,12 +463,52 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Total Profit: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(_calculateTotalProfit(chartData))}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Card(
+                color:
+                    isProfit
+                        ? (total >= 0 ? Colors.green[50] : Colors.red[50])
+                        : (activeTab == 'purchases'
+                            ? Colors.blue[50]
+                            : Colors.orange[50]),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isProfit
+                            ? (total >= 0
+                                ? Icons.trending_up
+                                : Icons.trending_down)
+                            : icon,
+                        color:
+                            isProfit
+                                ? (total >= 0 ? Colors.green : Colors.red)
+                                : (activeTab == 'purchases'
+                                    ? Colors.blue
+                                    : Colors.orange),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isProfit
+                            ? 'Net ${total >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}'
+                            : 'Total: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total)}',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(
+                          color:
+                              isProfit
+                                  ? (total >= 0 ? Colors.green : Colors.red)
+                                  : (activeTab == 'purchases'
+                                      ? Colors.blue
+                                      : Colors.orange),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -502,9 +703,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Card(
-                color: isProfit 
-                    ? (displayTotal >= 0 ? Colors.green[50] : Colors.red[50])
-                    : Colors.blue[50],
+                color:
+                    isProfit
+                        ? (displayTotal >= 0
+                            ? Colors.green[50]
+                            : Colors.red[50])
+                        : Colors.blue[50],
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
@@ -512,21 +716,32 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     children: [
                       Icon(
                         isProfit
-                            ? (displayTotal >= 0 ? Icons.trending_up : Icons.trending_down)
+                            ? (displayTotal >= 0
+                                ? Icons.trending_up
+                                : Icons.trending_down)
                             : Icons.currency_exchange,
-                        color: isProfit 
-                            ? (displayTotal >= 0 ? Colors.green : Colors.red)
-                            : Colors.blue,
+                        color:
+                            isProfit
+                                ? (displayTotal >= 0
+                                    ? Colors.green
+                                    : Colors.red)
+                                : Colors.blue,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         isProfit
                             ? 'Net ${displayTotal >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}'
                             : 'Total: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal)}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: isProfit 
-                              ? (displayTotal >= 0 ? Colors.green : Colors.red)
-                              : Colors.blue,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(
+                          color:
+                              isProfit
+                                  ? (displayTotal >= 0
+                                      ? Colors.green
+                                      : Colors.red)
+                                  : Colors.blue,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
@@ -538,5 +753,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ),
       ),
     );
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1)}";
   }
 }
