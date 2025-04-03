@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/currency_converter.dart';
+
 import 'screens/login_screen.dart';
-import 'screens/analytics_screen.dart';
-import 'screens/statistics_screen.dart';
 
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Determine if running on a tablet
   final size = WidgetsBinding.instance.window.physicalSize;
   final devicePixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
   final width = size.width / devicePixelRatio;
   final isTablet = width >= 600;
-  
+
   // Only force portrait on phones, allow both orientations on tablets
   if (!isTablet) {
     await SystemChrome.setPreferredOrientations([
@@ -30,7 +28,7 @@ void main() async {
       DeviceOrientation.landscapeRight,
     ]);
   }
-  
+
   runApp(const MyApp());
 }
 
