@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
 import '../models/history.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -206,27 +208,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Delete Transaction'),
+            title: Text(_getTranslatedText("delete_transaction")),
             content: Text(
-              'Are you sure you want to delete this ${entry.operationType.toLowerCase()} transaction?',
+              _getTranslatedText("delete_transaction_confirm", {"type": entry.operationType.toLowerCase()}),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(_getTranslatedText("cancel")),
               ),
               TextButton(
                 onPressed: () async {
                   await _dbHelper.deleteHistory(
                     entry,
-                  ); // Pass full HistoryModel
+                  );
                   if (mounted) {
                     Navigator.pop(context);
                     _loadHistory();
                   }
                 },
-                child: const Text(
-                  'Delete',
+                child: Text(
+                  _getTranslatedText("delete"),
                   style: TextStyle(color: Colors.red),
                 ),
               ),
@@ -240,19 +242,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Delete Transaction'),
-            content: const Text(
-              'Are you sure you want to delete this transaction?',
+            title: Text(_getTranslatedText("delete_transaction")),
+            content: Text(
+              _getTranslatedText("delete_transaction_confirm", {"type": entry.operationType.toLowerCase()}),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text(_getTranslatedText("cancel")),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Delete',
+                child: Text(
+                  _getTranslatedText("delete"),
                   style: TextStyle(color: Colors.red),
                 ),
               ),
@@ -296,7 +298,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           (context) => StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
-                title: const Text('Edit Transaction'),
+                title: Text(_getTranslatedText("edit_transaction")),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -304,14 +306,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       if (!isDeposit) ...[
                         DropdownButtonFormField<String>(
                           value: _editOperationType,
-                          decoration: const InputDecoration(labelText: 'Type'),
+                          decoration: InputDecoration(labelText: _getTranslatedText("type")),
                           items:
                               _operationTypes
                                   .where((type) => type != 'Deposit')
                                   .map((type) {
                                     return DropdownMenuItem<String>(
                                       value: type,
-                                      child: Text(type),
+                                      child: Text(_getTranslatedText(type.toLowerCase())),
                                     );
                                   })
                                   .toList(),
@@ -324,8 +326,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: _editCurrencyCode,
-                          decoration: const InputDecoration(
-                            labelText: 'Currency',
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("currency"),
                           ),
                           items:
                               _currencyCodes.map((code) {
@@ -346,29 +348,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _editQuantityController,
-                          decoration: const InputDecoration(
-                            labelText: 'Amount',
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("amount_label"),
                           ),
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _editRateController,
-                          decoration: const InputDecoration(labelText: 'Rate'),
+                          decoration: InputDecoration(labelText: _getTranslatedText("rate")),
                           keyboardType: TextInputType.number,
                           readOnly: isDeposit,
                         ),
                       ] else ...[
                         TextFormField(
                           controller: _editQuantityController,
-                          decoration: const InputDecoration(
-                            labelText: 'Amount',
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("amount_label"),
                           ),
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Type: Deposit',
+                          "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
                           style: TextStyle(
                             color: Colors.blue.shade700,
                             fontWeight: FontWeight.bold,
@@ -376,7 +378,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Currency: ${entry.currencyCode}',
+                          "${_getTranslatedText("currency")}: ${entry.currencyCode}",
                           style: const TextStyle(color: Colors.black87),
                         ),
                       ],
@@ -411,8 +413,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           }
                         },
                         child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Date & Time',
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("date_time"),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -429,13 +431,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(_getTranslatedText("cancel")),
                   ),
                   if (!isDeposit)
                     TextButton(
                       onPressed: () => _showDeleteDialog(context, entry),
-                      child: const Text(
-                        'Delete',
+                      child: Text(
+                        _getTranslatedText("delete"),
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
@@ -462,7 +464,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
                       _saveEditedEntry(entry, updatedEntry);
                     },
-                    child: const Text('Save'),
+                    child: Text(_getTranslatedText("save")),
                   ),
                 ],
               );
@@ -493,7 +495,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ? TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: "Search transactions...",
+                  hintText: _getTranslatedText("search_transactions"),
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.white70),
                 ),
@@ -501,7 +503,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 cursorColor: Colors.white,
                 autofocus: true,
               )
-            : const Text('Transaction History'),
+            : Text(_getTranslatedText("transaction_history")),
         actions: [
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
@@ -539,7 +541,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             controller: _fromDateController,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              labelText: 'From',
+              labelText: _getTranslatedText("from"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,
@@ -562,7 +564,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             controller: _toDateController,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              labelText: 'To',
+              labelText: _getTranslatedText("to"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,
@@ -590,12 +592,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedCurrency,
-                hint: const Text('Currency'),
+                hint: Text(_getTranslatedText("currency")),
                 isExpanded: true,
                 items: [
-                  const DropdownMenuItem<String>(
+                  DropdownMenuItem<String>(
                     value: '',
-                    child: Text('All Currencies'),
+                    child: Text(_getTranslatedText("all_currencies")),
                   ),
                   ..._currencyCodes.map((String currency) {
                     return DropdownMenuItem<String>(
@@ -626,17 +628,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedOperationType,
-                hint: const Text('Type'),
+                hint: Text(_getTranslatedText("type")),
                 isExpanded: true,
                 items: [
-                  const DropdownMenuItem<String>(
+                  DropdownMenuItem<String>(
                     value: '',
-                    child: Text('All Types'),
+                    child: Text(_getTranslatedText("all_types")),
                   ),
                   ..._operationTypes.map((String type) {
                     return DropdownMenuItem<String>(
                       value: type,
-                      child: Text(type),
+                      child: Text(_getTranslatedText(type.toLowerCase())),
                     );
                   }).toList(),
                 ],
@@ -654,7 +656,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         IconButton(
           onPressed: _resetFilters,
           icon: const Icon(Icons.refresh),
-          tooltip: 'Reset Filters',
+          tooltip: _getTranslatedText("reset_filters"),
           color: Colors.blue.shade700,
         ),
       ],
@@ -670,7 +672,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             controller: _fromDateController,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              labelText: 'From',
+              labelText: _getTranslatedText("from"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,
@@ -693,7 +695,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             controller: _toDateController,
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
-              labelText: 'To',
+              labelText: _getTranslatedText("to"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,
@@ -769,46 +771,46 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
           dataRowMaxHeight: 60,
-          columns: const [
+          columns: [
             DataColumn(
               label: Text(
-                'Date',
+                _getTranslatedText("date_time"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Currency',
+                _getTranslatedText("currency"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Type',
+                _getTranslatedText("type"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Rate',
+                _getTranslatedText("rate"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Amount',
+                _getTranslatedText("amount_label"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Total',
+                _getTranslatedText("total"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
-                'Actions',
+                _getTranslatedText("operation"),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -829,7 +831,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   cells: [
                     DataCell(Text(formattedDate)),
                     DataCell(Text(entry.currencyCode)),
-                    DataCell(Text(entry.operationType)),
+                    DataCell(Text(_getTranslatedText(entry.operationType.toLowerCase()))),
                     DataCell(Text('${entry.rate.toStringAsFixed(2)}')),
                     DataCell(Text('${entry.quantity.toStringAsFixed(2)}')),
                     DataCell(
@@ -956,14 +958,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    entry.operationType,
+                                    _getTranslatedText(entry.operationType.toLowerCase()),
                                     style: TextStyle(
                                       color: iconColor,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
-                                    'Amount: ${entry.quantity.toStringAsFixed(2)}',
+                                    '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
                                     style: const TextStyle(
                                       color: Colors.black54,
                                       fontSize: 14,
@@ -973,7 +975,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Rate: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
+                                '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.black54,
@@ -997,24 +999,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     },
                     itemBuilder:
                         (BuildContext context) => [
-                          const PopupMenuItem<String>(
+                          PopupMenuItem<String>(
                             value: 'edit',
                             child: Row(
                               children: [
                                 Icon(Icons.edit, color: Colors.blue),
                                 SizedBox(width: 8),
-                                Text('Edit'),
+                                Text(_getTranslatedText("edit_transaction")),
                               ],
                             ),
                           ),
                           if (entry.operationType != 'Deposit')
-                            const PopupMenuItem<String>(
+                            PopupMenuItem<String>(
                               value: 'delete',
                               child: Row(
                                 children: [
                                   Icon(Icons.delete, color: Colors.red),
                                   SizedBox(width: 8),
-                                  Text('Delete'),
+                                  Text(_getTranslatedText("delete")),
                                 ],
                               ),
                             ),
@@ -1053,8 +1055,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Net SOM Balance:',
+              Text(
+                _getTranslatedText("net_som_balance"),
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -1084,17 +1086,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildStatItem(
-                'Transactions',
+                _getTranslatedText("transactions"),
                 _filteredEntries.length.toString(),
                 Icons.swap_horiz,
               ),
               _buildStatItem(
-                'Currencies',
+                _getTranslatedText("currencies"),
                 _currencyCodes.length.toString(),
                 Icons.monetization_on,
               ),
               _buildStatItem(
-                'Date Range',
+                _getTranslatedText("date_range"),
                 '${_fromDateController.text} - ${_toDateController.text}',
                 Icons.date_range,
                 fontSize: 12,
@@ -1144,8 +1146,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           const SizedBox(height: 16),
           Text(
             _searchController.text.isNotEmpty
-                ? 'No results found for "${_searchController.text}"'
-                : 'No transaction history found for the selected filters',
+                ? _getTranslatedText("no_results", {"query": _searchController.text})
+                : _getTranslatedText("no_transaction_history"),
             style: const TextStyle(
               fontSize: 16,
               color: Colors.grey,
@@ -1156,7 +1158,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (_searchController.text.isEmpty)
             ElevatedButton(
               onPressed: _resetFilters,
-              child: const Text('Reset Filters'),
+              child: Text(_getTranslatedText("reset_filters")),
             ),
         ],
       ),
@@ -1168,21 +1170,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setStateDialog) => AlertDialog(
-          title: const Text('Filter History'),
+          title: Text(_getTranslatedText("filter_history")),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Date Range', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(_getTranslatedText("date_range"), style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _fromDateController,
-                        decoration: const InputDecoration(
-                          labelText: 'From',
+                        decoration: InputDecoration(
+                          labelText: _getTranslatedText("from"),
                           suffixIcon: Icon(Icons.calendar_today),
                           border: OutlineInputBorder(),
                         ),
@@ -1196,8 +1198,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _toDateController,
-                        decoration: const InputDecoration(
-                          labelText: 'To',
+                        decoration: InputDecoration(
+                          labelText: _getTranslatedText("to"),
                           suffixIcon: Icon(Icons.calendar_today),
                           border: OutlineInputBorder(),
                         ),
@@ -1210,7 +1212,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text('Currency', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(_getTranslatedText("currency"), style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
@@ -1218,12 +1220,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   value: _selectedCurrency,
-                  hint: const Text('All Currencies'),
+                  hint: Text(_getTranslatedText("all_currencies")),
                   isExpanded: true,
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
                       value: null,
-                      child: Text('All Currencies'),
+                      child: Text(_getTranslatedText("all_currencies")),
                     ),
                     ..._currencyCodes.map((String code) {
                       return DropdownMenuItem<String>(
@@ -1239,7 +1241,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                const Text('Transaction Type', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(_getTranslatedText("type"), style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
@@ -1247,17 +1249,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   value: _selectedOperationType,
-                  hint: const Text('All Types'),
+                  hint: Text(_getTranslatedText("all_types")),
                   isExpanded: true,
                   items: [
-                    const DropdownMenuItem<String>(
+                    DropdownMenuItem<String>(
                       value: null,
-                      child: Text('All Types'),
+                      child: Text(_getTranslatedText("all_types")),
                     ),
                     ..._operationTypes.map((String type) {
                       return DropdownMenuItem<String>(
                         value: type,
-                        child: Text(type),
+                        child: Text(_getTranslatedText(type.toLowerCase())),
                       );
                     }).toList(),
                   ],
@@ -1276,22 +1278,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Navigator.pop(context);
                 _resetFilters();
               },
-              child: const Text('Reset'),
+              child: Text(_getTranslatedText("reset_filters")),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(_getTranslatedText("cancel")),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
                 _loadHistory();
               },
-              child: const Text('Apply'),
+              child: Text(_getTranslatedText("apply")),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // Add this method for translations
+  String _getTranslatedText(String key, [Map<String, String>? params]) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    String text = languageProvider.translate(key);
+    if (params != null) {
+      params.forEach((key, value) {
+        text = text.replaceAll('{$key}', value);
+      });
+    }
+    return text;
   }
 }

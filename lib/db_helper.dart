@@ -1245,6 +1245,69 @@ class DatabaseHelper {
       whereArgs: [currency.id],
     );
   }
+
+  Future<List<Map<String, dynamic>>> getDailyProfitData({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final db = await database;
+
+    final results = await db.rawQuery(
+      '''
+      SELECT 
+        date(created_at) as day,
+        SUM(
+          CASE WHEN operation_type = 'Sale' 
+          THEN quantity * (rate - (
+            SELECT AVG(rate) 
+            FROM history h2 
+            WHERE h2.currency_code = history.currency_code 
+            AND h2.operation_type = 'Purchase'
+            AND date(h2.created_at) <= date(history.created_at)
+          ))
+          ELSE 0 
+          END
+        ) as profit
+      FROM history
+      WHERE date(created_at) BETWEEN date(?) AND date(?)
+      GROUP BY day
+      ORDER BY day ASC
+      ''',
+      [startDate.toIso8601String(), endDate.toIso8601String()],
+    );
+
+    return results.map((row) {
+      return {
+        'day': row['day'] as String,
+        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
+      };
+    }).toList();
+  }
+
+  // Add missing methods that were shown in the error
+  Future<int> insertHistory(HistoryModel history) async {
+    final db = await database;
+    return await db.transaction((txn) async {
+      // Apply transaction effect on balances
+      await _applyTransactionEffect(txn, history);
+      
+      // Insert history record
+      return await txn.insert('history', history.toMap());
+    });
+  }
+  
+  Future<void> updateCurrencyQuantity(String code, double newQuantity) async {
+    final db = await database;
+    await db.update(
+      'currencies',
+      {
+        'quantity': newQuantity,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'code = ?',
+      whereArgs: [code],
+    );
+  }
 }
 
 // Extension methods for model copying

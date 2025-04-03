@@ -175,96 +175,76 @@ class ExportService {
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = entry.total;
     }
     
-    // Auto fit columns
+    // Set column widths
     for (var i = 0; i < headers.length; i++) {
-      sheet.setColWidth(i, 20.0); // Set a reasonable default width
+      sheet.setColWidth(i, 20.0);
     }
   }
   
   // Export analytics data
   Future<void> _exportAnalyticsData(Excel excel, DateTime startDate, DateTime endDate) async {
+    // Delete all existing sheets first
+    final sheetNames = excel.sheets.keys.toList();
+    for (var sheetName in sheetNames) {
+      excel.delete(sheetName);
+    }
+
     // Get analytics data
     final analyticsData = await _dbHelper.calculateAnalytics(
       startDate: startDate,
       endDate: endDate,
     );
-    
-    // Create summary sheet
-    final summarySheet = excel['Summary'];
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = 'Period';
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = 
-        '${DateFormat('dd-MM-yyyy').format(startDate)} to ${DateFormat('dd-MM-yyyy').format(endDate)}';
-    
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1)).value = 'Total Profit';
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 1)).value = 
-        analyticsData['total_profit'] as double;
-    
-    // Create currencies sheet
+
+    // Create currency statistics sheet
     final currencySheet = excel['Currency Statistics'];
     
     // Add headers
     final headers = [
-      'Currency', 'Avg Purchase Rate', 'Total Purchased', 'Purchase Amount',
-      'Avg Sale Rate', 'Total Sold', 'Sale Amount', 'Current Quantity', 'Profit'
+      'Currency',
+      'Current Quantity',
+      'Avg Purchase Rate',
+      'Total Purchased',
+      'Purchase Amount',
+      'Avg Sale Rate',
+      'Total Sold',
+      'Sale Amount',
+      'Profit'
     ];
     
     for (var i = 0; i < headers.length; i++) {
       currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = headers[i];
     }
     
-    // Add data rows
+    // Add data rows (excluding SOM)
+    var rowIndex = 1;
     final currencyStats = analyticsData['currency_stats'] as List;
-    for (var i = 0; i < currencyStats.length; i++) {
-      final stat = currencyStats[i];
-      final rowIndex = i + 1;
-      
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          stat['currency'] as String;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
-          stat['avg_purchase_rate'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = 
-          stat['total_purchased'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = 
-          stat['total_purchase_amount'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = 
-          stat['avg_sale_rate'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = 
-          stat['total_sold'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = 
-          stat['total_sale_amount'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = 
-          stat['current_quantity'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = 
-          stat['profit'] as double;
+    for (var stat in currencyStats) {
+      if (stat['currency'] != 'SOM') {
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
+            stat['currency'] as String;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
+            stat['current_quantity'] as double;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = 
+            stat['avg_purchase_rate'] as double;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = 
+            stat['total_purchased'] as double;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = 
+            (stat['avg_purchase_rate'] as double) * (stat['total_purchased'] as double);
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = 
+            stat['avg_sale_rate'] as double;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = 
+            stat['total_sold'] as double;
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = 
+            (stat['avg_sale_rate'] as double) * (stat['total_sold'] as double);
+        currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = 
+            stat['profit'] as double;
+        rowIndex++;
+      }
     }
     
-    // Auto fit columns
+    // Set column widths for currency statistics
     for (var i = 0; i < headers.length; i++) {
-      currencySheet.setColWidth(i, 20.0); // Set a reasonable default width
+      currencySheet.setColWidth(i, 15.0);
     }
-
-    // Get daily profit data
-    final dailyProfitData = await _dbHelper.getDailyProfitData(
-      startDate: startDate,
-      endDate: endDate,
-    );
-
-    // Create daily profit sheet
-    final dailySheet = excel['Daily Profit'];
-    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = 'Date';
-    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = 'Profit';
-
-    for (var i = 0; i < dailyProfitData.length; i++) {
-      final day = dailyProfitData[i];
-      final rowIndex = i + 1;
-      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          day['day'] as String;
-      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
-          day['profit'] as double;
-    }
-
-    // Set column widths for daily profit sheet
-    dailySheet.setColWidth(0, 15.0); // Date column
-    dailySheet.setColWidth(1, 15.0); // Profit column
   }
 } 

@@ -9,34 +9,27 @@ class LanguageSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
     
-    return Column(
-      children: [
-        ListTile(
-          title: Text(languageProvider.translate('language')),
-          trailing: DropdownButton<String>(
-            value: languageProvider.currentLocale.languageCode,
-            items: const [
-              DropdownMenuItem(
-                value: 'ky',
-                child: Text('Кыргызча'),
-              ),
-              DropdownMenuItem(
-                value: 'ru',
-                child: Text('Русский'),
-              ),
-              DropdownMenuItem(
-                value: 'en',
-                child: Text('English'),
-              ),
-            ],
-            onChanged: (String? languageCode) {
-              if (languageCode != null) {
-                languageProvider.setLanguage(languageCode);
-              }
-            },
-          ),
+    return DropdownButton<String>(
+      value: languageProvider.currentLocale.languageCode,
+      items: const [
+        DropdownMenuItem(
+          value: 'ky',
+          child: Text('Кыргызча'),
+        ),
+        DropdownMenuItem(
+          value: 'ru',
+          child: Text('Русский'),
+        ),
+        DropdownMenuItem(
+          value: 'en',
+          child: Text('English'),
         ),
       ],
+      onChanged: (String? languageCode) {
+        if (languageCode != null) {
+          languageProvider.setLanguage(languageCode);
+        }
+      },
     );
   }
 } 
