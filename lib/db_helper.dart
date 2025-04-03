@@ -104,7 +104,7 @@ class DatabaseHelper {
         ALTER TABLE currencies 
         ADD COLUMN default_buy_rate REAL NOT NULL DEFAULT 0
       ''');
-      
+
       await db.execute('''
         ALTER TABLE currencies 
         ADD COLUMN default_sell_rate REAL NOT NULL DEFAULT 0
@@ -203,14 +203,11 @@ class DatabaseHelper {
           'default_buy_rate': 0.0,
           'default_sell_rate': 0.0,
         });
-        
+
         // Now update the newly created currency with the amount
         await txn.update(
           'currencies',
-          {
-            'quantity': amount, 
-            'updated_at': DateTime.now().toIso8601String(),
-          },
+          {'quantity': amount, 'updated_at': DateTime.now().toIso8601String()},
           where: 'code = ?',
           whereArgs: [currencyCode],
         );
@@ -511,7 +508,7 @@ class DatabaseHelper {
             'quantity': 0.0,
             'updated_at': DateTime.now().toIso8601String(),
           });
-          
+
           // Then update it with the purchased amount
           await db.update(
             'currencies',
@@ -910,7 +907,7 @@ class DatabaseHelper {
     return {'purchases': purchaseData, 'sales': saleData};
   }
 
-  Future<List<Map<String, dynamic>>> getDailyProfitData({
+  Future<List<Map<String, dynamic>>> getDailyData({
     required DateTime startDate,
     required DateTime endDate,
   }) async {
@@ -920,6 +917,8 @@ class DatabaseHelper {
       '''
     SELECT 
       date(created_at) as day,
+      SUM(CASE WHEN operation_type = 'Purchase' THEN total ELSE 0 END) as purchases,
+      SUM(CASE WHEN operation_type = 'Sale' THEN total ELSE 0 END) as sales,
       SUM(
         CASE WHEN operation_type = 'Sale' 
         THEN quantity * (rate - (
@@ -944,6 +943,8 @@ class DatabaseHelper {
     return results.map((row) {
       return {
         'day': row['day'] as String,
+        'purchases': (row['purchases'] as num?)?.toDouble() ?? 0.0,
+        'sales': (row['sales'] as num?)?.toDouble() ?? 0.0,
         'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
       };
     }).toList();
@@ -1060,6 +1061,52 @@ class DatabaseHelper {
       rethrow;
     }
   }
+
+  Future<List<Map<String, dynamic>>> getDailyDataByCurrency({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String currencyCode,
+  }) async {
+    final db = await database;
+
+    final results = await db.rawQuery(
+      '''
+    SELECT 
+      date(created_at) as day,
+      SUM(CASE WHEN operation_type = 'Purchase' THEN total ELSE 0 END) as purchases,
+      SUM(CASE WHEN operation_type = 'Sale' THEN total ELSE 0 END) as sales,
+      SUM(
+        CASE WHEN operation_type = 'Sale' 
+        THEN quantity * (rate - (
+          SELECT AVG(rate) 
+          FROM history h2 
+          WHERE h2.currency_code = history.currency_code 
+          AND h2.operation_type = 'Purchase'
+          AND date(h2.created_at) <= date(history.created_at)
+        ))
+        ELSE 0 
+        END
+      ) as profit
+    FROM history
+    WHERE date(created_at) BETWEEN date(?) AND date(?)
+    AND currency_code = ?
+    GROUP BY day
+    ORDER BY day ASC
+  ''',
+      [startDate.toIso8601String(), endDate.toIso8601String(), currencyCode],
+    );
+
+    // Convert all numbers to double and handle nulls
+    return results.map((row) {
+      return {
+        'day': row['day'] as String,
+        'purchases': (row['purchases'] as num?)?.toDouble() ?? 0.0,
+        'sales': (row['sales'] as num?)?.toDouble() ?? 0.0,
+        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
+      };
+    }).toList();
+  }
+
   // =====================
   // USER OPERATIONS
   // =====================
@@ -1133,27 +1180,24 @@ class DatabaseHelper {
 
       // 2. Get all currencies
       final currencies = await txn.query('currencies');
-      
+
       // 3. Reset all currency quantities to zero instead of deleting them
       for (var currency in currencies) {
         await txn.update(
           'currencies',
-          {
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
+          {'quantity': 0.0, 'updated_at': DateTime.now().toIso8601String()},
           where: 'code = ?',
           whereArgs: [currency['code']],
         );
       }
-      
+
       // 4. Ensure SOM currency exists (in case it was somehow missing)
       final somCheck = await txn.query(
         'currencies',
         where: 'code = ?',
         whereArgs: ['SOM'],
       );
-      
+
       if (somCheck.isEmpty) {
         await txn.insert('currencies', {
           'code': 'SOM',
