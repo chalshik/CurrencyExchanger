@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 enum ChartType { distribution, bar }
 
@@ -27,6 +29,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   String _activeTab = 'purchases'; // Track active tab for distribution view
   String? _selectedCurrency;
   List<String> _availableCurrencies = [];
+
+  // Translation helper method
+  String _getTranslatedText(String key, [Map<String, String>? params]) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    String text = languageProvider.translate(key);
+    if (params != null) {
+      params.forEach((key, value) {
+        text = text.replaceAll('{$key}', value);
+      });
+    }
+    return text;
+  }
 
   @override
   void initState() {
@@ -67,7 +81,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final currencies = await _dbHelper.getHistoryCurrencyCodes();
     setState(() {
       _availableCurrencies =
-          ['All Currencies'] + currencies.where((c) => c != 'SOM').toList();
+          [_getTranslatedText('all_currencies')] + currencies.where((c) => c != 'SOM').toList();
       if (_availableCurrencies.isNotEmpty && _selectedCurrency == null) {
         _selectedCurrency = _availableCurrencies.first;
       }
@@ -91,8 +105,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Text(
-              '${DateFormat('MMM d, y').format(_selectedStartDate)} '
-              'to ${DateFormat('MMM d, y').format(_selectedEndDate)}',
+              '${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedStartDate)} '
+              '- ${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedEndDate)}',
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
@@ -123,7 +137,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 if (!snapshot.hasData ||
                     (snapshot.data is Map && snapshot.data!.isEmpty) ||
                     (snapshot.data is List && snapshot.data!.isEmpty)) {
-                  return const Center(child: Text('No data available'));
+                  return Center(child: Text(_getTranslatedText('no_data_available')));
                 }
 
                 switch (_selectedChartType) {
@@ -148,10 +162,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         child: Row(
           children:
               TimeRange.values.map((range) {
+                String label;
+                switch (range) {
+                  case TimeRange.day:
+                    label = _getTranslatedText('day');
+                    break;
+                  case TimeRange.week:
+                    label = _getTranslatedText('week');
+                    break;
+                  case TimeRange.month:
+                    label = _getTranslatedText('month');
+                    break;
+                }
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: FilterChip(
-                    label: Text(range.name.toUpperCase()),
+                    label: Text(label.toUpperCase()),
                     selected: _selectedTimeRange == range,
                     onSelected: (selected) {
                       setState(() {
@@ -255,7 +281,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         return data;
       case ChartType.bar:
         if (_selectedCurrency != null &&
-            _selectedCurrency != 'All Currencies') {
+            _selectedCurrency != _getTranslatedText('all_currencies')) {
           return await _dbHelper.getDailyDataByCurrency(
             startDate: _selectedStartDate,
             endDate: _selectedEndDate,
@@ -273,8 +299,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final dailyData = List<Map<String, dynamic>>.from(data);
 
     if (dailyData.isEmpty) {
-      return const Center(
-        child: Text('No profit data available', style: TextStyle(fontSize: 18)),
+      return Center(
+        child: Text(_getTranslatedText('no_profit_data'), style: const TextStyle(fontSize: 18)),
       );
     }
 
@@ -285,9 +311,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: Row(
             children: [
-              const Text(
-                'Currency:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                _getTranslatedText('currency_selector'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 8),
               Container(
@@ -308,7 +334,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             currency,
                             style: TextStyle(
                               fontWeight:
-                                  currency == 'All Currencies'
+                                  currency == _getTranslatedText('all_currencies')
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                             ),
@@ -330,9 +356,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           height: 48,
           child: Row(
             children: [
-              Expanded(child: _buildBarChartTab('purchases', 'Purchases')),
-              Expanded(child: _buildBarChartTab('sales', 'Sales')),
-              Expanded(child: _buildBarChartTab('profit', 'Profit')),
+              Expanded(child: _buildBarChartTab('purchases', _getTranslatedText('purchases'))),
+              Expanded(child: _buildBarChartTab('sales', _getTranslatedText('sales'))),
+              Expanded(child: _buildBarChartTab('profit', _getTranslatedText('profit'))),
             ],
           ),
         ),
@@ -398,28 +424,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     switch (activeTab) {
       case 'purchases':
-        title = 'Daily Purchases';
+        title = _getTranslatedText('daily_purchases');
         valueKey = 'purchases';
         color = Colors.blue;
         icon = Icons.shopping_cart;
         isProfit = false;
         break;
       case 'sales':
-        title = 'Daily Sales';
+        title = _getTranslatedText('daily_sales');
         valueKey = 'sales';
         color = Colors.orange;
         icon = Icons.sell;
         isProfit = false;
         break;
       case 'profit':
-        title = 'Daily Profit';
+        title = _getTranslatedText('daily_profit');
         valueKey = 'profit';
         color = Colors.green;
         icon = Icons.trending_up;
         isProfit = true;
         break;
       default:
-        title = 'Daily Data';
+        title = _getTranslatedText('daily_data');
         valueKey = 'profit';
         color = Colors.blue;
         icon = Icons.bar_chart;
@@ -442,9 +468,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             const SizedBox(height: 8),
             Expanded(
               child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(title: AxisTitle(text: 'Date')),
+                primaryXAxis: CategoryAxis(title: AxisTitle(text: _getTranslatedText('date'))),
                 primaryYAxis: NumericAxis(
-                  title: AxisTitle(text: 'Amount (SOM)'),
+                  title: AxisTitle(text: _getTranslatedText('amount_som')),
                 ),
                 tooltipBehavior: TooltipBehavior(enable: true),
                 series: <CartesianSeries>[
@@ -492,8 +518,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       const SizedBox(width: 8),
                       Text(
                         isProfit
-                            ? 'Net ${total >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}'
-                            : 'Total: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total)}',
+                            ? (total >= 0 
+                                ? _getTranslatedText('net_profit', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}) 
+                                : _getTranslatedText('net_loss', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}))
+                            : _getTranslatedText('total_formatted', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total)}),
                         style: Theme.of(
                           context,
                         ).textTheme.titleMedium?.copyWith(
@@ -530,9 +558,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           height: 48,
           child: Row(
             children: [
-              Expanded(child: _buildDistributionTab('purchases', 'Purchases')),
-              Expanded(child: _buildDistributionTab('sales', 'Sales')),
-              Expanded(child: _buildDistributionTab('profit', 'Profit')),
+              Expanded(child: _buildDistributionTab('purchases', _getTranslatedText('purchases'))),
+              Expanded(child: _buildDistributionTab('sales', _getTranslatedText('sales'))),
+              Expanded(child: _buildDistributionTab('profit', _getTranslatedText('profit'))),
             ],
           ),
         ),
@@ -592,7 +620,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     switch (activeTab) {
       case 'purchases':
         return _buildPieChart(
-          title: 'Purchased Currencies',
+          title: _getTranslatedText('purchased_currencies'),
           data: purchases,
           valueKey: 'total_value',
           labelKey: 'currency_code',
@@ -600,7 +628,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         );
       case 'sales':
         return _buildPieChart(
-          title: 'Sold Currencies',
+          title: _getTranslatedText('sold_currencies'),
           data: sales,
           valueKey: 'total_value',
           labelKey: 'currency_code',
@@ -609,7 +637,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       case 'profit':
         return _buildProfitPieChart(profitData, totalProfit);
       default:
-        return const Center(child: Text('No data available'));
+        return Center(child: Text(_getTranslatedText('no_data_available')));
     }
   }
 
@@ -625,13 +653,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     double totalProfit,
   ) {
     if (data.isEmpty) {
-      return const Center(
-        child: Text('No profit data available', style: TextStyle(fontSize: 18)),
+      return Center(
+        child: Text(_getTranslatedText('no_profit_data'), style: const TextStyle(fontSize: 18)),
       );
     }
 
     return _buildPieChart(
-      title: 'Total Profit by Currency',
+      title: _getTranslatedText('profit_by_currency'),
       data: data,
       valueKey: 'profit',
       labelKey: 'currency_code',
@@ -655,7 +683,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     if (data.isEmpty) {
       return Center(
         child: Text(
-          isProfit ? 'No profit data' : 'No data available',
+          isProfit ? _getTranslatedText('no_profit_data') : _getTranslatedText('no_data_available'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
       );
@@ -675,6 +703,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
             Expanded(
               child: SfCircularChart(
                 legend: Legend(
@@ -730,8 +759,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       const SizedBox(width: 8),
                       Text(
                         isProfit
-                            ? 'Net ${displayTotal >= 0 ? 'Profit' : 'Loss'}: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}'
-                            : 'Total: ${NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal)}',
+                            ? (displayTotal >= 0 
+                                ? _getTranslatedText('net_profit', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}) 
+                                : _getTranslatedText('net_loss', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}))
+                            : _getTranslatedText('total_formatted', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal)}),
                         style: Theme.of(
                           context,
                         ).textTheme.titleMedium?.copyWith(

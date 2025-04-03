@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../db_helper.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -24,6 +26,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   
   // Currency filter variables
   Set<String> _selectedCurrencies = {}; // Track selected currency codes
+
+  // Translation helper method
+  String _getTranslatedText(String key, [Map<String, String>? params]) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    String text = languageProvider.translate(key);
+    if (params != null) {
+      params.forEach((key, value) {
+        text = text.replaceAll('{$key}', value);
+      });
+    }
+    return text;
+  }
 
   @override
   void initState() {
@@ -165,7 +179,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: TextField(
               controller: _startDateController,
               decoration: InputDecoration(
-                labelText: 'From',
+                labelText: _getTranslatedText('from'),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.calendar_today, size: 20),
                   onPressed: () => _selectDate(context, true),
@@ -181,7 +195,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: TextField(
               controller: _endDateController,
               decoration: InputDecoration(
-                labelText: 'To',
+                labelText: _getTranslatedText('to'),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.calendar_today, size: 20),
                   onPressed: () => _selectDate(context, false),
@@ -196,7 +210,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             IconButton(
               icon: const Icon(Icons.clear),
               onPressed: _clearDateFilters,
-              tooltip: 'Clear filters',
+              tooltip: _getTranslatedText('reset_filters'),
             ),
         ],
       ),
@@ -214,8 +228,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'SOM Balance',
+                Text(
+                  _getTranslatedText('som_balance'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -224,7 +238,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildStatRow(
-                  'Amount',
+                  _getTranslatedText('amount_label'),
                   '${_somBalance.toStringAsFixed(2)} SOM',
                   valueColor: Colors.blue,
                 ),
@@ -240,8 +254,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Foreign Currency Value',
+                Text(
+                  _getTranslatedText('foreign_currency_value'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -250,7 +264,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildStatRow(
-                  'Total Value',
+                  _getTranslatedText('total_value'),
                   '${_kassaValue.toStringAsFixed(2)} SOM',
                   valueColor: Colors.green,
                 ),
@@ -266,8 +280,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Total Profit',
+                Text(
+                  _getTranslatedText('total_profit'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -276,7 +290,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildStatRow(
-                  'Amount',
+                  _getTranslatedText('amount_label'),
                   '${formatProfit(_totalProfit)} SOM',
                   valueColor: _totalProfit >= 0 ? Colors.green : Colors.red,
                 ),
@@ -336,7 +350,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Statistics & Balance',
+                              _getTranslatedText('statistics_and_balance'),
                               style: TextStyle(
                                 fontSize: isTablet ? 24 : 20,
                                 fontWeight: FontWeight.bold,
@@ -346,7 +360,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                             IconButton(
                               icon: const Icon(Icons.refresh),
                               onPressed: _loadCurrencyStats,
-                              tooltip: 'Refresh Statistics',
+                              tooltip: _getTranslatedText('refresh_statistics'),
                             ),
                           ],
                         ),
@@ -359,7 +373,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: Text(
-                          'Currency Statistics',
+                          _getTranslatedText('currency_statistics'),
                           style: TextStyle(
                             fontSize: isTablet ? 20 : 18,
                             fontWeight: FontWeight.bold,
@@ -393,99 +407,63 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 400;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+          // Show headers
                 Text(
-                  'Filter by Currency',
+            _getTranslatedText('filter_history'), 
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
                     fontSize: isSmallScreen ? 14 : 16,
+              fontWeight: FontWeight.bold,
                     color: Colors.blue.shade700,
                   ),
                 ),
-                if (_selectedCurrencies.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
+          const SizedBox(height: 8),
+          // Scrollable row of currency filter chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // All filter option
+              FilterChip(
+                label: Text(_getTranslatedText('all_filters')),
+                selected: _selectedCurrencies.isEmpty,
+                onSelected: (selected) {
+                  if (selected) {
                       setState(() {
                         _selectedCurrencies.clear();
                       });
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSmallScreen ? 8 : 12,
-                        vertical: isSmallScreen ? 4 : 8,
-                      ),
-                    ),
-                    child: Text(
-                      'Show All',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontSize: isSmallScreen ? 12 : 14,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: isSmallScreen ? 4 : 8,
-              runSpacing: isSmallScreen ? 4 : 8,
-              children: [
+                  }
+                },
+                backgroundColor: Colors.grey.shade100,
+                selectedColor: Colors.blue.shade100,
+                checkmarkColor: Colors.blue.shade800,
+              ),
+              // Filter chips for each currency
                 ...currencyCodes.map((code) {
-                  final isSelected = _selectedCurrencies.contains(code);
-                  // If no selections, all are effectively selected
-                  final isActive = isSelected || _selectedCurrencies.isEmpty;
-                  
                   return FilterChip(
-                    label: Text(
-                      code,
-                      style: TextStyle(
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                        fontSize: isSmallScreen ? 12 : 14,
-                      ),
-                    ),
-                    selected: isActive,
+                  label: Text(code),
+                  selected: _selectedCurrencies.contains(code),
                     onSelected: (selected) {
                       setState(() {
-                        if (_selectedCurrencies.isEmpty && !selected) {
-                          // If showing all and deselecting one, select all others
-                          _selectedCurrencies.addAll(currencyCodes);
-                          _selectedCurrencies.remove(code);
-                        } else if (_selectedCurrencies.length == 1 && 
-                                  _selectedCurrencies.contains(code) && 
-                                  !selected) {
-                          // If deselecting the last selected currency, show all
-                          _selectedCurrencies.clear();
-                        } else if (selected) {
+                      if (selected) {
                           _selectedCurrencies.add(code);
                         } else {
                           _selectedCurrencies.remove(code);
                         }
                       });
                     },
+                  backgroundColor: Colors.grey.shade100,
                     selectedColor: Colors.blue.shade100,
-                    backgroundColor: Colors.grey.shade200,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 4 : 8,
-                      vertical: isSmallScreen ? 2 : 4,
-                    ),
-                    checkmarkColor: Colors.blue.shade700,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  );
-                }),
+                  checkmarkColor: Colors.blue.shade800,
+                );
+              }).toList(),
               ],
             ),
           ],
-        ),
       ),
     );
   }
@@ -498,18 +476,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             (_selectedCurrencies.isEmpty || _selectedCurrencies.contains(stat['currency'])))
         .toList();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+    if (currenciesToDisplay.isEmpty) {
+      return Padding(
         padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            _getTranslatedText('no_data'),
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Table header
+          // Table Header
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               decoration: BoxDecoration(
                 color: Colors.blue.shade700,
                 borderRadius: const BorderRadius.only(
@@ -517,19 +502,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   topRight: Radius.circular(8),
                 ),
               ),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               child: Row(
                 children: [
-                  _buildTableHeaderCell('Currency', flex: 2),
-                  _buildTableHeaderCell('Balance', flex: 2),
-                  _buildTableHeaderCell('Purchased', flex: 2),
-                  _buildTableHeaderCell('Sold', flex: 2),
-                  _buildTableHeaderCell('Avg Buy', flex: 2),
-                  _buildTableHeaderCell('Avg Sell', flex: 2),
-                  _buildTableHeaderCell('Profit', flex: 2),
+                _buildTableHeaderCell(_getTranslatedText('currency_code_header'), flex: 1),
+                _buildTableHeaderCell(_getTranslatedText('current_balance'), flex: 2),
+                _buildTableHeaderCell(_getTranslatedText('total_purchased'), flex: 2),
+                _buildTableHeaderCell(_getTranslatedText('total_sold'), flex: 2),
+                _buildTableHeaderCell(_getTranslatedText('profit'), flex: 1),
                 ],
               ),
             ),
-            // Table body
+          // Table Body
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
@@ -557,69 +541,177 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       stat['current_quantity'] as double? ?? 0.0;
                   final profit = stat['profit'] as double? ?? 0.0;
 
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 8,
-                    ),
-                    color: index % 2 == 0 ? Colors.grey.shade50 : Colors.white,
+                return InkWell(
+                  onTap: () {
+                    // Show detailed stats for this currency on tap
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => DraggableScrollableSheet(
+                        initialChildSize: 0.6,
+                        maxChildSize: 0.9,
+                        minChildSize: 0.4,
+                        builder: (_, controller) => Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: ListView(
+                            controller: controller,
+                            children: [
+                              Text(
+                                '${stat['currency']} ${_getTranslatedText('statistics')}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _getTranslatedText('current_balance'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _buildStatRow(
+                                _getTranslatedText('amount_label'),
+                                '${currentQuantity.toStringAsFixed(2)} ${stat['currency']}',
+                              ),
+                              const Divider(height: 24),
+                              Text(
+                                _getTranslatedText('purchase_info'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _buildStatRow(
+                                _getTranslatedText('total_purchased'),
+                                '${totalPurchased.toStringAsFixed(2)} ${stat['currency']}',
+                              ),
+                              _buildStatRow(
+                                _getTranslatedText('avg_purchase_rate'),
+                                avgPurchaseRate.toStringAsFixed(4),
+                              ),
+                              _buildStatRow(
+                                _getTranslatedText('total_spent'),
+                                '${(avgPurchaseRate * totalPurchased).toStringAsFixed(2)} SOM',
+                              ),
+                              const Divider(height: 24),
+                              Text(
+                                _getTranslatedText('sale_info'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _buildStatRow(
+                                _getTranslatedText('total_sold'),
+                                '${totalSold.toStringAsFixed(2)} ${stat['currency']}',
+                              ),
+                              _buildStatRow(
+                                _getTranslatedText('avg_sale_rate'),
+                                avgSaleRate.toStringAsFixed(4),
+                              ),
+                              _buildStatRow(
+                                _getTranslatedText('total_earned'),
+                                '${(avgSaleRate * totalSold).toStringAsFixed(2)} SOM',
+                              ),
+                              const Divider(height: 24),
+                              Text(
+                                _getTranslatedText('profit'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: profit >= 0
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _buildStatRow(
+                                _getTranslatedText('amount_label'),
+                                formatProfit(profit),
+                                valueColor: profit >= 0
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    color: index % 2 == 0
+                        ? Colors.grey.shade50
+                        : Colors.white,
                     child: Row(
                       children: [
                         _buildTableCell(
                           stat['currency'].toString(),
                           bold: true,
-                          color: Colors.blue.shade800,
+                          color: Colors.blue.shade700,
+                          flex: 1,
+                        ),
+                        _buildTableCell(
+                          '${currentQuantity.toStringAsFixed(2)}',
                           flex: 2,
                         ),
                         _buildTableCell(
-                          currentQuantity.toStringAsFixed(2),
-                          bold: true,
+                          '${totalPurchased.toStringAsFixed(2)}',
                           flex: 2,
                         ),
                         _buildTableCell(
-                          totalPurchased.toStringAsFixed(2),
-                          flex: 2,
-                        ),
-                        _buildTableCell(totalSold.toStringAsFixed(2), flex: 2),
-                        _buildTableCell(
-                          avgPurchaseRate.toStringAsFixed(4),
-                          color: Colors.red.shade700,
-                          flex: 2,
-                        ),
-                        _buildTableCell(
-                          avgSaleRate.toStringAsFixed(4),
-                          color: Colors.green.shade700,
+                          '${totalSold.toStringAsFixed(2)}',
                           flex: 2,
                         ),
                         _buildTableCell(
                           formatProfit(profit),
                           bold: true,
                           color:
-                              profit >= 0
-                                  ? Colors.green.shade700
-                                  : Colors.red.shade700,
-                          flex: 2,
+                              profit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                          flex: 1,
                         ),
                       ],
+                    ),
                     ),
                   );
                 },
               ),
             ),
-            // Table footer with totals
+          // Table Footer with totals
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+              color: Colors.blue.shade50,
+              border: Border(
+                left: BorderSide(color: Colors.grey.shade300),
+                right: BorderSide(color: Colors.grey.shade300),
+                bottom: BorderSide(color: Colors.grey.shade300),
+              ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(8),
                   bottomRight: Radius.circular(8),
                 ),
-                border: Border.all(color: Colors.grey.shade300),
               ),
               child: Row(
                 children: [
-                  _buildTableCell('TOTAL', bold: true, flex: 2),
+                _buildTableCell(_getTranslatedText('total'), bold: true, flex: 1),
                   _buildTableCell(
                     _calculateTotal('current_quantity').toStringAsFixed(2),
                     bold: true,
@@ -635,22 +727,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     bold: true,
                     flex: 2,
                   ),
-                  _buildTableCell('', flex: 2),
-                  _buildTableCell('', flex: 2),
                   _buildTableCell(
-                    formatProfit(_totalProfit),
+                  formatProfit(_calculateTotal('profit')),
                     bold: true,
-                    color:
-                        _totalProfit >= 0
+                  color: _calculateTotal('profit') >= 0
                             ? Colors.green.shade700
                             : Colors.red.shade700,
-                    flex: 2,
+                  flex: 1,
                   ),
                 ],
               ),
             ),
           ],
-        ),
       ),
     );
   }
@@ -752,12 +840,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
             const SizedBox(height: 12),
             _buildStatRow(
-              'Current Balance',
+              _getTranslatedText('current_balance'),
               '${currentQuantity.toStringAsFixed(2)} ${stat['currency']}',
             ),
             const Divider(height: 16),
             Text(
-              'Purchase Info',
+              _getTranslatedText('purchase_info'),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -766,20 +854,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
             const SizedBox(height: 8),
             _buildStatRow(
-              'Total Purchased',
+              _getTranslatedText('total_purchased'),
               '${totalPurchased.toStringAsFixed(2)} ${stat['currency']}',
             ),
             _buildStatRow(
-              'Avg Purchase Rate',
+              _getTranslatedText('avg_purchase_rate'),
               avgPurchaseRate.toStringAsFixed(4),
             ),
             _buildStatRow(
-              'Total Spent',
+              _getTranslatedText('total_spent'),
               '${(avgPurchaseRate * totalPurchased).toStringAsFixed(2)} SOM',
             ),
             const SizedBox(height: 8),
             Text(
-              'Sale Info',
+              _getTranslatedText('sale_info'),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -788,12 +876,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
             const SizedBox(height: 8),
             _buildStatRow(
-              'Total Sold',
+              _getTranslatedText('total_sold'),
               '${totalSold.toStringAsFixed(2)} ${stat['currency']}',
             ),
-            _buildStatRow('Avg Sale Rate', avgSaleRate.toStringAsFixed(4)),
             _buildStatRow(
-              'Total Earned',
+              _getTranslatedText('avg_sale_rate'), 
+              avgSaleRate.toStringAsFixed(4)
+            ),
+            _buildStatRow(
+              _getTranslatedText('total_earned'),
               '${(avgSaleRate * totalSold).toStringAsFixed(2)} SOM',
             ),
           ],
@@ -821,9 +912,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildLandscapeSummaryCards() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
+    return Row(
         children: [
           Expanded(
             child: Card(
@@ -834,8 +923,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'SOM Balance',
+                  Text(
+                    _getTranslatedText('som_balance'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -844,7 +933,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     const SizedBox(height: 8),
                     _buildStatRow(
-                      'Amount',
+                    _getTranslatedText('amount_label'),
                       '${_somBalance.toStringAsFixed(2)} SOM',
                       valueColor: Colors.blue,
                     ),
@@ -862,8 +951,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Foreign Currency Value',
+                  Text(
+                    _getTranslatedText('foreign_currency_value'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -872,7 +961,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     const SizedBox(height: 8),
                     _buildStatRow(
-                      'Total Value',
+                    _getTranslatedText('total_value'),
                       '${_kassaValue.toStringAsFixed(2)} SOM',
                       valueColor: Colors.green,
                     ),
@@ -890,8 +979,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Total Profit',
+                  Text(
+                    _getTranslatedText('total_profit'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -900,7 +989,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                     const SizedBox(height: 8),
                     _buildStatRow(
-                      'Amount',
+                    _getTranslatedText('amount_label'),
                       '${formatProfit(_totalProfit)} SOM',
                       valueColor: _totalProfit >= 0 ? Colors.green : Colors.red,
                     ),
@@ -910,7 +999,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 }

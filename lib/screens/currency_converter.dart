@@ -2304,31 +2304,31 @@ class _MobileCurrencyConverterLayoutState
         padding: const EdgeInsets.only(bottom: 1),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.shade100,
-                spreadRadius: 1,
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              selectedItemColor: Colors.blue.shade700,
-              unselectedItemColor: Colors.grey,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.shade100,
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: Colors.blue.shade700,
+            unselectedItemColor: Colors.grey,
               showSelectedLabels: false,
               showUnselectedLabels: false,
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              items: _navigationItems,
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            items: _navigationItems,
             ),
           ),
         ),
@@ -2388,11 +2388,11 @@ class _TabletCurrencyConverterLayoutState extends State<TabletCurrencyConverterL
     _navigationDestinations = [
       const NavigationRailDestination(
         icon: Icon(Icons.currency_exchange, size: 28),
-        label: Text('Exchange'),
+        label: Text(''),
       ),
       const NavigationRailDestination(
         icon: Icon(Icons.history, size: 28),
-        label: Text('History'),
+        label: Text(''),
       ),
     ];
 
@@ -2400,11 +2400,11 @@ class _TabletCurrencyConverterLayoutState extends State<TabletCurrencyConverterL
       _navigationDestinations.addAll([
         const NavigationRailDestination(
           icon: Icon(Icons.analytics, size: 28),
-          label: Text('Statistics'),
+          label: Text(''),
         ),
         const NavigationRailDestination(
           icon: Icon(Icons.pie_chart, size: 28),
-          label: Text('Analytics'),
+          label: Text(''),
         ),
       ]);
     }
@@ -2412,7 +2412,7 @@ class _TabletCurrencyConverterLayoutState extends State<TabletCurrencyConverterL
     _navigationDestinations.add(
       const NavigationRailDestination(
         icon: Icon(Icons.settings, size: 28),
-        label: Text('Settings'),
+        label: Text(''),
       ),
     );
   }
@@ -2450,55 +2450,99 @@ class _TabletCurrencyConverterLayoutState extends State<TabletCurrencyConverterL
     final screenSize = MediaQuery.of(context).size;
     final isLandscape = screenSize.width > screenSize.height;
 
-    return Scaffold(
-      backgroundColor: Colors.blue.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.blue.shade700,
-        title: const Text(
-          'Currency Converter',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      return Scaffold(
+        backgroundColor: Colors.blue.shade50,
+        appBar: AppBar(
+          backgroundColor: Colors.blue.shade700,
+          title: const Text(
+            'Currency Converter',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             fontSize: 24,
-            letterSpacing: 0.5,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Row(
-          children: [
-            NavigationRail(
-              extended: isLandscape,
-              minExtendedWidth: 180,
-              backgroundColor: Colors.white,
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _onDestinationSelected,
-              labelType: isLandscape ? NavigationRailLabelType.none : NavigationRailLabelType.selected,
-              destinations: _navigationDestinations,
-              selectedIconTheme: IconThemeData(color: Colors.blue.shade700),
-              unselectedIconTheme: const IconThemeData(color: Colors.grey),
-              useIndicator: true,
-              indicatorColor: Colors.blue.shade100,
+              letterSpacing: 0.5,
             ),
-            const VerticalDivider(thickness: 1, width: 1),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isLandscape ? 24.0 : 16.0,
-                  vertical: 16.0,
+          ),
+          centerTitle: true,
+          elevation: 0,
+        ),
+        body: SafeArea(
+        child: isLandscape 
+        ? _buildLandscapeLayout() 
+        : _buildPortraitLayout(),
+      ),
+      bottomNavigationBar: isLandscape 
+        ? null 
+        : Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BottomNavigationBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  selectedItemColor: Colors.blue.shade700,
+                  unselectedItemColor: Colors.grey,
+                  showSelectedLabels: false,
+                  showUnselectedLabels: false,
+                  type: BottomNavigationBarType.fixed,
+                  currentIndex: _selectedIndex,
+                  onTap: _onDestinationSelected,
+                  items: _navigationDestinations.map((destination) {
+                    return BottomNavigationBarItem(
+                      icon: destination.icon,
+                      label: '', // Empty label
+                    );
+                  }).toList(),
                 ),
-                child: _pages[_selectedIndex],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
-  Widget _buildCurrentPage() {
-    return _pages[_selectedIndex];
+  Widget _buildLandscapeLayout() {
+    return Row(
+      children: [
+        NavigationRail(
+          extended: false,
+            backgroundColor: Colors.white,
+            selectedIndex: _selectedIndex,
+          onDestinationSelected: _onDestinationSelected,
+          labelType: NavigationRailLabelType.none,
+          destinations: _navigationDestinations,
+          selectedIconTheme: IconThemeData(color: Colors.blue.shade700),
+          unselectedIconTheme: const IconThemeData(color: Colors.grey),
+          useIndicator: true,
+          indicatorColor: Colors.blue.shade100,
+        ),
+        const VerticalDivider(thickness: 1, width: 1),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _pages[_selectedIndex],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPortraitLayout() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: _pages[_selectedIndex],
+    );
   }
 }
