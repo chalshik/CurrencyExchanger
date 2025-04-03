@@ -124,6 +124,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           for (var currency in currencies) {
             if (currency.code != 'SOM') {
               _selectedCurrency = currency.code!;
+              // Set the default exchange rate based on operation type
+              _currencyController.text = _operationType == 'Purchase' 
+                  ? currency.defaultBuyRate.toString()
+                  : currency.defaultSellRate.toString();
+              _calculateTotal();
               break;
             }
           }
@@ -456,6 +461,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             if (currency.code != null) {
                               setState(() {
                                 _selectedCurrency = currency.code!;
+                                // Set the default exchange rate based on operation type
+                                _currencyController.text = _operationType == 'Purchase' 
+                                    ? currency.defaultBuyRate.toString()
+                                    : currency.defaultSellRate.toString();
                                 _calculateTotal();
                               });
                             }
@@ -495,42 +504,74 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             onPressed: () {
               setState(() {
                 _operationType = 'Purchase';
+                // Update exchange rate based on selected currency
+                if (_selectedCurrency.isNotEmpty) {
+                  final selectedCurrency = _currencies.firstWhere(
+                    (c) => c.code == _selectedCurrency,
+                    orElse: () => CurrencyModel(code: ''),
+                  );
+                  _currencyController.text = selectedCurrency.defaultBuyRate.toString();
+                  _calculateTotal();
+                }
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  _operationType == 'Purchase'
-                      ? Colors.green
-                      : Colors.green.shade50,
-              foregroundColor:
-                  _operationType == 'Purchase' ? Colors.white : Colors.green,
+              backgroundColor: _operationType == 'Purchase'
+                  ? Colors.blue.shade700
+                  : Colors.blue.shade50,
+              foregroundColor: _operationType == 'Purchase'
+                  ? Colors.white
+                  : Colors.blue.shade700,
               padding: buttonPadding,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text('Purchase', style: TextStyle(fontSize: buttonTextSize)),
+            child: Text(
+              'Purchase',
+              style: TextStyle(
+                fontSize: buttonTextSize,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 8),
         Expanded(
           child: ElevatedButton(
             onPressed: () {
               setState(() {
                 _operationType = 'Sale';
+                // Update exchange rate based on selected currency
+                if (_selectedCurrency.isNotEmpty) {
+                  final selectedCurrency = _currencies.firstWhere(
+                    (c) => c.code == _selectedCurrency,
+                    orElse: () => CurrencyModel(code: ''),
+                  );
+                  _currencyController.text = selectedCurrency.defaultSellRate.toString();
+                  _calculateTotal();
+                }
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  _operationType == 'Sale' ? Colors.red : Colors.red.shade50,
-              foregroundColor:
-                  _operationType == 'Sale' ? Colors.white : Colors.red,
+              backgroundColor: _operationType == 'Sale'
+                  ? Colors.blue.shade700
+                  : Colors.blue.shade50,
+              foregroundColor: _operationType == 'Sale'
+                  ? Colors.white
+                  : Colors.blue.shade700,
               padding: buttonPadding,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text('Sale', style: TextStyle(fontSize: buttonTextSize)),
+            child: Text(
+              'Sale',
+              style: TextStyle(
+                fontSize: buttonTextSize,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ],

@@ -26,7 +26,7 @@ class DatabaseHelper {
     final path = join(dbPath, filePath);
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -40,7 +40,9 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         code TEXT NOT NULL UNIQUE,
         quantity REAL NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        default_buy_rate REAL NOT NULL DEFAULT 0,
+        default_sell_rate REAL NOT NULL DEFAULT 0
       )
     ''');
 
@@ -94,6 +96,19 @@ class DatabaseHelper {
       // Create initial admin user
       final adminUser = UserModel(username: 'a', password: 'a', role: 'admin');
       await db.insert('users', adminUser.toMap());
+    }
+
+    if (oldVersion < 3) {
+      // Add default exchange rate columns to currencies table
+      await db.execute('''
+        ALTER TABLE currencies 
+        ADD COLUMN default_buy_rate REAL NOT NULL DEFAULT 0
+      ''');
+      
+      await db.execute('''
+        ALTER TABLE currencies 
+        ADD COLUMN default_sell_rate REAL NOT NULL DEFAULT 0
+      ''');
     }
   }
 
@@ -185,12 +200,17 @@ class DatabaseHelper {
           'code': currencyCode,
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
+          'default_buy_rate': 0.0,
+          'default_sell_rate': 0.0,
         });
         
         // Now update the newly created currency with the amount
         await txn.update(
           'currencies',
-          {'quantity': amount, 'updated_at': DateTime.now().toIso8601String()},
+          {
+            'quantity': amount, 
+            'updated_at': DateTime.now().toIso8601String(),
+          },
           where: 'code = ?',
           whereArgs: [currencyCode],
         );
@@ -1171,6 +1191,16 @@ class DatabaseHelper {
       }
     });
   }
+
+  Future<void> updateCurrency(CurrencyModel currency) async {
+    final db = await database;
+    await db.update(
+      'currencies',
+      currency.toMap(),
+      where: 'id = ?',
+      whereArgs: [currency.id],
+    );
+  }
 }
 
 // Extension methods for model copying
@@ -1180,12 +1210,16 @@ extension CurrencyModelCopy on CurrencyModel {
     String? code,
     double? quantity,
     DateTime? updatedAt,
+    double? defaultBuyRate,
+    double? defaultSellRate,
   }) {
     return CurrencyModel(
       id: id ?? this.id,
       code: code ?? this.code,
       quantity: quantity ?? this.quantity,
       updatedAt: updatedAt ?? this.updatedAt,
+      defaultBuyRate: defaultBuyRate ?? this.defaultBuyRate,
+      defaultSellRate: defaultSellRate ?? this.defaultSellRate,
     );
   }
 }

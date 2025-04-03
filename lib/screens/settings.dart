@@ -11,6 +11,9 @@ import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:media_scanner/media_scanner.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,9 +41,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _somController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
+  final TextEditingController _defaultBuyRateController = TextEditingController();
+  final TextEditingController _defaultSellRateController = TextEditingController();
   
   DateTime? _startDate;
   DateTime? _endDate;
+
+  // Add new property for export format
+  String _selectedFormat = 'excel';
 
   @override
   void initState() {
@@ -93,6 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _somController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
+    _defaultBuyRateController.dispose();
+    _defaultSellRateController.dispose();
     super.dispose();
   }
 
@@ -113,6 +123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? currency.quantity
                         : double.tryParse(currency.quantity.toString()) ?? 0.0,
                 updatedAt: currency.updatedAt,
+                defaultBuyRate: currency.defaultBuyRate,
+                defaultSellRate: currency.defaultSellRate,
               );
             }).toList();
       });
@@ -215,6 +227,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _showAddCurrencyDialog(BuildContext context) async {
     _newCurrencyCodeController.clear();
     _quantityController.text = "0"; // Set default value to 0
+    _defaultBuyRateController.text = "0.0";
+    _defaultSellRateController.text = "0.0";
 
     return showDialog(
       context: context,
@@ -242,6 +256,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 keyboardType: TextInputType.number,
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _defaultBuyRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Buy Rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _defaultSellRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Sell Rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
             ],
           ),
           actions: [
@@ -252,11 +284,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (_newCurrencyCodeController.text.isNotEmpty &&
-                    _quantityController.text.isNotEmpty) {
+                    _quantityController.text.isNotEmpty &&
+                    _defaultBuyRateController.text.isNotEmpty &&
+                    _defaultSellRateController.text.isNotEmpty) {
                   try {
                     final newCurrency = CurrencyModel(
                       code: _newCurrencyCodeController.text.toUpperCase(),
                       quantity: double.parse(_quantityController.text),
+                      defaultBuyRate: double.parse(_defaultBuyRateController.text),
+                      defaultSellRate: double.parse(_defaultSellRateController.text),
                     );
 
                     await _dbHelper.insertCurrency(newCurrency);
@@ -539,9 +575,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -595,7 +628,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.file_download),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
+              // Set default date range to current day when opening export section
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
               setState(() {
+                _startDate = today;
+                _endDate = now;
+                _startDateController.text = DateFormat('dd-MM-yyyy').format(today);
+                _endDateController.text = DateFormat('dd-MM-yyyy').format(now);
                 _showExportSection = true;
                 _showCurrencyManagement = false;
                 _showUserManagement = false;
@@ -775,14 +815,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             subtitle: Text(
                               'Quantity: $formattedQuantity\n'
-                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
+                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}\n'
+                              'Buy Rate: ${currency.defaultBuyRate}\n'
+                              'Sell Rate: ${currency.defaultSellRate}',
                             ),
-                            trailing: isSom 
-                                ? const Icon(Icons.payments, color: Colors.blue)
-                                : IconButton(
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isSom) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditCurrencyDialog(currency),
+                                  ),
+                                  IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
                                   ),
+                                ] else
+                                  const Icon(Icons.payments, color: Colors.blue),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -969,6 +1021,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
                     
                     const Text(
+                      'Export Format',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Format Selection
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Excel'),
+                            value: 'excel',
+                            groupValue: _selectedFormat,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedFormat = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('PDF'),
+                            value: 'pdf',
+                            groupValue: _selectedFormat,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedFormat = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    const Text(
                       'Export Options',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -1048,54 +1137,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Request storage permission
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        _showSnackBar('Storage permission is required to export data');
-        return;
+      // Get the Documents directory
+      final directory = Directory('/storage/emulated/0/Documents');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
       }
 
-      // Create excel file
-      final excel = Excel.createExcel();
-      
-      if (exportType == 'history') {
-        await _exportHistoryData(excel);
+      final fileName = '${exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+      String filePath;
+
+      if (_selectedFormat == 'excel') {
+        filePath = await _exportToExcel(directory, fileName);
       } else {
-        await _exportAnalyticsData(excel);
+        filePath = await _exportToPdf(directory, fileName);
       }
       
-      // Save the file
-      final directory = await getExternalStorageDirectory();
-      if (directory == null) {
-        _showSnackBar('Could not access storage directory');
-        return;
-      }
-      
-      // Get save location from user
-      String? outputPath = await FilePicker.platform.getDirectoryPath();
-      if (outputPath == null) {
-        _showSnackBar('Export cancelled');
-        return;
-      }
-      
-      final fileName = '${exportType}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final filePath = '$outputPath/$fileName';
-      
-      final fileBytes = excel.encode();
-      if (fileBytes == null) {
-        _showSnackBar('Failed to generate Excel file');
-        return;
-      }
-      
-      final file = File(filePath);
-      await file.writeAsBytes(fileBytes);
-      
-      _showSnackBar('Data exported successfully to: $filePath');
+      // Trigger media scan
+      await MediaScanner.loadMedia(path: filePath);
+      _showSnackBar('File exported successfully to:\n$filePath');
     } catch (e) {
       _showSnackBar('Error exporting data: ${e.toString()}');
     }
   }
-  
+
+  Future<String> _exportToExcel(Directory directory, String fileName) async {
+    final excel = Excel.createExcel();
+    
+    if (fileName.contains('history')) {
+      await _exportHistoryData(excel);
+    } else {
+      await _exportAnalyticsData(excel);
+    }
+    
+    final filePath = '${directory.path}/${fileName}.xlsx';
+    final fileBytes = excel.encode();
+    if (fileBytes == null) {
+      throw Exception('Failed to generate Excel file');
+    }
+    
+    final file = File(filePath);
+    await file.writeAsBytes(fileBytes);
+    return filePath;
+  }
+
+  Future<String> _exportToPdf(Directory directory, String fileName) async {
+    final pdf = pw.Document();
+    
+    // Get history data
+    final historyData = await _dbHelper.getFilteredHistoryByDate(
+      fromDate: _startDate!,
+      toDate: _endDate!,
+    );
+    
+    // Create PDF content
+    pdf.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text('Transaction History Report'),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Text(
+            'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
+          ),
+          pw.SizedBox(height: 20),
+          pw.Table.fromTextArray(
+            headers: ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'],
+            data: historyData.map((entry) => [
+              DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt),
+              entry.currencyCode,
+              entry.operationType,
+              entry.rate.toStringAsFixed(2),
+              entry.quantity.toStringAsFixed(2),
+              entry.total.toStringAsFixed(2),
+            ]).toList(),
+          ),
+        ],
+      ),
+    );
+    
+    final filePath = '${directory.path}/${fileName}.pdf';
+    final file = File(filePath);
+    await file.writeAsBytes(await pdf.save());
+    return filePath;
+  }
+
   // Export history data
   Future<void> _exportHistoryData(Excel excel) async {
     // Create a sheet for history data
@@ -1224,4 +1351,128 @@ class _SettingsScreenState extends State<SettingsScreen> {
       SnackBar(content: Text(message)),
     );
   }
+
+  Future<void> _showEditCurrencyDialog(CurrencyModel currency) async {
+    final TextEditingController codeController = TextEditingController(text: currency.code);
+    final TextEditingController quantityController = TextEditingController(text: currency.quantity.toString());
+    final TextEditingController defaultBuyRateController = TextEditingController(text: currency.defaultBuyRate.toString());
+    final TextEditingController defaultSellRateController = TextEditingController(text: currency.defaultSellRate.toString());
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit ${currency.code}'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: codeController,
+                decoration: const InputDecoration(
+                  labelText: 'Currency Code',
+                  hintText: 'Enter currency code (e.g. USD)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLength: 3,
+                textCapitalization: TextCapitalization.characters,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: quantityController,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity',
+                  hintText: 'Enter current quantity',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: defaultBuyRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Buy Rate',
+                  hintText: 'Enter default buy rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: defaultSellRateController,
+                decoration: const InputDecoration(
+                  labelText: 'Default Sell Rate',
+                  hintText: 'Enter default sell rate',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final newCode = codeController.text.toUpperCase();
+                final newQuantity = double.parse(quantityController.text);
+                final newBuyRate = double.parse(defaultBuyRateController.text);
+                final newSellRate = double.parse(defaultSellRateController.text);
+
+                if (newQuantity < 0 || newBuyRate <= 0 || newSellRate <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid values: Quantity cannot be negative, rates must be greater than 0'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Check if the new code already exists (if it's different from current code)
+                if (newCode != currency.code) {
+                  final existingCurrency = await _dbHelper.getCurrency(newCode);
+                  if (existingCurrency != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Currency code already exists'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
+                // Update currency with new values
+                final updatedCurrency = currency.copyWith(
+                  code: newCode,
+                  quantity: newQuantity,
+                  defaultBuyRate: newBuyRate,
+                  defaultSellRate: newSellRate,
+                );
+
+                await _dbHelper.updateCurrency(updatedCurrency);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _loadCurrencies(); // Refresh the list
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter valid numbers'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
