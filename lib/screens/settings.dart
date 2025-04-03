@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
-import 'dart:io';  // Add this import for File class
+import 'dart:io'; // Add this import for File class
 import '../db_helper.dart';
 import '../models/currency.dart';
 import '../models/user.dart';
 import '../screens/login_screen.dart'; // Import to access currentUser
 import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:media_scanner/media_scanner.dart';
+import '../widgets/currency_management_widget.dart';
+import '../widgets/user_management_widget.dart';
+import '../widgets/data_export_widget.dart';
+import '../widgets/data_reset_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -41,20 +41,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _somController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _defaultBuyRateController = TextEditingController();
-  final TextEditingController _defaultSellRateController = TextEditingController();
-  
+  final TextEditingController _defaultBuyRateController =
+      TextEditingController();
+  final TextEditingController _defaultSellRateController =
+      TextEditingController();
+
   DateTime? _startDate;
   DateTime? _endDate;
 
   // Add new property for export format
   String _selectedFormat = 'excel';
 
+  int _selectedIndex = 0;
+
   @override
   void initState() {
     super.initState();
     _loadCurrencies();
     _loadUsers();
+    _checkAdminStatus();
   }
 
   @override
@@ -76,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _startAutoRefresh() {
     // Cancel any existing timer
     _autoRefreshTimer?.cancel();
-    
+
     // Set up a timer to refresh currencies every 3 seconds
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_showCurrencyManagement && mounted) {
@@ -149,28 +154,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Show confirmation dialog with warning
     bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset All Data'),
-        content: const Text(
-          'WARNING: This will delete all currencies, transaction history, and users except the admin. '
-          'This action cannot be undone!',
-          style: TextStyle(color: Colors.red),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'Reset Everything',
-              style: TextStyle(color: Colors.white),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Reset All Data'),
+            content: const Text(
+              'WARNING: This will delete all currencies, transaction history, and users except the admin. '
+              'This action cannot be undone!',
+              style: TextStyle(color: Colors.red),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text(
+                  'Reset Everything',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -179,18 +185,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
-          ),
+          builder:
+              (context) => const Center(child: CircularProgressIndicator()),
         );
-        
+
         // Perform the reset
         await _dbHelper.resetAllData();
-        
+
         // Close loading indicator
         if (!mounted) return;
         Navigator.of(context).pop();
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -198,11 +203,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Refresh the data
         await _loadCurrencies();
         await _loadUsers();
-        
+
         // Return to main settings page
         setState(() {
           _showCurrencyManagement = false;
@@ -212,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Close loading indicator if still showing
         if (!mounted) return;
         Navigator.of(context).pop();
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -263,7 +268,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelText: 'Default Buy Rate',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -272,7 +279,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelText: 'Default Sell Rate',
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
             ],
           ),
@@ -291,8 +300,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final newCurrency = CurrencyModel(
                       code: _newCurrencyCodeController.text.toUpperCase(),
                       quantity: double.parse(_quantityController.text),
-                      defaultBuyRate: double.parse(_defaultBuyRateController.text),
-                      defaultSellRate: double.parse(_defaultSellRateController.text),
+                      defaultBuyRate: double.parse(
+                        _defaultBuyRateController.text,
+                      ),
+                      defaultSellRate: double.parse(
+                        _defaultSellRateController.text,
+                      ),
                     );
 
                     await _dbHelper.insertCurrency(newCurrency);
@@ -319,53 +332,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add SOM'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: amountController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Amount to add',
-              prefixIcon: Icon(Icons.attach_money),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add SOM'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount to add',
+                  prefixIcon: Icon(Icons.attach_money),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter amount';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter valid number';
+                  }
+                  return null;
+                },
+              ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter amount';
-              }
-              if (double.tryParse(value) == null) {
-                return 'Please enter valid number';
-              }
-              return null;
-            },
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    final amount = double.parse(amountController.text);
+                    try {
+                      await _dbHelper.addToSomBalance(amount);
+                      Navigator.pop(context);
+                      _showSuccessNotification(
+                        'Successfully added $amount SOM',
+                      );
+                      // Refresh currencies to show updated SOM balance
+                      _loadCurrencies();
+                    } catch (e) {
+                      Navigator.pop(context);
+                      _showErrorNotification(
+                        'Failed to add SOM: ${e.toString()}',
+                      );
+                    }
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final amount = double.parse(amountController.text);
-                try {
-                  await _dbHelper.addToSomBalance(amount);
-                  Navigator.pop(context);
-                  _showSuccessNotification('Successfully added $amount SOM');
-                  // Refresh currencies to show updated SOM balance
-                  _loadCurrencies();
-                } catch (e) {
-                  Navigator.pop(context);
-                  _showErrorNotification('Failed to add SOM: ${e.toString()}');
-                }
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -575,904 +593,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Primary content based on what's selected
-              if (_showCurrencyManagement)
-                _buildCurrencyManagement()
-              else if (_showUserManagement)
-                _buildUserManagement()
-              else if (_showExportSection)
-                _buildExportSection()
-              else
-                _buildSettings(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettings() {
-    // Check if user is admin
-    final bool isAdmin = currentUser?.role == 'admin';
-    
-    return SizedBox(
-      height: 300, // Increase height to fit all options
-      child: ListView(
-        shrinkWrap: true,
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text('Settings')),
+      body: Row(
         children: [
-          ListTile(
-            title: const Text('Currency Management'),
-            leading: const Icon(Icons.currency_exchange),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
+          NavigationRail(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) {
               setState(() {
-                _showCurrencyManagement = true;
-                _showUserManagement = false;
-                _showExportSection = false;
-                // Start auto-refresh when navigating to currency management
-                _startAutoRefresh();
+                _selectedIndex = index;
               });
             },
-          ),
-          
-          // Export Data option
-          ListTile(
-            title: const Text('Export Data'),
-            leading: const Icon(Icons.file_download),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Set default date range to current day when opening export section
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              setState(() {
-                _startDate = today;
-                _endDate = now;
-                _startDateController.text = DateFormat('dd-MM-yyyy').format(today);
-                _endDateController.text = DateFormat('dd-MM-yyyy').format(now);
-                _showExportSection = true;
-                _showCurrencyManagement = false;
-                _showUserManagement = false;
-              });
-            },
-          ),
-          
-          // Only show User Accounts option to admin users
-          if (isAdmin)
-            ListTile(
-              title: const Text('User Accounts'),
-              leading: const Icon(Icons.people),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                setState(() {
-                  _showUserManagement = true;
-                  _showCurrencyManagement = false;
-                  _showExportSection = false;
-                });
-              },
-            ),
-          
-          const Divider(),
-          
-          // Reset All Data option (admin only)
-          if (isAdmin)
-            ListTile(
-              title: const Text('Reset All Data'),
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              onTap: _resetAllData,
-            ),
-          
-          // Logout option
-          ListTile(
-            title: const Text('Logout'),
-            leading: const Icon(Icons.logout, color: Colors.red),
-            onTap: _logout,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Logout function
-  Future<void> _logout() async {
-    // Show confirmation dialog
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    
-    if (shouldLogout == true) {
-      try {
-        // Clear remember me if enabled
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('remember_me', false);
-        
-        // Clear the current user
-        currentUser = null;
-        
-        if (!mounted) return;
-        
-        // Navigate back to login screen
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false, // Remove all previous routes
-        );
-      } catch (e) {
-        debugPrint('Error during logout: $e');
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error during logout')),
-        );
-      }
-    }
-  }
-
-  Widget _buildCurrencyManagement() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height - 200, // Adjust height to fit the screen
-      child: Column(
-        children: [
-          // Header section
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _showCurrencyManagement = false;
-                      _autoRefreshTimer?.cancel();
-                    });
-                  },
+            labelType: NavigationRailLabelType.all,
+            destinations: [
+              const NavigationRailDestination(
+                icon: Icon(Icons.currency_exchange),
+                label: Text('Currencies'),
+              ),
+              if (_isAdmin) ...[
+                const NavigationRailDestination(
+                  icon: Icon(Icons.people),
+                  label: Text('Users'),
                 ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Currency Management',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.file_download),
+                  label: Text('Export'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.delete_forever),
+                  label: Text('Reset'),
                 ),
               ],
-            ),
-          ),
-          
-          // Add SOM button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _showAddSomDialog,
-                icon: const Icon(Icons.add),
-                label: const Text('Add SOM'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade100,
-                  foregroundColor: Colors.blue.shade800,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Currency list
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadCurrencies,
-              child: _currencies.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No currencies available',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _currencies.length,
-                      itemBuilder: (context, index) {
-                        final currency = _currencies[index];
-                        // Format quantity with 2 decimal places
-                        final formattedQuantity = NumberFormat.currency(
-                          decimalDigits: 2,
-                          symbol: '',
-                        ).format(currency.quantity);
-
-                        // Use different style for SOM currency
-                        final bool isSom = currency.code == 'SOM';
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          color: isSom ? Colors.blue.shade50 : null,
-                          child: ListTile(
-                            title: Text(
-                              currency.code ?? '',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isSom ? Colors.blue.shade800 : null,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Quantity: $formattedQuantity\n'
-                              'Last updated: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}\n'
-                              'Buy Rate: ${currency.defaultBuyRate}\n'
-                              'Sell Rate: ${currency.defaultSellRate}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (!isSom) ...[
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => _showEditCurrencyDialog(currency),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
-                                  ),
-                                ] else
-                                  const Icon(Icons.payments, color: Colors.blue),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ),
-          
-          // Add New Currency button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () => _showAddCurrencyDialog(context),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Add New Currency'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserManagement() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height - 200, // Adjust height to fit the screen
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _showUserManagement = false;
-                      _autoRefreshTimer?.cancel();
-                    });
-                  },
-                ),
-                const SizedBox(width: 16),
-                const Text(
-                  'User Management',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadUsers,
-              child: _users.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No users available',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: 
-                              user.role == 'admin' ? Colors.orange : Colors.blue,
-                            child: Icon(
-                              user.role == 'admin' 
-                                  ? Icons.admin_panel_settings
-                                  : Icons.person,
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(user.username),
-                          subtitle: Text(
-                            'Role: ${user.role}\n'
-                            'Created: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteUser(user.id, user.username),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () => _showAddUserDialog(context),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Add New User'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Add new method to build export section
-  Widget _buildExportSection() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height - 200,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Back button and header
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _showExportSection = false;
-                    });
-                  },
-                ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Export Data',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Date range and export settings
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Select Date Range',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Date Range Selection
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _startDateController,
-                            decoration: const InputDecoration(
-                              labelText: 'Start Date',
-                              border: OutlineInputBorder(),
-                              suffixIcon: Icon(Icons.calendar_today),
-                            ),
-                            readOnly: true,
-                            onTap: () => _selectDate(true),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextField(
-                            controller: _endDateController,
-                            decoration: const InputDecoration(
-                              labelText: 'End Date',
-                              border: OutlineInputBorder(),
-                              suffixIcon: Icon(Icons.calendar_today),
-                            ),
-                            readOnly: true,
-                            onTap: () => _selectDate(false),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    const Text(
-                      'Export Format',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Format Selection
-                    Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Excel'),
-                            value: 'excel',
-                            groupValue: _selectedFormat,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedFormat = value!;
-                              });
-                            },
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('PDF'),
-                            value: 'pdf',
-                            groupValue: _selectedFormat,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedFormat = value!;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    const Text(
-                      'Export Options',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Export Buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _exportData(exportType: 'history'),
-                            icon: const Icon(Icons.history),
-                            label: const Text('Export History'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _exportData(exportType: 'analytics'),
-                            icon: const Icon(Icons.analytics),
-                            label: const Text('Export Statistics'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Date selection method
-  Future<void> _selectDate(bool isStartDate) async {
-    final initialDate = isStartDate ? _startDate ?? DateTime.now() : _endDate ?? DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-    );
-    
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _startDate = picked;
-          _startDateController.text = DateFormat('dd-MM-yyyy').format(picked);
-        } else {
-          _endDate = picked;
-          _endDateController.text = DateFormat('dd-MM-yyyy').format(picked);
-        }
-      });
-    }
-  }
-
-  // Method to export data
-  Future<void> _exportData({required String exportType}) async {
-    try {
-      // Check start and end dates
-      if (_startDate == null || _endDate == null) {
-        _showSnackBar('Please select start and end dates');
-        return;
-      }
-      
-      if (_endDate!.isBefore(_startDate!)) {
-        _showSnackBar('End date cannot be before start date');
-        return;
-      }
-
-      // Get the Documents directory
-      final directory = Directory('/storage/emulated/0/Documents');
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      final fileName = '${exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
-      String filePath;
-
-      if (_selectedFormat == 'excel') {
-        filePath = await _exportToExcel(directory, fileName);
-      } else {
-        filePath = await _exportToPdf(directory, fileName);
-      }
-      
-      // Trigger media scan
-      await MediaScanner.loadMedia(path: filePath);
-      _showSnackBar('File exported successfully to:\n$filePath');
-    } catch (e) {
-      _showSnackBar('Error exporting data: ${e.toString()}');
-    }
-  }
-
-  Future<String> _exportToExcel(Directory directory, String fileName) async {
-    final excel = Excel.createExcel();
-    
-    if (fileName.contains('history')) {
-      await _exportHistoryData(excel);
-    } else {
-      await _exportAnalyticsData(excel);
-    }
-    
-    final filePath = '${directory.path}/${fileName}.xlsx';
-    final fileBytes = excel.encode();
-    if (fileBytes == null) {
-      throw Exception('Failed to generate Excel file');
-    }
-    
-    final file = File(filePath);
-    await file.writeAsBytes(fileBytes);
-    return filePath;
-  }
-
-  Future<String> _exportToPdf(Directory directory, String fileName) async {
-    final pdf = pw.Document();
-    
-    // Get history data
-    final historyData = await _dbHelper.getFilteredHistoryByDate(
-      fromDate: _startDate!,
-      toDate: _endDate!,
-    );
-    
-    // Create PDF content
-    pdf.addPage(
-      pw.MultiPage(
-        build: (context) => [
-          pw.Header(
-            level: 0,
-            child: pw.Text('Transaction History Report'),
-          ),
-          pw.SizedBox(height: 20),
-          pw.Text(
-            'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
-          ),
-          pw.SizedBox(height: 20),
-          pw.Table.fromTextArray(
-            headers: ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'],
-            data: historyData.map((entry) => [
-              DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt),
-              entry.currencyCode,
-              entry.operationType,
-              entry.rate.toStringAsFixed(2),
-              entry.quantity.toStringAsFixed(2),
-              entry.total.toStringAsFixed(2),
-            ]).toList(),
-          ),
-        ],
-      ),
-    );
-    
-    final filePath = '${directory.path}/${fileName}.pdf';
-    final file = File(filePath);
-    await file.writeAsBytes(await pdf.save());
-    return filePath;
-  }
-
-  // Export history data
-  Future<void> _exportHistoryData(Excel excel) async {
-    // Create a sheet for history data
-    final sheet = excel['History'];
-    
-    // Add headers
-    final headers = ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'];
-    for (var i = 0; i < headers.length; i++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = TextCellValue(headers[i]);
-    }
-    
-    // Get history data
-    final historyData = await _dbHelper.getFilteredHistoryByDate(
-      fromDate: _startDate!,
-      toDate: _endDate!,
-    );
-    
-    // Add data rows
-    for (var i = 0; i < historyData.length; i++) {
-      final entry = historyData[i];
-      final rowIndex = i + 1; // +1 because headers are at row 0
-      
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          TextCellValue(DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt));
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(entry.currencyCode);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = TextCellValue(entry.operationType);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = DoubleCellValue(entry.rate);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = DoubleCellValue(entry.quantity);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = DoubleCellValue(entry.total);
-    }
-    
-    // Auto fit columns
-    for (var i = 0; i < headers.length; i++) {
-      sheet.setColumnWidth(i, 15);
-    }
-  }
-  
-  // Export analytics data
-  Future<void> _exportAnalyticsData(Excel excel) async {
-    // Get analytics data
-    final analyticsData = await _dbHelper.calculateAnalytics(
-      startDate: _startDate,
-      endDate: _endDate,
-    );
-    
-    // Create summary sheet
-    final summarySheet = excel['Summary'];
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = TextCellValue('Period');
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = 
-        TextCellValue('${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}');
-    
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1)).value = TextCellValue('Total Profit');
-    summarySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 1)).value = 
-        DoubleCellValue(analyticsData['total_profit'] as double);
-    
-    // Create currencies sheet
-    final currencySheet = excel['Currency Statistics'];
-    
-    // Add headers
-    final headers = [
-      'Currency', 'Avg Purchase Rate', 'Total Purchased', 'Purchase Amount',
-      'Avg Sale Rate', 'Total Sold', 'Sale Amount', 'Current Quantity', 'Profit'
-    ];
-    
-    for (var i = 0; i < headers.length; i++) {
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = TextCellValue(headers[i]);
-    }
-    
-    // Add data rows
-    final currencyStats = analyticsData['currency_stats'] as List;
-    for (var i = 0; i < currencyStats.length; i++) {
-      final stat = currencyStats[i];
-      final rowIndex = i + 1;
-      
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          TextCellValue(stat['currency'] as String);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['avg_purchase_rate'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['total_purchased'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['total_purchase_amount'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['avg_sale_rate'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['total_sold'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['total_sale_amount'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['current_quantity'] as double);
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = 
-          DoubleCellValue(stat['profit'] as double);
-    }
-    
-    // Auto fit columns
-    for (var i = 0; i < headers.length; i++) {
-      currencySheet.setColumnWidth(i, 15);
-    }
-
-    // Get daily profit data
-    final dailyProfitData = await _dbHelper.getDailyProfitData(
-      startDate: _startDate!,
-      endDate: _endDate!,
-    );
-
-    // Create daily profit sheet
-    final dailySheet = excel['Daily Profit'];
-    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0)).value = TextCellValue('Date');
-    dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0)).value = TextCellValue('Profit');
-
-    for (var i = 0; i < dailyProfitData.length; i++) {
-      final day = dailyProfitData[i];
-      final rowIndex = i + 1;
-      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          TextCellValue(day['day'] as String);
-      dailySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
-          DoubleCellValue(day['profit'] as double);
-    }
-
-    dailySheet.setColumnWidth(0, 15);
-    dailySheet.setColumnWidth(1, 15);
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<void> _showEditCurrencyDialog(CurrencyModel currency) async {
-    final TextEditingController codeController = TextEditingController(text: currency.code);
-    final TextEditingController quantityController = TextEditingController(text: currency.quantity.toString());
-    final TextEditingController defaultBuyRateController = TextEditingController(text: currency.defaultBuyRate.toString());
-    final TextEditingController defaultSellRateController = TextEditingController(text: currency.defaultSellRate.toString());
-
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit ${currency.code}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Currency Code',
-                  hintText: 'Enter currency code (e.g. USD)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLength: 3,
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: quantityController,
-                decoration: const InputDecoration(
-                  labelText: 'Quantity',
-                  hintText: 'Enter current quantity',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: defaultBuyRateController,
-                decoration: const InputDecoration(
-                  labelText: 'Default Buy Rate',
-                  hintText: 'Enter default buy rate',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: defaultSellRateController,
-                decoration: const InputDecoration(
-                  labelText: 'Default Sell Rate',
-                  hintText: 'Enter default sell rate',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final newCode = codeController.text.toUpperCase();
-                final newQuantity = double.parse(quantityController.text);
-                final newBuyRate = double.parse(defaultBuyRateController.text);
-                final newSellRate = double.parse(defaultSellRateController.text);
-
-                if (newQuantity < 0 || newBuyRate <= 0 || newSellRate <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invalid values: Quantity cannot be negative, rates must be greater than 0'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                // Check if the new code already exists (if it's different from current code)
-                if (newCode != currency.code) {
-                  final existingCurrency = await _dbHelper.getCurrency(newCode);
-                  if (existingCurrency != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Currency code already exists'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                }
-
-                // Update currency with new values
-                final updatedCurrency = currency.copyWith(
-                  code: newCode,
-                  quantity: newQuantity,
-                  defaultBuyRate: newBuyRate,
-                  defaultSellRate: newSellRate,
-                );
-
-                await _dbHelper.updateCurrency(updatedCurrency);
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadCurrencies(); // Refresh the list
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter valid numbers'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Save'),
-          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: _buildSelectedContent()),
         ],
       ),
     );
+  }
+
+  Widget _buildSelectedContent() {
+    switch (_selectedIndex) {
+      case 0:
+        return CurrencyManagementWidget(dbHelper: _dbHelper, isAdmin: _isAdmin);
+      case 1:
+        return UserManagementWidget(dbHelper: _dbHelper, isAdmin: _isAdmin);
+      case 2:
+        return DataExportWidget(dbHelper: _dbHelper);
+      case 3:
+        return DataResetWidget(dbHelper: _dbHelper);
+      default:
+        return const Center(child: Text('Select a setting'));
+    }
+  }
+
+  Future<void> _checkAdminStatus() async {
+    setState(() {
+      _isAdmin = currentUser?.role == 'admin';
+    });
   }
 }
-
