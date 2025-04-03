@@ -628,7 +628,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.file_download),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: () {
+              // Set default date range to current day when opening export section
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
               setState(() {
+                _startDate = today;
+                _endDate = now;
+                _startDateController.text = DateFormat('dd-MM-yyyy').format(today);
+                _endDateController.text = DateFormat('dd-MM-yyyy').format(now);
                 _showExportSection = true;
                 _showCurrencyManagement = false;
                 _showUserManagement = false;
