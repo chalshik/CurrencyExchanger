@@ -72,7 +72,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Set up listeners for focus changes
     _currencyFocusNode.addListener(_handleFocusChange);
     _quantityFocusNode.addListener(_handleFocusChange);
-    
+
     // Add listeners to the text controllers to update total when text changes
     _currencyController.addListener(_calculateTotal);
     _quantityController.addListener(_calculateTotal);
@@ -125,9 +125,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             if (currency.code != 'SOM') {
               _selectedCurrency = currency.code!;
               // Set the default exchange rate based on operation type
-              _currencyController.text = _operationType == 'Purchase' 
-                  ? currency.defaultBuyRate.toString()
-                  : currency.defaultSellRate.toString();
+              _currencyController.text =
+                  _operationType == 'Purchase'
+                      ? currency.defaultBuyRate.toString()
+                      : currency.defaultSellRate.toString();
               _calculateTotal();
               break;
             }
@@ -154,14 +155,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   void _calculateTotal() {
     // Convert empty fields to 0
-    double currencyValue = _currencyController.text.isEmpty 
-        ? 0.0 
-        : double.tryParse(_currencyController.text) ?? 0.0;
-    
-    double quantity = _quantityController.text.isEmpty 
-        ? 0.0 
-        : double.tryParse(_quantityController.text) ?? 0.0;
-    
+    double currencyValue =
+        _currencyController.text.isEmpty
+            ? 0.0
+            : double.tryParse(_currencyController.text) ?? 0.0;
+
+    double quantity =
+        _quantityController.text.isEmpty
+            ? 0.0
+            : double.tryParse(_quantityController.text) ?? 0.0;
+
     setState(() {
       _totalSum = currencyValue * quantity;
     });
@@ -188,7 +191,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final isSmallScreen = screenSize.width < 360;
     final fontSize = isSmallScreen ? 13.0 : 14.0;
     final iconSize = isSmallScreen ? 18.0 : 24.0;
-    
+
     // For portrait mode, put the fields in a row
     if (isPortrait) {
       return Row(
@@ -201,9 +204,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               focusNode: _currencyFocusNode,
               decoration: InputDecoration(
                 labelText: 'Exchange Rate',
-                hintText: _operationType == 'Purchase'
-                    ? 'Enter buy rate'
-                    : 'Enter sell rate',
+                hintText:
+                    _operationType == 'Purchase'
+                        ? 'Enter buy rate'
+                        : 'Enter sell rate',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -219,7 +223,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   horizontal: 12,
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               // Show tablet keyboard when numpad is hidden and we're on a tablet
               readOnly: isTablet && _isNumpadVisible,
               showCursor: true,
@@ -257,7 +263,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   horizontal: 12,
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               // Show tablet keyboard when numpad is hidden and we're on a tablet
               readOnly: isTablet && _isNumpadVisible,
               showCursor: true,
@@ -274,7 +282,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         ],
       );
     }
-    
+
     // For landscape mode, stack the fields vertically
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -285,12 +293,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           focusNode: _currencyFocusNode,
           decoration: InputDecoration(
             labelText: 'Exchange Rate',
-            hintText: _operationType == 'Purchase'
-                ? 'Enter buy rate'
-                : 'Enter sell rate',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            hintText:
+                _operationType == 'Purchase'
+                    ? 'Enter buy rate'
+                    : 'Enter sell rate',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
             fillColor: Colors.grey.shade50,
             prefixIcon: Icon(
@@ -323,16 +330,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           decoration: InputDecoration(
             labelText: 'Quantity',
             hintText: 'Enter amount in $_selectedCurrency',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
             fillColor: Colors.grey.shade50,
-            prefixIcon: Icon(
-              Icons.numbers,
-              color: Colors.blue,
-              size: iconSize,
-            ),
+            prefixIcon: Icon(Icons.numbers, color: Colors.blue, size: iconSize),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 12,
               horizontal: 12,
@@ -358,44 +359,22 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Get screen width to adjust sizing
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
-    final titleSize = isSmallScreen ? 14.0 : 16.0;
     final valueSize = isSmallScreen ? 24.0 : 28.0;
-    final subtitleSize = isSmallScreen ? 12.0 : 14.0;
 
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-        child: Column(
-          children: [
-            Text(
-              _operationType == 'Purchase'
-                  ? 'Total SOM to pay'
-                  : 'Total SOM to receive',
-              style: TextStyle(
-                fontSize: titleSize,
-                color: Colors.grey.shade600,
-              ),
+        child: Center(
+          child: Text(
+            '${_totalSum.toStringAsFixed(2)} SOM',
+            style: TextStyle(
+              fontSize: valueSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${_totalSum.toStringAsFixed(2)} SOM',
-              style: TextStyle(
-                fontSize: valueSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'for ${_quantityController.text.isEmpty ? '0' : _quantityController.text} $_selectedCurrency',
-              style: TextStyle(
-                fontSize: subtitleSize,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -462,9 +441,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               setState(() {
                                 _selectedCurrency = currency.code!;
                                 // Set the default exchange rate based on operation type
-                                _currencyController.text = _operationType == 'Purchase' 
-                                    ? currency.defaultBuyRate.toString()
-                                    : currency.defaultSellRate.toString();
+                                _currencyController.text =
+                                    _operationType == 'Purchase'
+                                        ? currency.defaultBuyRate.toString()
+                                        : currency.defaultSellRate.toString();
                                 _calculateTotal();
                               });
                             }
@@ -510,18 +490,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     (c) => c.code == _selectedCurrency,
                     orElse: () => CurrencyModel(code: ''),
                   );
-                  _currencyController.text = selectedCurrency.defaultBuyRate.toString();
+                  _currencyController.text =
+                      selectedCurrency.defaultBuyRate.toString();
                   _calculateTotal();
                 }
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _operationType == 'Purchase'
-                  ? Colors.blue.shade700
-                  : Colors.blue.shade50,
-              foregroundColor: _operationType == 'Purchase'
-                  ? Colors.white
-                  : Colors.blue.shade700,
+              backgroundColor:
+                  _operationType == 'Purchase'
+                      ? Colors.blue.shade700
+                      : Colors.blue.shade50,
+              foregroundColor:
+                  _operationType == 'Purchase'
+                      ? Colors.white
+                      : Colors.blue.shade700,
               padding: buttonPadding,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -548,18 +531,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     (c) => c.code == _selectedCurrency,
                     orElse: () => CurrencyModel(code: ''),
                   );
-                  _currencyController.text = selectedCurrency.defaultSellRate.toString();
+                  _currencyController.text =
+                      selectedCurrency.defaultSellRate.toString();
                   _calculateTotal();
                 }
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: _operationType == 'Sale'
-                  ? Colors.blue.shade700
-                  : Colors.blue.shade50,
-              foregroundColor: _operationType == 'Sale'
-                  ? Colors.white
-                  : Colors.blue.shade700,
+              backgroundColor:
+                  _operationType == 'Sale'
+                      ? Colors.blue.shade700
+                      : Colors.blue.shade50,
+              foregroundColor:
+                  _operationType == 'Sale'
+                      ? Colors.white
+                      : Colors.blue.shade700,
               padding: buttonPadding,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -766,22 +752,22 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ],
           ),
           SizedBox(height: spacing),
-          
+
           // Exchange rate and quantity in one row for portrait mode
           _buildCurrencyInputSection(),
-          
+
           // Total sum display
           _buildTotalSumCard(),
           SizedBox(height: spacing),
-          
+
           // Currency selector now below total amount
           _buildCurrencySelector(),
           SizedBox(height: spacing),
-          
+
           // Position numpad after currency selector
           if (isTablet && _isNumpadVisible) _buildPortraitNumpad(),
           SizedBox(height: spacing),
-          
+
           // Operation type and finish button
           Text(
             'Operation Type:',
@@ -893,10 +879,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     _buildCurrencyInputSection(),
                     SizedBox(height: spacing),
 
-                    // Total sum card 
+                    // Total sum card
                     _buildTotalSumCard(),
                     SizedBox(height: spacing),
-                    
+
                     // Currency selector below total
                     _buildCurrencySelector(),
                     SizedBox(height: spacing),
@@ -936,8 +922,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     double headerFontSize,
     double standardFontSize,
   ) {
-    final isPortrait = MediaQuery.of(context).size.height > MediaQuery.of(context).size.width;
-    
+    final isPortrait =
+        MediaQuery.of(context).size.height > MediaQuery.of(context).size.width;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -950,18 +937,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           ),
         ),
         SizedBox(height: spacing),
-        
+
         // Input fields
         _buildCurrencyInputSection(),
-        
+
         // Total amount card
         _buildTotalSumCard(),
         SizedBox(height: spacing),
-        
+
         // Currency selector (moved below total card)
         _buildCurrencySelector(),
         SizedBox(height: spacing),
-        
+
         // Operation type buttons (Buy/Sell)
         Text(
           'Operation Type:',
@@ -974,7 +961,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         SizedBox(height: 4),
         _buildOperationTypeButtons(),
         SizedBox(height: spacing),
-        
+
         // Submit button
         _buildFinishButton(),
       ],
@@ -1000,9 +987,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           backgroundColor: Colors.grey.shade200,
           foregroundColor: Colors.grey.shade800,
           padding: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
@@ -1014,7 +999,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     if (!_isNumpadVisible) {
       return const SizedBox.shrink();
     }
-    
+
     final activeColor =
         _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
     final activeBorder =
@@ -1141,7 +1126,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         padding: EdgeInsets.zero, // No padding
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),
-                          side: BorderSide(color: Colors.grey.shade300, width: 1),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
                         ),
                       ),
                       child: const Icon(Icons.backspace, size: 20),
@@ -1398,11 +1386,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.swap_vert, size: 16),
-                      
-                            
-                          ],
+                          children: [Icon(Icons.swap_vert, size: 16)],
                         ),
                       ),
                     ),
@@ -1423,15 +1407,14 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
+                          children: const [
+                            Text(
                               'C',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            
                           ],
                         ),
                       ),
@@ -1458,7 +1441,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('C', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'C',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -1570,14 +1556,22 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         String newText;
         if (selectionStart != selectionEnd) {
           // Replace selected text
-          newText = currentText.substring(0, selectionStart) + '00' + currentText.substring(selectionEnd);
+          newText =
+              currentText.substring(0, selectionStart) +
+              '00' +
+              currentText.substring(selectionEnd);
         } else {
           // Insert at cursor
-          newText = currentText.substring(0, selectionStart) + '00' + currentText.substring(selectionEnd);
+          newText =
+              currentText.substring(0, selectionStart) +
+              '00' +
+              currentText.substring(selectionEnd);
         }
-        
+
         controller.text = newText;
-        controller.selection = TextSelection.collapsed(offset: selectionStart + 2);
+        controller.selection = TextSelection.collapsed(
+          offset: selectionStart + 2,
+        );
       } else if (currentText.isEmpty) {
         // Just insert a single 0 if the field is empty
         controller.text = '0';
@@ -1644,8 +1638,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   // Custom tablet numpad for landscape mode
   Widget _buildTabletNumpad() {
-    final activeColor = _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
-    final activeBorder = _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
+    final activeColor =
+        _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
+    final activeBorder =
+        _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
 
     return Container(
       decoration: BoxDecoration(
@@ -1689,7 +1685,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeBorder,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1703,7 +1702,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Current value display
           Container(
             width: double.infinity,
@@ -1715,17 +1714,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
             child: Text(
               _isRateFieldActive
-                  ? (_currencyController.text.isEmpty ? '0' : _currencyController.text)
-                  : (_quantityController.text.isEmpty ? '0' : _quantityController.text),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+                  ? (_currencyController.text.isEmpty
+                      ? '0'
+                      : _currencyController.text)
+                  : (_quantityController.text.isEmpty
+                      ? '0'
+                      : _quantityController.text),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
               textAlign: TextAlign.right,
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Numpad grid
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1755,7 +1755,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   ],
                 ),
               ),
-              
+
               // Side buttons
               const SizedBox(width: 8),
               Column(
@@ -1814,9 +1814,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          
-                          
-                          
                         ],
                       ),
                     ),
@@ -1874,7 +1871,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       itemBuilder: (context, index) {
         final history = _recentHistory[index];
         final isPositive = history.operationType == 'Sale';
-        
+
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(
@@ -1887,9 +1884,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               vertical: 8,
             ),
             leading: CircleAvatar(
-              backgroundColor: isPositive 
-                  ? Colors.green.shade100
-                  : Colors.red.shade100,
+              backgroundColor:
+                  isPositive ? Colors.green.shade100 : Colors.red.shade100,
               child: Icon(
                 isPositive ? Icons.arrow_upward : Icons.arrow_downward,
                 color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
@@ -1911,15 +1907,15 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   '${history.rate * history.quantity} SOM',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                    color:
+                        isPositive
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
                   ),
                 ),
                 Text(
                   _formatDate(history.createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ],
             ),
@@ -2053,6 +2049,11 @@ class _MobileCurrencyConverterLayoutState
 
   @override
   Widget build(BuildContext context) {
+    // If no user is logged in, show login screen
+    if (currentUser == null) {
+      return const LoginScreen();
+    }
+
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.blue.shade50,
@@ -2073,7 +2074,6 @@ class _MobileCurrencyConverterLayoutState
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          // Use a direct widget instead of IndexedStack to ensure screens rebuild
           child: _buildCurrentPage(),
         ),
       ),
