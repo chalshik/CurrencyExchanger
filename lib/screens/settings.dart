@@ -11,6 +11,9 @@ import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:media_scanner/media_scanner.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -43,6 +46,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   DateTime? _startDate;
   DateTime? _endDate;
+
+  // Add new property for export format
+  String _selectedFormat = 'excel';
 
   @override
   void initState() {
@@ -1008,6 +1014,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
                     
                     const Text(
+                      'Export Format',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Format Selection
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Excel'),
+                            value: 'excel',
+                            groupValue: _selectedFormat,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedFormat = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('PDF'),
+                            value: 'pdf',
+                            groupValue: _selectedFormat,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedFormat = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    const Text(
                       'Export Options',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -1087,54 +1130,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Request storage permission
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        _showSnackBar('Storage permission is required to export data');
-        return;
+      // Get the Documents directory
+      final directory = Directory('/storage/emulated/0/Documents');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
       }
 
-      // Create excel file
-      final excel = Excel.createExcel();
-      
-      if (exportType == 'history') {
-        await _exportHistoryData(excel);
+      final fileName = '${exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+      String filePath;
+
+      if (_selectedFormat == 'excel') {
+        filePath = await _exportToExcel(directory, fileName);
       } else {
-        await _exportAnalyticsData(excel);
+        filePath = await _exportToPdf(directory, fileName);
       }
       
-      // Save the file
-      final directory = await getExternalStorageDirectory();
-      if (directory == null) {
-        _showSnackBar('Could not access storage directory');
-        return;
-      }
-      
-      // Get save location from user
-      String? outputPath = await FilePicker.platform.getDirectoryPath();
-      if (outputPath == null) {
-        _showSnackBar('Export cancelled');
-        return;
-      }
-      
-      final fileName = '${exportType}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final filePath = '$outputPath/$fileName';
-      
-      final fileBytes = excel.encode();
-      if (fileBytes == null) {
-        _showSnackBar('Failed to generate Excel file');
-        return;
-      }
-      
-      final file = File(filePath);
-      await file.writeAsBytes(fileBytes);
-      
-      _showSnackBar('Data exported successfully to: $filePath');
+      // Trigger media scan
+      await MediaScanner.loadMedia(path: filePath);
+      _showSnackBar('File exported successfully to:\n$filePath');
     } catch (e) {
       _showSnackBar('Error exporting data: ${e.toString()}');
     }
   }
-  
+
+  Future<String> _exportToExcel(Directory directory, String fileName) async {
+    final excel = Excel.createExcel();
+    
+    if (fileName.contains('history')) {
+      await _exportHistoryData(excel);
+    } else {
+      await _exportAnalyticsData(excel);
+    }
+    
+    final filePath = '${directory.path}/${fileName}.xlsx';
+    final fileBytes = excel.encode();
+    if (fileBytes == null) {
+      throw Exception('Failed to generate Excel file');
+    }
+    
+    final file = File(filePath);
+    await file.writeAsBytes(fileBytes);
+    return filePath;
+  }
+
+  Future<String> _exportToPdf(Directory directory, String fileName) async {
+    final pdf = pw.Document();
+    
+    // Get history data
+    final historyData = await _dbHelper.getFilteredHistoryByDate(
+      fromDate: _startDate!,
+      toDate: _endDate!,
+    );
+    
+    // Create PDF content
+    pdf.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text('Transaction History Report'),
+          ),
+          pw.SizedBox(height: 20),
+          pw.Text(
+            'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
+          ),
+          pw.SizedBox(height: 20),
+          pw.Table.fromTextArray(
+            headers: ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'],
+            data: historyData.map((entry) => [
+              DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt),
+              entry.currencyCode,
+              entry.operationType,
+              entry.rate.toStringAsFixed(2),
+              entry.quantity.toStringAsFixed(2),
+              entry.total.toStringAsFixed(2),
+            ]).toList(),
+          ),
+        ],
+      ),
+    );
+    
+    final filePath = '${directory.path}/${fileName}.pdf';
+    final file = File(filePath);
+    await file.writeAsBytes(await pdf.save());
+    return filePath;
+  }
+
   // Export history data
   Future<void> _exportHistoryData(Excel excel) async {
     // Create a sheet for history data
