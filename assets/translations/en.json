@@ -1,0 +1,17 @@
+{
+  "app_name": "Currency Converter",
+  "convert": "Convert",
+  "settings": "Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "about": "About",
+  "select_currency": "Select Currency",
+  "amount": "Amount",
+  "result": "Result",
+  "error": "Error",
+  "success": "Success",
+  "loading": "Loading...",
+  "dark_mode": "Dark Mode",
+  "light_mode": "Light Mode",
+  "system_mode": "System Mode"
+} 
