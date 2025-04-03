@@ -657,8 +657,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       );
 
       setState(() {
-        _currencyController.clear();
+        // Only clear the quantity field
         _quantityController.clear();
+        // Reset exchange rate to default for the selected currency
+        final selectedCurrency = _currencies.firstWhere(
+          (c) => c.code == _selectedCurrency,
+          orElse: () => CurrencyModel(code: ''),
+        );
+        _currencyController.text = _operationType == 'Purchase'
+            ? selectedCurrency.defaultBuyRate.toString()
+            : selectedCurrency.defaultSellRate.toString();
         _totalSum = 0.0;
       });
 
