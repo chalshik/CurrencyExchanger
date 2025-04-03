@@ -54,6 +54,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadCurrencies();
     _loadUsers();
+    _checkAdminStatus();
+  }
+
+  void _checkAdminStatus() {
+    setState(() {
+      _isAdmin = currentUser?.role == 'admin';
+    });
   }
 
   @override
@@ -1119,7 +1126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _exportData(exportType: 'history'),
+                            onPressed: () => _exportData(),
                             icon: const Icon(Icons.history),
                             label: const Text('Export History'),
                             style: ElevatedButton.styleFrom(
@@ -1130,8 +1137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed:
-                                () => _exportData(exportType: 'analytics'),
+                            onPressed: () => _exportData(),
                             icon: const Icon(Icons.analytics),
                             label: const Text('Export Statistics'),
                             style: ElevatedButton.styleFrom(
@@ -1176,7 +1182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Method to export data
-  Future<void> _exportData({required String exportType}) async {
+  Future<void> _exportData() async {
     try {
       // Check start and end dates
       if (_startDate == null || _endDate == null) {
@@ -1196,13 +1202,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       final fileName =
-          '${exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+          'export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
       String filePath;
 
+      // Get the data
+      final data = await _dbHelper.getDailyData(
+        startDate: _startDate!,
+        endDate: _endDate!,
+      );
+
       if (_selectedFormat == 'excel') {
-        filePath = await _exportToExcel(directory, fileName);
+        filePath = await _exportToExcel(directory, fileName, data);
       } else {
-        filePath = await _exportToPdf(directory, fileName);
+        filePath = await _exportToPDF(directory, fileName, data);
       }
 
       // Trigger media scan
@@ -1213,13 +1225,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<String> _exportToExcel(Directory directory, String fileName) async {
+  Future<String> _exportToExcel(
+    Directory directory,
+    String fileName,
+    List<Map<String, dynamic>> data,
+  ) async {
     final excel = Excel.createExcel();
+    final sheet = excel['Daily Data'];
 
-    if (fileName.contains('history')) {
-      await _exportHistoryData(excel);
-    } else {
-      await _exportAnalyticsData(excel);
+    // Add headers
+    final headers = ['Date', 'Purchases', 'Sales', 'Profit'];
+    for (var i = 0; i < headers.length; i++) {
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          .value = TextCellValue(headers[i]);
+    }
+
+    // Add data rows
+    for (var i = 0; i < data.length; i++) {
+      final entry = data[i];
+      final rowIndex = i + 1;
+
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .value = TextCellValue(entry['day']);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+          .value = DoubleCellValue(entry['purchases']);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .value = DoubleCellValue(entry['sales']);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+          .value = DoubleCellValue(entry['profit']);
+    }
+
+    // Auto fit columns
+    for (var i = 0; i < headers.length; i++) {
+      sheet.setColumnWidth(i, 15);
     }
 
     final filePath = '${directory.path}/${fileName}.xlsx';
@@ -1233,47 +1276,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return filePath;
   }
 
-  Future<String> _exportToPdf(Directory directory, String fileName) async {
+  Future<String> _exportToPDF(
+    Directory directory,
+    String fileName,
+    List<Map<String, dynamic>> data,
+  ) async {
     final pdf = pw.Document();
 
-    // Get history data
-    final historyData = await _dbHelper.getFilteredHistoryByDate(
-      fromDate: _startDate!,
-      toDate: _endDate!,
-    );
-
-    // Create PDF content
     pdf.addPage(
       pw.MultiPage(
         build:
             (context) => [
-              pw.Header(level: 0, child: pw.Text('Transaction History Report')),
+              pw.Header(level: 0, child: pw.Text('Daily Transaction Report')),
               pw.SizedBox(height: 20),
               pw.Text(
                 'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
               ),
               pw.SizedBox(height: 20),
               pw.Table.fromTextArray(
-                headers: [
-                  'Date',
-                  'Currency',
-                  'Operation',
-                  'Rate',
-                  'Quantity',
-                  'Total',
-                ],
+                headers: ['Date', 'Purchases', 'Sales', 'Profit'],
                 data:
-                    historyData
+                    data
                         .map(
                           (entry) => [
-                            DateFormat(
-                              'dd-MM-yyyy HH:mm',
-                            ).format(entry.createdAt),
-                            entry.currencyCode,
-                            entry.operationType,
-                            entry.rate.toStringAsFixed(2),
-                            entry.quantity.toStringAsFixed(2),
-                            entry.total.toStringAsFixed(2),
+                            entry['day'],
+                            entry['purchases'].toStringAsFixed(2),
+                            entry['sales'].toStringAsFixed(2),
+                            entry['profit'].toStringAsFixed(2),
                           ],
                         )
                         .toList(),
@@ -1288,187 +1317,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return filePath;
   }
 
-  // Export history data
-  Future<void> _exportHistoryData(Excel excel) async {
-    // Create a sheet for history data
-    final sheet = excel['History'];
-
-    // Add headers
-    final headers = [
-      'Date',
-      'Currency',
-      'Operation',
-      'Rate',
-      'Quantity',
-      'Total',
-    ];
-    for (var i = 0; i < headers.length; i++) {
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-          .value = TextCellValue(headers[i]);
-    }
-
-    // Get history data
-    final historyData = await _dbHelper.getFilteredHistoryByDate(
-      fromDate: _startDate!,
-      toDate: _endDate!,
-    );
-
-    // Add data rows
-    for (var i = 0; i < historyData.length; i++) {
-      final entry = historyData[i];
-      final rowIndex = i + 1; // +1 because headers are at row 0
-
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue(
-        DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt),
-      );
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-          .value = TextCellValue(entry.currencyCode);
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-          .value = TextCellValue(entry.operationType);
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-          .value = DoubleCellValue(entry.rate);
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-          .value = DoubleCellValue(entry.quantity);
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
-          .value = DoubleCellValue(entry.total);
-    }
-
-    // Auto fit columns
-    for (var i = 0; i < headers.length; i++) {
-      sheet.setColumnWidth(i, 15);
-    }
-  }
-
-  // Export analytics data
-  Future<void> _exportAnalyticsData(Excel excel) async {
-    // Get analytics data
-    final analyticsData = await _dbHelper.calculateAnalytics(
-      startDate: _startDate,
-      endDate: _endDate,
-    );
-
-    // Create summary sheet
-    final summarySheet = excel['Summary'];
-    summarySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
-        .value = TextCellValue('Period');
-    summarySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0))
-        .value = TextCellValue(
-      '${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
-    );
-
-    summarySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1))
-        .value = TextCellValue('Total Profit');
-    summarySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 1))
-        .value = DoubleCellValue(analyticsData['total_profit'] as double);
-
-    // Create currencies sheet
-    final currencySheet = excel['Currency Statistics'];
-
-    // Add headers
-    final headers = [
-      'Currency',
-      'Avg Purchase Rate',
-      'Total Purchased',
-      'Purchase Amount',
-      'Avg Sale Rate',
-      'Total Sold',
-      'Sale Amount',
-      'Current Quantity',
-      'Profit',
-    ];
-
-    for (var i = 0; i < headers.length; i++) {
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-          .value = TextCellValue(headers[i]);
-    }
-
-    // Add data rows
-    final currencyStats = analyticsData['currency_stats'] as List;
-    for (var i = 0; i < currencyStats.length; i++) {
-      final stat = currencyStats[i];
-      final rowIndex = i + 1;
-
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue(stat['currency'] as String);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['avg_purchase_rate'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['total_purchased'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['total_purchase_amount'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['avg_sale_rate'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['total_sold'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['total_sale_amount'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['current_quantity'] as double);
-      currencySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex))
-          .value = DoubleCellValue(stat['profit'] as double);
-    }
-
-    // Auto fit columns
-    for (var i = 0; i < headers.length; i++) {
-      currencySheet.setColumnWidth(i, 15);
-    }
-
-    // Get daily profit data
-    final dailyProfitData = await _dbHelper.getDailyProfitData(
-      startDate: _startDate!,
-      endDate: _endDate!,
-    );
-
-    // Create daily profit sheet
-    final dailySheet = excel['Daily Profit'];
-    dailySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
-        .value = TextCellValue('Date');
-    dailySheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: 0))
-        .value = TextCellValue('Profit');
-
-    for (var i = 0; i < dailyProfitData.length; i++) {
-      final day = dailyProfitData[i];
-      final rowIndex = i + 1;
-      dailySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue(day['day'] as String);
-      dailySheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-          .value = DoubleCellValue(day['profit'] as double);
-    }
-
-    dailySheet.setColumnWidth(0, 15);
-    dailySheet.setColumnWidth(1, 15);
-  }
-
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: message.contains('Error') ? Colors.red : Colors.green,
+      ),
+    );
   }
 
   Future<void> _showEditCurrencyDialog(CurrencyModel currency) async {
