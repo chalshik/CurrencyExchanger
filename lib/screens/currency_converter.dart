@@ -291,9 +291,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   horizontal: 16, // Increased horizontal padding
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               // Show tablet keyboard when numpad is hidden and we're on a tablet
               readOnly: isTablet && _isNumpadVisible,
               showCursor: true,
@@ -1078,7 +1076,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             children: [
               Expanded(
                 child: Text(
-                  'Currency Exchange',
+                  _operationType == 'Purchase'
+                      ? _getTranslatedText('buy_foreign_currency')
+                      : _getTranslatedText('sell_foreign_currency'),
                   style: TextStyle(
                     fontSize: headerFontSize,
                     fontWeight: FontWeight.bold,
@@ -1131,8 +1131,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         children: [
           Text(
             _operationType == 'Purchase'
-                ? 'Buy Foreign Currency'
-                : 'Sell Foreign Currency',
+                ? _getTranslatedText('buy_foreign_currency')
+                : _getTranslatedText('sell_foreign_currency'),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Colors.blue.shade800,
               fontWeight: FontWeight.bold,
@@ -1311,7 +1311,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           size: 24, // Increased icon size
         ),
         label: Text(
-          _isNumpadVisible ? 'Hide Numpad' : 'Show Numpad',
+          _isNumpadVisible ? _getTranslatedText('hide_numpad') : _getTranslatedText('show_numpad'),
           style: TextStyle(fontSize: 16), // Increased font size
         ),
         style: ElevatedButton.styleFrom(
@@ -1577,52 +1577,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header showing active field
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-            decoration: BoxDecoration(
-              color: activeColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: activeBorder),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    _isRateFieldActive ? 'Exchange Rate' : 'Quantity',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: activeBorder,
-                      fontSize: 14, // Restored
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: _toggleActiveField,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: activeBorder,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    minimumSize: const Size(10, 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    _isRateFieldActive ? 'To Quantity' : 'To Rate',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
           // Number display
           Container(
             width: double.infinity,
@@ -2143,15 +2097,7 @@ class _MobileCurrencyConverterLayoutState
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
         backgroundColor: Colors.blue.shade700,
-        title: const Text(
-          'Currency Converter',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 22, // Increased font size
-            letterSpacing: 0.5,
-          ),
-        ),
+        title: Text(_getTranslatedText('currency_exchange')),
         centerTitle: true,
         elevation: 0,
       ),
@@ -2212,6 +2158,21 @@ class _MobileCurrencyConverterLayoutState
 
   Widget _buildCurrentPage() {
     return _pages[_selectedIndex];
+  }
+
+  // Method for translations
+  String _getTranslatedText(String key, [Map<String, String>? params]) {
+    final languageProvider = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    );
+    String text = languageProvider.translate(key);
+    if (params != null) {
+      params.forEach((key, value) {
+        text = text.replaceAll('{$key}', value);
+      });
+    }
+    return text;
   }
 }
 
@@ -2330,15 +2291,7 @@ class _TabletCurrencyConverterLayoutState
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
         backgroundColor: Colors.blue.shade700,
-        title: const Text(
-          'Currency Converter',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 26, // Increased font size
-            letterSpacing: 0.5,
-          ),
-        ),
+        title: Text(_getTranslatedText('currency_exchange')),
         centerTitle: true,
         elevation: 0,
       ),
@@ -2465,5 +2418,20 @@ class _TabletCurrencyConverterLayoutState
       ), // Increased padding
       child: _pages[_selectedIndex],
     );
+  }
+
+  // Method for translations
+  String _getTranslatedText(String key, [Map<String, String>? params]) {
+    final languageProvider = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    );
+    String text = languageProvider.translate(key);
+    if (params != null) {
+      params.forEach((key, value) {
+        text = text.replaceAll('{$key}', value);
+      });
+    }
+    return text;
   }
 }

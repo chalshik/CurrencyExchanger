@@ -251,28 +251,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ),
           ),
         ),
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.green.shade50,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getTranslatedText('foreign_currency_value'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+        InkWell(
+          onTap: () => _showForeignCurrencyValueDetails(),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.green.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _getTranslatedText('foreign_currency_value'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.green.shade700,
+                        size: 20,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                _buildStatRow(
-                  _getTranslatedText('total_value'),
-                  '${_kassaValue.toStringAsFixed(2)} SOM',
-                  valueColor: Colors.green,
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  _buildStatRow(
+                    _getTranslatedText('total_value'),
+                    '${_kassaValue.toStringAsFixed(2)} SOM',
+                    valueColor: Colors.green,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -529,7 +542,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   flex: 2,
                 ),
                 _buildTableHeaderCell(
+                  _getTranslatedText('avg_purchase_rate'),
+                  flex: 2,
+                ),
+                _buildTableHeaderCell(
                   _getTranslatedText('total_purchased'),
+                  flex: 2,
+                ),
+                _buildTableHeaderCell(
+                  _getTranslatedText('avg_sale_rate'),
                   flex: 2,
                 ),
                 _buildTableHeaderCell(
@@ -704,7 +725,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           flex: 2,
                         ),
                         _buildTableCell(
+                          avgPurchaseRate.toStringAsFixed(4),
+                          flex: 2,
+                        ),
+                        _buildTableCell(
                           '${totalPurchased.toStringAsFixed(2)}',
+                          flex: 2,
+                        ),
+                        _buildTableCell(
+                          avgSaleRate.toStringAsFixed(4),
                           flex: 2,
                         ),
                         _buildTableCell(
@@ -755,7 +784,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   flex: 2,
                 ),
                 _buildTableCell(
+                  "-", // Avg purchase rate doesn't have a meaningful total
+                  bold: true,
+                  flex: 2,
+                ),
+                _buildTableCell(
                   _calculateTotal('total_purchased').toStringAsFixed(2),
+                  bold: true,
+                  flex: 2,
+                ),
+                _buildTableCell(
+                  "-", // Avg sale rate doesn't have a meaningful total
                   bold: true,
                   flex: 2,
                 ),
@@ -984,28 +1023,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
         Expanded(
-          child: Card(
-            margin: const EdgeInsets.all(8),
-            color: Colors.green.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getTranslatedText('foreign_currency_value'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+          child: InkWell(
+            onTap: () => _showForeignCurrencyValueDetails(),
+            child: Card(
+              margin: const EdgeInsets.all(8),
+              color: Colors.green.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _getTranslatedText('foreign_currency_value'),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.green.shade700,
+                          size: 20,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildStatRow(
-                    _getTranslatedText('total_value'),
-                    '${_kassaValue.toStringAsFixed(2)} SOM',
-                    valueColor: Colors.green,
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      _getTranslatedText('total_value'),
+                      '${_kassaValue.toStringAsFixed(2)} SOM',
+                      valueColor: Colors.green,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1038,6 +1090,183 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showForeignCurrencyValueDetails() {
+    // Get currencies excluding SOM, with non-zero purchased amount
+    final currencies = _currencyStats.where((stat) => 
+      stat['currency'] != 'SOM' && 
+      (stat['total_purchased'] as double? ?? 0.0) > 0
+    ).toList();
+    
+    if (currencies.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText('no_data')),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _getTranslatedText('foreign_currency_value_breakdown'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              // Table headers
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.green.shade700,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                child: Row(
+                  children: [
+                    _buildTableHeaderCell(
+                      _getTranslatedText('currency_code_header'),
+                      flex: 1,
+                    ),
+                    _buildTableHeaderCell(
+                      _getTranslatedText('total_purchased'),
+                      flex: 2,
+                    ),
+                    _buildTableHeaderCell(
+                      _getTranslatedText('avg_purchase_rate'),
+                      flex: 2,
+                    ),
+                    _buildTableHeaderCell(
+                      _getTranslatedText('total_value'),
+                      flex: 2,
+                    ),
+                  ],
+                ),
+              ),
+              // Table body
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: ListView.separated(
+                    controller: controller,
+                    shrinkWrap: true,
+                    itemCount: currencies.length,
+                    separatorBuilder: (context, index) => 
+                      Divider(height: 1, color: Colors.grey.shade300),
+                    itemBuilder: (context, index) {
+                      final currency = currencies[index];
+                      final code = currency['currency'] as String;
+                      final totalPurchased = currency['total_purchased'] as double? ?? 0.0;
+                      final avgPurchaseRate = currency['avg_purchase_rate'] as double? ?? 0.0;
+                      final totalValue = totalPurchased * avgPurchaseRate;
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12, 
+                          horizontal: 8,
+                        ),
+                        color: index % 2 == 0 ? Colors.grey.shade50 : Colors.white,
+                        child: Row(
+                          children: [
+                            _buildTableCell(
+                              code,
+                              bold: true,
+                              color: Colors.green.shade700,
+                              flex: 1,
+                            ),
+                            _buildTableCell(
+                              totalPurchased.toStringAsFixed(2),
+                              flex: 2,
+                            ),
+                            _buildTableCell(
+                              avgPurchaseRate.toStringAsFixed(4),
+                              flex: 2,
+                            ),
+                            _buildTableCell(
+                              totalValue.toStringAsFixed(2),
+                              bold: true,
+                              flex: 2,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              // Table footer with total
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  border: Border(
+                    left: BorderSide(color: Colors.grey.shade300),
+                    right: BorderSide(color: Colors.grey.shade300),
+                    bottom: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _buildTableCell(
+                      _getTranslatedText('total'),
+                      bold: true,
+                      flex: 1,
+                    ),
+                    _buildTableCell(
+                      _calculateTotal('total_purchased').toStringAsFixed(2),
+                      bold: true,
+                      flex: 2,
+                    ),
+                    _buildTableCell(
+                      "-", // Average doesn't have a meaningful total
+                      bold: true,
+                      flex: 2,
+                    ),
+                    _buildTableCell(
+                      _kassaValue.toStringAsFixed(2),
+                      bold: true,
+                      color: Colors.green.shade700,
+                      flex: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

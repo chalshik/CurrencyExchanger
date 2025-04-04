@@ -815,10 +815,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  subtitle: Text(
-                    _getTranslatedText('black_white_theme'),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
                   leading: Icon(
                     themeProvider.isDarkMode
                         ? Icons.dark_mode

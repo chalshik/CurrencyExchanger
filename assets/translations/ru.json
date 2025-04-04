@@ -98,10 +98,12 @@
   "enter_valid_number": "Пожалуйста, введите корректное число",
   "som_added_success": "Успешно добавлено {amount} СОМ",
   "user_management": "Управление пользователями",
-  "no_users_available": "Нет доступных пользователей",
-  "logout_error": "Ошибка при выходе",
-  "logout_confirmation": "Вы уверены, что хотите выйти?",
-  "reset_everything": "Сбросить всё",
+  "currency_exchange": "Обмен валют",
+  "hide_numpad": "Скрыть клавиатуру",
+  "show_numpad": "Показать клавиатуру",
+  "buy_foreign_currency": "Покупка иностранной валюты",
+  "sell_foreign_currency": "Продажа иностранной валюты",
+  "foreign_currency_value_breakdown": "Разбивка стоимости иностранной валюты",
   
   "exchange_rate": "Обменный курс",
   "operation_type": "Тип операции",
@@ -196,5 +198,11 @@
   "sold_currencies": "Проданные валюты",
   "profit_by_currency": "Общая прибыль по валютам",
   "no_profit_data": "Нет данных о прибыли",
-  "no_data_available": "Нет доступных данных"
+  "no_data_available": "Нет доступных данных",
+  "toggle_dark_mode": "Переключить тёмный режим",
+  "high_contrast": "Высокий контраст",
+  "no_users_available": "Нет доступных пользователей",
+  "logout_error": "Ошибка при выходе",
+  "logout_confirmation": "Вы уверены, что хотите выйти?",
+  "reset_everything": "Сбросить всё"
 } 

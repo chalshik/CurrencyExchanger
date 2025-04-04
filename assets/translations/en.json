@@ -199,6 +199,11 @@
   "no_profit_data": "No profit data available",
   "no_data_available": "No data available",
   "toggle_dark_mode": "Toggle Dark Mode",
-  "black_white_theme": "Black & White Theme",
-  "high_contrast": "High Contrast"
+  "high_contrast": "High Contrast",
+  "currency_exchange": "Currency Exchange",
+  "hide_numpad": "Hide Numpad",
+  "show_numpad": "Show Numpad",
+  "buy_foreign_currency": "Buy Foreign Currency",
+  "sell_foreign_currency": "Sell Foreign Currency",
+  "foreign_currency_value_breakdown": "Foreign Currency Value Breakdown"
 } 
