@@ -197,5 +197,8 @@
   "sold_currencies": "Sold Currencies",
   "profit_by_currency": "Total Profit by Currency",
   "no_profit_data": "No profit data available",
-  "no_data_available": "No data available"
+  "no_data_available": "No data available",
+  "toggle_dark_mode": "Toggle Dark Mode",
+  "black_white_theme": "Black & White Theme",
+  "high_contrast": "High Contrast"
 } 
