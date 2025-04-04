@@ -87,19 +87,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     setState(() {
-      _filteredEntries = _historyEntries.where((entry) {
-        // Search by currency code or operation type
-        final basicMatch = entry.currencyCode.toLowerCase().contains(query) ||
-                          entry.operationType.toLowerCase().contains(query);
-        
-        // Search by amount - check if query is part of formatted amount string
-        final amountString = entry.quantity.toStringAsFixed(2);
-        final totalString = entry.total.toStringAsFixed(2);
-        final amountMatch = amountString.contains(query) || 
-                           totalString.contains(query);
-        
-        return basicMatch || amountMatch;
-      }).toList();
+      _filteredEntries =
+          _historyEntries.where((entry) {
+            // Search by currency code or operation type
+            final basicMatch =
+                entry.currencyCode.toLowerCase().contains(query) ||
+                entry.operationType.toLowerCase().contains(query);
+
+            // Search by amount - check if query is part of formatted amount string
+            final amountString = entry.quantity.toStringAsFixed(2);
+            final totalString = entry.total.toStringAsFixed(2);
+            final amountMatch =
+                amountString.contains(query) || totalString.contains(query);
+
+            return basicMatch || amountMatch;
+          }).toList();
     });
   }
 
@@ -210,7 +212,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           (context) => AlertDialog(
             title: Text(_getTranslatedText("delete_transaction")),
             content: Text(
-              _getTranslatedText("delete_transaction_confirm", {"type": entry.operationType.toLowerCase()}),
+              _getTranslatedText("delete_transaction_confirm", {
+                "type": entry.operationType.toLowerCase(),
+              }),
             ),
             actions: [
               TextButton(
@@ -219,9 +223,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  await _dbHelper.deleteHistory(
-                    entry,
-                  );
+                  await _dbHelper.deleteHistory(entry);
                   if (mounted) {
                     Navigator.pop(context);
                     _loadHistory();
@@ -244,7 +246,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           (context) => AlertDialog(
             title: Text(_getTranslatedText("delete_transaction")),
             content: Text(
-              _getTranslatedText("delete_transaction_confirm", {"type": entry.operationType.toLowerCase()}),
+              _getTranslatedText("delete_transaction_confirm", {
+                "type": entry.operationType.toLowerCase(),
+              }),
             ),
             actions: [
               TextButton(
@@ -306,14 +310,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       if (!isDeposit) ...[
                         DropdownButtonFormField<String>(
                           value: _editOperationType,
-                          decoration: InputDecoration(labelText: _getTranslatedText("type")),
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("type"),
+                          ),
                           items:
                               _operationTypes
                                   .where((type) => type != 'Deposit')
                                   .map((type) {
                                     return DropdownMenuItem<String>(
                                       value: type,
-                                      child: Text(_getTranslatedText(type.toLowerCase())),
+                                      child: Text(
+                                        _getTranslatedText(type.toLowerCase()),
+                                      ),
                                     );
                                   })
                                   .toList(),
@@ -356,7 +364,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _editRateController,
-                          decoration: InputDecoration(labelText: _getTranslatedText("rate")),
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("rate"),
+                          ),
                           keyboardType: TextInputType.number,
                           readOnly: isDeposit,
                         ),
@@ -371,7 +381,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         Text(
                           "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
-                          style: TextStyle(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(
                             color: Colors.blue.shade700,
                             fontWeight: FontWeight.bold,
                           ),
@@ -379,7 +391,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         Text(
                           "${_getTranslatedText("currency")}: ${entry.currencyCode}",
-                          style: const TextStyle(color: Colors.black87),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
                       const SizedBox(height: 16),
@@ -491,19 +503,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: _getTranslatedText("search_transactions"),
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.white70),
-                ),
-                style: TextStyle(color: Colors.white),
-                cursorColor: Colors.white,
-                autofocus: true,
-              )
-            : Text(_getTranslatedText("transaction_history")),
+        title:
+            _isSearching
+                ? TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: _getTranslatedText("search_transactions"),
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.white70),
+                  ),
+                  style: TextStyle(color: Colors.white),
+                  cursorColor: Colors.white,
+                  autofocus: true,
+                )
+                : Text(_getTranslatedText("transaction_history")),
         actions: [
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
@@ -519,13 +532,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           _buildSummaryCard(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredEntries.isEmpty
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredEntries.isEmpty
                     ? _buildEmptyHistoryMessage()
                     : isWideTablet
-                        ? _buildTabletHistoryTable()
-                        : _buildMobileHistoryList(),
+                    ? _buildTabletHistoryTable()
+                    : _buildMobileHistoryList(),
           ),
         ],
       ),
@@ -756,11 +770,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade100.withOpacity(0.5),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -769,49 +783,67 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
+          headingRowColor: MaterialStateProperty.resolveWith<Color>((
+            Set<MaterialState> states,
+          ) {
+            return Theme.of(context).colorScheme.primary.withOpacity(0.1);
+          }),
           dataRowMaxHeight: 60,
           columns: [
             DataColumn(
               label: Text(
                 _getTranslatedText("date_time"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("currency"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("type"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("rate"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("amount_label"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("total"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             DataColumn(
               label: Text(
                 _getTranslatedText("operation"),
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -831,7 +863,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   cells: [
                     DataCell(Text(formattedDate)),
                     DataCell(Text(entry.currencyCode)),
-                    DataCell(Text(_getTranslatedText(entry.operationType.toLowerCase()))),
+                    DataCell(
+                      Text(
+                        _getTranslatedText(entry.operationType.toLowerCase()),
+                      ),
+                    ),
                     DataCell(Text('${entry.rate.toStringAsFixed(2)}')),
                     DataCell(Text('${entry.quantity.toStringAsFixed(2)}')),
                     DataCell(
@@ -958,7 +994,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _getTranslatedText(entry.operationType.toLowerCase()),
+                                    _getTranslatedText(
+                                      entry.operationType.toLowerCase(),
+                                    ),
                                     style: TextStyle(
                                       color: iconColor,
                                       fontSize: 14,
@@ -966,20 +1004,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   ),
                                   Text(
                                     '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: 14,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(fontSize: 14),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                ),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.copyWith(fontSize: 12),
                               ),
                             ],
                           ),
@@ -1108,17 +1145,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, {double fontSize = 14}) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon, {
+    double fontSize = 14,
+  }) {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 18),
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
         ),
         const SizedBox(height: 2),
         Text(
@@ -1138,20 +1177,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.history,
-            size: 48,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.history, size: 48, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
             _searchController.text.isNotEmpty
-                ? _getTranslatedText("no_results", {"query": _searchController.text})
+                ? _getTranslatedText("no_results", {
+                  "query": _searchController.text,
+                })
                 : _getTranslatedText("no_transaction_history"),
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -1168,138 +1202,163 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _showFilterDialog() {
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setStateDialog) => AlertDialog(
-          title: Text(_getTranslatedText("filter_history")),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_getTranslatedText("date_range"), style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _fromDateController,
-                        decoration: InputDecoration(
-                          labelText: _getTranslatedText("from"),
-                          suffixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setStateDialog) => AlertDialog(
+                  title: Text(_getTranslatedText("filter_history")),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getTranslatedText("date_range"),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        readOnly: true,
-                        onTap: () {
-                          _selectDate(dialogContext, true);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _toDateController,
-                        decoration: InputDecoration(
-                          labelText: _getTranslatedText("to"),
-                          suffixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _fromDateController,
+                                decoration: InputDecoration(
+                                  labelText: _getTranslatedText("from"),
+                                  suffixIcon: Icon(Icons.calendar_today),
+                                  border: OutlineInputBorder(),
+                                ),
+                                readOnly: true,
+                                onTap: () {
+                                  _selectDate(dialogContext, true);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _toDateController,
+                                decoration: InputDecoration(
+                                  labelText: _getTranslatedText("to"),
+                                  suffixIcon: Icon(Icons.calendar_today),
+                                  border: OutlineInputBorder(),
+                                ),
+                                readOnly: true,
+                                onTap: () {
+                                  _selectDate(dialogContext, false);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                        readOnly: true,
-                        onTap: () {
-                          _selectDate(dialogContext, false);
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _getTranslatedText("currency"),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                          ),
+                          value: _selectedCurrency,
+                          hint: Text(_getTranslatedText("all_currencies")),
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: null,
+                              child: Text(_getTranslatedText("all_currencies")),
+                            ),
+                            ..._currencyCodes.map((String code) {
+                              return DropdownMenuItem<String>(
+                                value: code,
+                                child: Text(code),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _selectedCurrency = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _getTranslatedText("type"),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                          ),
+                          value: _selectedOperationType,
+                          hint: Text(_getTranslatedText("all_types")),
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: null,
+                              child: Text(_getTranslatedText("all_types")),
+                            ),
+                            ..._operationTypes.map((String type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  _getTranslatedText(type.toLowerCase()),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              _selectedOperationType = value;
+                            });
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(_getTranslatedText("currency"), style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                  value: _selectedCurrency,
-                  hint: Text(_getTranslatedText("all_currencies")),
-                  isExpanded: true,
-                  items: [
-                    DropdownMenuItem<String>(
-                      value: null,
-                      child: Text(_getTranslatedText("all_currencies")),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _resetFilters();
+                      },
+                      child: Text(_getTranslatedText("reset_filters")),
                     ),
-                    ..._currencyCodes.map((String code) {
-                      return DropdownMenuItem<String>(
-                        value: code,
-                        child: Text(code),
-                      );
-                    }).toList(),
-                  ],
-                  onChanged: (value) {
-                    setStateDialog(() {
-                      _selectedCurrency = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Text(_getTranslatedText("type"), style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  value: _selectedOperationType,
-                  hint: Text(_getTranslatedText("all_types")),
-                  isExpanded: true,
-                  items: [
-                    DropdownMenuItem<String>(
-                      value: null,
-                      child: Text(_getTranslatedText("all_types")),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(_getTranslatedText("cancel")),
                     ),
-                    ..._operationTypes.map((String type) {
-                      return DropdownMenuItem<String>(
-                        value: type,
-                        child: Text(_getTranslatedText(type.toLowerCase())),
-                      );
-                    }).toList(),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _loadHistory();
+                      },
+                      child: Text(_getTranslatedText("apply")),
+                    ),
                   ],
-                  onChanged: (value) {
-                    setStateDialog(() {
-                      _selectedOperationType = value;
-                    });
-                  },
                 ),
-              ],
-            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _resetFilters();
-              },
-              child: Text(_getTranslatedText("reset_filters")),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(_getTranslatedText("cancel")),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _loadHistory();
-              },
-              child: Text(_getTranslatedText("apply")),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   // Add this method for translations
   String _getTranslatedText(String key, [Map<String, String>? params]) {
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    );
     String text = languageProvider.translate(key);
     if (params != null) {
       params.forEach((key, value) {

@@ -32,7 +32,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   // Translation helper method
   String _getTranslatedText(String key, [Map<String, String>? params]) {
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    );
     String text = languageProvider.translate(key);
     if (params != null) {
       params.forEach((key, value) {
@@ -81,7 +84,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final currencies = await _dbHelper.getHistoryCurrencyCodes();
     setState(() {
       _availableCurrencies =
-          [_getTranslatedText('all_currencies')] + currencies.where((c) => c != 'SOM').toList();
+          [_getTranslatedText('all_currencies')] +
+          currencies.where((c) => c != 'SOM').toList();
       if (_availableCurrencies.isNotEmpty && _selectedCurrency == null) {
         _selectedCurrency = _availableCurrencies.first;
       }
@@ -137,7 +141,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 if (!snapshot.hasData ||
                     (snapshot.data is Map && snapshot.data!.isEmpty) ||
                     (snapshot.data is List && snapshot.data!.isEmpty)) {
-                  return Center(child: Text(_getTranslatedText('no_data_available')));
+                  return Center(
+                    child: Text(_getTranslatedText('no_data_available')),
+                  );
                 }
 
                 switch (_selectedChartType) {
@@ -300,7 +306,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     if (dailyData.isEmpty) {
       return Center(
-        child: Text(_getTranslatedText('no_profit_data'), style: const TextStyle(fontSize: 18)),
+        child: Text(
+          _getTranslatedText('no_profit_data'),
+          style: const TextStyle(fontSize: 18),
+        ),
       );
     }
 
@@ -313,13 +322,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             children: [
               Text(
                 _getTranslatedText('currency_selector'),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color:
+                        Theme.of(context).dividerTheme.color ??
+                        Colors.transparent,
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: DropdownButton<String>(
@@ -332,9 +347,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                           value: currency,
                           child: Text(
                             currency,
-                            style: TextStyle(
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
                               fontWeight:
-                                  currency == _getTranslatedText('all_currencies')
+                                  currency ==
+                                          _getTranslatedText('all_currencies')
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                             ),
@@ -356,9 +374,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           height: 48,
           child: Row(
             children: [
-              Expanded(child: _buildBarChartTab('purchases', _getTranslatedText('purchases'))),
-              Expanded(child: _buildBarChartTab('sales', _getTranslatedText('sales'))),
-              Expanded(child: _buildBarChartTab('profit', _getTranslatedText('profit'))),
+              Expanded(
+                child: _buildBarChartTab(
+                  'purchases',
+                  _getTranslatedText('purchases'),
+                ),
+              ),
+              Expanded(
+                child: _buildBarChartTab('sales', _getTranslatedText('sales')),
+              ),
+              Expanded(
+                child: _buildBarChartTab(
+                  'profit',
+                  _getTranslatedText('profit'),
+                ),
+              ),
             ],
           ),
         ),
@@ -370,6 +400,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildBarChartTab(String tabName, String label) {
+    final isSelected = _activeTab == tabName;
     return InkWell(
       onTap: () => setState(() => _activeTab = tabName),
       child: Container(
@@ -377,7 +408,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           border: Border(
             bottom: BorderSide(
               color:
-                  _activeTab == tabName
+                  isSelected
                       ? Theme.of(context).primaryColor
                       : Colors.transparent,
               width: 2,
@@ -387,13 +418,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              fontWeight:
-                  _activeTab == tabName ? FontWeight.bold : FontWeight.normal,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               color:
-                  _activeTab == tabName
+                  isSelected
                       ? Theme.of(context).primaryColor
-                      : Colors.grey,
+                      : Theme.of(context).textTheme.bodySmall?.color,
             ),
           ),
         ),
@@ -468,7 +498,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             const SizedBox(height: 8),
             Expanded(
               child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(title: AxisTitle(text: _getTranslatedText('date'))),
+                primaryXAxis: CategoryAxis(
+                  title: AxisTitle(text: _getTranslatedText('date')),
+                ),
                 primaryYAxis: NumericAxis(
                   title: AxisTitle(text: _getTranslatedText('amount_som')),
                 ),
@@ -518,10 +550,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       const SizedBox(width: 8),
                       Text(
                         isProfit
-                            ? (total >= 0 
-                                ? _getTranslatedText('net_profit', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}) 
-                                : _getTranslatedText('net_loss', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total.abs())}))
-                            : _getTranslatedText('total_formatted', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(total)}),
+                            ? (total >= 0
+                                ? _getTranslatedText('net_profit', {
+                                  'amount': NumberFormat.currency(
+                                    symbol: 'SOM ',
+                                    decimalDigits: 2,
+                                  ).format(total.abs()),
+                                })
+                                : _getTranslatedText('net_loss', {
+                                  'amount': NumberFormat.currency(
+                                    symbol: 'SOM ',
+                                    decimalDigits: 2,
+                                  ).format(total.abs()),
+                                }))
+                            : _getTranslatedText('total_formatted', {
+                              'amount': NumberFormat.currency(
+                                symbol: 'SOM ',
+                                decimalDigits: 2,
+                              ).format(total),
+                            }),
                         style: Theme.of(
                           context,
                         ).textTheme.titleMedium?.copyWith(
@@ -558,9 +605,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           height: 48,
           child: Row(
             children: [
-              Expanded(child: _buildDistributionTab('purchases', _getTranslatedText('purchases'))),
-              Expanded(child: _buildDistributionTab('sales', _getTranslatedText('sales'))),
-              Expanded(child: _buildDistributionTab('profit', _getTranslatedText('profit'))),
+              Expanded(
+                child: _buildDistributionTab(
+                  'purchases',
+                  _getTranslatedText('purchases'),
+                ),
+              ),
+              Expanded(
+                child: _buildDistributionTab(
+                  'sales',
+                  _getTranslatedText('sales'),
+                ),
+              ),
+              Expanded(
+                child: _buildDistributionTab(
+                  'profit',
+                  _getTranslatedText('profit'),
+                ),
+              ),
             ],
           ),
         ),
@@ -579,6 +641,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildDistributionTab(String tabName, String label) {
+    final isSelected = _activeTab == tabName;
     return InkWell(
       onTap: () => setState(() => _activeTab = tabName),
       child: Container(
@@ -586,7 +649,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           border: Border(
             bottom: BorderSide(
               color:
-                  _activeTab == tabName
+                  isSelected
                       ? Theme.of(context).primaryColor
                       : Colors.transparent,
               width: 2,
@@ -596,13 +659,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              fontWeight:
-                  _activeTab == tabName ? FontWeight.bold : FontWeight.normal,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               color:
-                  _activeTab == tabName
+                  isSelected
                       ? Theme.of(context).primaryColor
-                      : Colors.grey,
+                      : Theme.of(context).textTheme.bodySmall?.color,
             ),
           ),
         ),
@@ -654,7 +716,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   ) {
     if (data.isEmpty) {
       return Center(
-        child: Text(_getTranslatedText('no_profit_data'), style: const TextStyle(fontSize: 18)),
+        child: Text(
+          _getTranslatedText('no_profit_data'),
+          style: const TextStyle(fontSize: 18),
+        ),
       );
     }
 
@@ -683,7 +748,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     if (data.isEmpty) {
       return Center(
         child: Text(
-          isProfit ? _getTranslatedText('no_profit_data') : _getTranslatedText('no_data_available'),
+          isProfit
+              ? _getTranslatedText('no_profit_data')
+              : _getTranslatedText('no_data_available'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
       );
@@ -759,10 +826,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       const SizedBox(width: 8),
                       Text(
                         isProfit
-                            ? (displayTotal >= 0 
-                                ? _getTranslatedText('net_profit', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}) 
-                                : _getTranslatedText('net_loss', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal.abs())}))
-                            : _getTranslatedText('total_formatted', {'amount': NumberFormat.currency(symbol: 'SOM ', decimalDigits: 2).format(displayTotal)}),
+                            ? (displayTotal >= 0
+                                ? _getTranslatedText('net_profit', {
+                                  'amount': NumberFormat.currency(
+                                    symbol: 'SOM ',
+                                    decimalDigits: 2,
+                                  ).format(displayTotal.abs()),
+                                })
+                                : _getTranslatedText('net_loss', {
+                                  'amount': NumberFormat.currency(
+                                    symbol: 'SOM ',
+                                    decimalDigits: 2,
+                                  ).format(displayTotal.abs()),
+                                }))
+                            : _getTranslatedText('total_formatted', {
+                              'amount': NumberFormat.currency(
+                                symbol: 'SOM ',
+                                decimalDigits: 2,
+                              ).format(displayTotal),
+                            }),
                         style: Theme.of(
                           context,
                         ).textTheme.titleMedium?.copyWith(
