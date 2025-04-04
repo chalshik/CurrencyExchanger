@@ -441,42 +441,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(_getTranslatedText("cancel")),
-                  ),
-                  if (!isDeposit)
-                    TextButton(
-                      onPressed: () => _showDeleteDialog(context, entry),
-                      child: Text(
-                        _getTranslatedText("delete"),
-                        style: TextStyle(color: Colors.red),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(_getTranslatedText("cancel")),
                       ),
-                    ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final updatedEntry = HistoryModel(
-                        id: entry.id,
-                        currencyCode:
-                            isDeposit ? entry.currencyCode : _editCurrencyCode!,
-                        operationType:
-                            isDeposit ? 'Deposit' : _editOperationType!,
-                        rate:
-                            isDeposit
-                                ? 1.0
-                                : double.parse(_editRateController.text),
-                        quantity: double.parse(_editQuantityController.text),
-                        total:
-                            isDeposit
-                                ? double.parse(_editQuantityController.text)
-                                : double.parse(_editRateController.text) *
-                                    double.parse(_editQuantityController.text),
-                        createdAt: selectedDate,
-                      );
+                      ElevatedButton(
+                        onPressed: () async {
+                          final updatedEntry = HistoryModel(
+                            id: entry.id,
+                            currencyCode:
+                                isDeposit ? entry.currencyCode : _editCurrencyCode!,
+                            operationType:
+                                isDeposit ? 'Deposit' : _editOperationType!,
+                            rate:
+                                isDeposit
+                                    ? 1.0
+                                    : double.parse(_editRateController.text),
+                            quantity: double.parse(_editQuantityController.text),
+                            total:
+                                isDeposit
+                                    ? double.parse(_editQuantityController.text)
+                                    : double.parse(_editRateController.text) *
+                                        double.parse(_editQuantityController.text),
+                            createdAt: selectedDate,
+                          );
 
-                      _saveEditedEntry(entry, updatedEntry);
-                    },
-                    child: Text(_getTranslatedText("save")),
+                          _saveEditedEntry(entry, updatedEntry);
+                        },
+                        child: Text(_getTranslatedText("save")),
+                      ),
+                    ],
                   ),
                 ],
               );
@@ -503,6 +500,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.blue.shade700,
         title:
             _isSearching
                 ? TextField(
@@ -510,13 +508,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   decoration: InputDecoration(
                     hintText: _getTranslatedText("search_transactions"),
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.white70),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    contentPadding: EdgeInsets.zero,
+                    fillColor: Colors.blue.shade700,
+                    filled: true,
                   ),
                   style: TextStyle(color: Colors.white),
                   cursorColor: Colors.white,
                   autofocus: true,
                 )
-                : Text(_getTranslatedText("transaction_history")),
+                : Text(
+                    _getTranslatedText("transaction_history"),
+                    style: TextStyle(color: Colors.white),
+                  ),
         actions: [
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
@@ -889,14 +893,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showEditDialog(context, entry),
+                            onPressed: entry.operationType == 'Deposit' 
+                                ? null // Disable edit button for deposit entries
+                                : () => _showEditDialog(context, entry),
                           ),
-                          if (entry.operationType != 'Deposit')
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed:
-                                  () => _showDeleteDialog(context, entry),
+                          GestureDetector(
+                            onLongPress: () {
+                              if (entry.operationType != 'Deposit') {
+                                _showDeleteDialog(context, entry);
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              child: entry.operationType != 'Deposit' 
+                                  ? Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.transparent,
+                                      size: 0,
+                                    ) 
+                                  : SizedBox(width: 0),
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -936,135 +953,163 @@ class _HistoryScreenState extends State<HistoryScreen> {
           iconColor = Colors.blue.shade700;
         }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: InkWell(
-            onTap: () {
-              _showEditDialog(context, entry);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  // Left side (icon and main content)
-                  Expanded(
-                    child: Row(
-                      children: [
-                        // Icon
-                        Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          child: CircleAvatar(
-                            backgroundColor: backgroundColor.withOpacity(0.7),
-                            child: Icon(operationIcon, color: iconColor),
-                          ),
+        // Wrap Card with Dismissible for non-Deposit entries
+        if (entry.operationType != 'Deposit') {
+          return Dismissible(
+            key: Key(entry.id.toString()),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20.0),
+              color: Colors.red,
+              child: const Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
+            ),
+            confirmDismiss: (direction) async {
+              return await showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text(_getTranslatedText("delete_transaction")),
+                    content: Text(
+                      _getTranslatedText("delete_transaction_confirm", {
+                        "type": entry.operationType.toLowerCase(),
+                      }),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: Text(_getTranslatedText("cancel")),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: Text(
+                          _getTranslatedText("delete"),
+                          style: TextStyle(color: Colors.red),
                         ),
-                        // Main content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+            onDismissed: (direction) {
+              _dbHelper.deleteHistory(entry);
+              setState(() {
+                _filteredEntries.removeAt(index);
+                _historyEntries.remove(entry);
+                _calculateTotals();
+              });
+            },
+            child: _buildHistoryCard(entry, backgroundColor, operationIcon, iconColor, formattedDate),
+          );
+        } else {
+          return _buildHistoryCard(entry, backgroundColor, operationIcon, iconColor, formattedDate);
+        }
+      },
+    );
+  }
+
+  // Helper method to build the history card
+  Widget _buildHistoryCard(HistoryModel entry, Color backgroundColor, IconData operationIcon, Color iconColor, String formattedDate) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: InkWell(
+        onTap: entry.operationType == 'Deposit' 
+            ? null // Disable tap for deposit entries
+            : () {
+                _showEditDialog(context, entry);
+              },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            children: [
+              // Left side (icon and main content)
+              Expanded(
+                child: Row(
+                  children: [
+                    // Icon
+                    Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      child: CircleAvatar(
+                        backgroundColor: backgroundColor.withOpacity(0.7),
+                        child: Icon(operationIcon, color: iconColor),
+                      ),
+                    ),
+                    // Main content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    entry.currencyCode,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${entry.total.toStringAsFixed(2)} SOM',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: iconColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _getTranslatedText(
-                                      entry.operationType.toLowerCase(),
-                                    ),
-                                    style: TextStyle(
-                                      color: iconColor,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
                               Text(
-                                '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.bodySmall?.copyWith(fontSize: 12),
+                                entry.currencyCode,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                '${entry.total.toStringAsFixed(2)} SOM',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: iconColor,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Action buttons
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showEditDialog(context, entry);
-                      } else if (value == 'delete') {
-                        _showDeleteDialog(context, entry);
-                      }
-                    },
-                    itemBuilder:
-                        (BuildContext context) => [
-                          PopupMenuItem<String>(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, color: Colors.blue),
-                                SizedBox(width: 8),
-                                Text(_getTranslatedText("edit_transaction")),
-                              ],
-                            ),
-                          ),
-                          if (entry.operationType != 'Deposit')
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text(_getTranslatedText("delete")),
-                                ],
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _getTranslatedText(
+                                  entry.operationType.toLowerCase(),
+                                ),
+                                style: TextStyle(
+                                  color: iconColor,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
+                              Text(
+                                '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(fontSize: 12),
+                          ),
                         ],
-                  ),
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              // Empty SizedBox instead of lock icon or spacer
+              const SizedBox(width: 0),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
