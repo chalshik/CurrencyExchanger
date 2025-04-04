@@ -500,7 +500,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blue.shade700,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade600, Colors.blue.shade800],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title:
             _isSearching
                 ? TextField(
@@ -1014,99 +1022,119 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // Helper method to build the history card
   Widget _buildHistoryCard(HistoryModel entry, Color backgroundColor, IconData operationIcon, Color iconColor, String formattedDate) {
+    // Determine gradient colors based on operation type
+    List<Color> gradientColors;
+    if (entry.operationType == 'Purchase') {
+      gradientColors = [Colors.red.shade50, Colors.red.shade100];
+    } else if (entry.operationType == 'Sale') {
+      gradientColors = [Colors.green.shade50, Colors.green.shade100];
+    } else {
+      gradientColors = [Colors.blue.shade50, Colors.blue.shade100];
+    }
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
-      child: InkWell(
-        onTap: entry.operationType == 'Deposit' 
-            ? null // Disable tap for deposit entries
-            : () {
-                _showEditDialog(context, entry);
-              },
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              // Left side (icon and main content)
-              Expanded(
-                child: Row(
-                  children: [
-                    // Icon
-                    Container(
-                      margin: const EdgeInsets.only(right: 12),
-                      child: CircleAvatar(
-                        backgroundColor: backgroundColor.withOpacity(0.7),
-                        child: Icon(operationIcon, color: iconColor),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: InkWell(
+          onTap: entry.operationType == 'Deposit' 
+              ? null // Disable tap for deposit entries
+              : () {
+                  _showEditDialog(context, entry);
+                },
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                // Left side (icon and main content)
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Icon
+                      Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white.withOpacity(0.7),
+                          child: Icon(operationIcon, color: iconColor),
+                        ),
                       ),
-                    ),
-                    // Main content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                entry.currencyCode,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                      // Main content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  entry.currencyCode,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${entry.total.toStringAsFixed(2)} SOM',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: iconColor,
+                                Text(
+                                  '${entry.total.toStringAsFixed(2)} SOM',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: iconColor,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _getTranslatedText(
-                                  entry.operationType.toLowerCase(),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _getTranslatedText(
+                                    entry.operationType.toLowerCase(),
+                                  ),
+                                  style: TextStyle(
+                                    color: iconColor,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                style: TextStyle(
-                                  color: iconColor,
-                                  fontSize: 14,
+                                Text(
+                                  '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(fontSize: 14),
                                 ),
-                              ),
-                              Text(
-                                '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(fontSize: 12),
-                          ),
-                        ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              // Empty SizedBox instead of lock icon or spacer
-              const SizedBox(width: 0),
-            ],
+                // Empty SizedBox instead of lock icon or spacer
+                const SizedBox(width: 0),
+              ],
+            ),
           ),
         ),
       ),
@@ -1235,9 +1263,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 16),
           if (_searchController.text.isEmpty)
-            ElevatedButton(
-              onPressed: _resetFilters,
-              child: Text(_getTranslatedText("reset_filters")),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade400, Colors.blue.shade700],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.shade200.withOpacity(0.5),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: _resetFilters,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: Text(
+                  _getTranslatedText("reset_filters"),
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
             ),
         ],
       ),
@@ -1385,12 +1438,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       onPressed: () => Navigator.pop(context),
                       child: Text(_getTranslatedText("cancel")),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _loadHistory();
-                      },
-                      child: Text(_getTranslatedText("apply")),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade400, Colors.blue.shade700],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _loadHistory();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          _getTranslatedText("apply"),
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ],
                 ),

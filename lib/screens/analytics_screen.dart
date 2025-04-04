@@ -489,12 +489,32 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     return Card(
       margin: const EdgeInsets.all(16),
-      elevation: 4,
-      child: Padding(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).cardColor,
+              Theme.of(context).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              title, 
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
             const SizedBox(height: 8),
             Expanded(
               child: SfCartesianChart(
@@ -523,14 +543,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Card(
-                color:
-                    isProfit
-                        ? (total >= 0 ? Colors.green[50] : Colors.red[50])
-                        : (activeTab == 'purchases'
-                            ? Colors.blue[50]
-                            : Colors.orange[50]),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: isProfit
+                        ? (total >= 0
+                          ? [Colors.green.shade50, Colors.green.shade100]
+                          : [Colors.red.shade50, Colors.red.shade100])
+                        : [Colors.blue.shade50, Colors.blue.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -539,13 +569,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             ? (total >= 0
                                 ? Icons.trending_up
                                 : Icons.trending_down)
-                            : icon,
+                            : Icons.currency_exchange,
                         color:
                             isProfit
-                                ? (total >= 0 ? Colors.green : Colors.red)
-                                : (activeTab == 'purchases'
-                                    ? Colors.blue
-                                    : Colors.orange),
+                                ? (total >= 0
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700)
+                                : Colors.blue.shade700,
+                        size: 28,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -575,9 +606,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                           color:
                               isProfit
                                   ? (total >= 0 ? Colors.green : Colors.red)
-                                  : (activeTab == 'purchases'
-                                      ? Colors.blue
-                                      : Colors.orange),
+                                  : Colors.blue,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -765,12 +794,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     return Card(
       margin: const EdgeInsets.all(16),
-      elevation: 4,
-      child: Padding(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).cardColor,
+              Theme.of(context).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              title, 
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: SfCircularChart(
                 legend: Legend(
@@ -786,6 +836,34 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       final value = data[valueKey];
                       return value is double ? value : 0.0;
                     },
+                    pointColorMapper: (data, index) {
+                      // Generate colors based on index
+                      final baseColors = [
+                        Colors.blue,
+                        Colors.green,
+                        Colors.purple,
+                        Colors.orange,
+                        Colors.cyan,
+                        Colors.pink,
+                        Colors.teal,
+                        Colors.red,
+                        Colors.amber,
+                        Colors.indigo,
+                      ];
+                      
+                      // Use different shades based on index
+                      final colorIndex = index % baseColors.length;
+                      final color = baseColors[colorIndex];
+                      
+                      // Return different shades for a gradient-like effect
+                      if (index % 3 == 0) {
+                        return color.shade300;
+                      } else if (index % 3 == 1) {
+                        return color.shade500;
+                      } else {
+                        return color.shade700;
+                      }
+                    },
                     dataLabelSettings: const DataLabelSettings(
                       isVisible: true,
                       labelPosition: ChartDataLabelPosition.outside,
@@ -799,14 +877,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Card(
-                color:
-                    isProfit
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: isProfit
                         ? (displayTotal >= 0
-                            ? Colors.green[50]
-                            : Colors.red[50])
-                        : Colors.blue[50],
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                          ? [Colors.green.shade50, Colors.green.shade100]
+                          : [Colors.red.shade50, Colors.red.shade100])
+                        : [Colors.blue.shade50, Colors.blue.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -819,9 +907,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         color:
                             isProfit
                                 ? (displayTotal >= 0
-                                    ? Colors.green
-                                    : Colors.red)
-                                : Colors.blue,
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700)
+                                : Colors.blue.shade700,
+                        size: 28,
                       ),
                       const SizedBox(width: 8),
                       Text(

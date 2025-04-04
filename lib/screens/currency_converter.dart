@@ -216,26 +216,33 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Exchange Rate Field
           Expanded(
             child: TextField(
+              
               controller: _currencyController,
               focusNode: _currencyFocusNode,
               decoration: InputDecoration(
                 labelText: _getTranslatedText('exchange_rate'),
-                labelStyle: TextStyle(fontSize: fontSize - 2), // Adjusted label
+                labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
                 hintText:
                     _operationType == 'Purchase'
                         ? _getTranslatedText('enter_buy_rate')
                         : _getTranslatedText('enter_sell_rate'),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(
-                    12,
-                  ), // Increased border radius
-                  borderSide: BorderSide(width: 2.0), // Thicker border
+                  borderRadius: BorderRadius.circular(12), // Increased border radius
+                  borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
                 ),
                 filled: true,
                 fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                 prefixIcon: Icon(
                   Icons.attach_money,
-                  color: Theme.of(context).primaryColor,
+                  color: Colors.blue.shade700, // Blue icon color
                   size: iconSize,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -269,21 +276,27 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               focusNode: _quantityFocusNode,
               decoration: InputDecoration(
                 labelText: _getTranslatedText('quantity'),
-                labelStyle: TextStyle(fontSize: fontSize - 2), // Adjusted label
+                labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
                 hintText: _getTranslatedText('amount_in_currency', {
                   'code': _selectedCurrency,
                 }),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(
-                    12,
-                  ), // Increased border radius
-                  borderSide: BorderSide(width: 2.0), // Thicker border
+                  borderRadius: BorderRadius.circular(12), // Increased border radius
+                  borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
                 ),
                 filled: true,
                 fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                 prefixIcon: Icon(
                   Icons.numbers,
-                  color: Theme.of(context).primaryColor,
+                  color: Colors.blue.shade700, // Blue icon color
                   size: iconSize,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -321,7 +334,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           focusNode: _currencyFocusNode,
           decoration: InputDecoration(
             labelText: _getTranslatedText('exchange_rate'),
-            labelStyle: TextStyle(fontSize: fontSize - 2), // Adjusted label
+            labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
             hintText:
                 _operationType == 'Purchase'
                     ? _getTranslatedText('enter_buy_rate')
@@ -330,13 +343,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               borderRadius: BorderRadius.circular(
                 12,
               ), // Increased border radius
-              borderSide: BorderSide(width: 2.0), // Thicker border
+              borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
             ),
             filled: true,
             fillColor: Theme.of(context).inputDecorationTheme.fillColor,
             prefixIcon: Icon(
               Icons.attach_money,
-              color: Theme.of(context).primaryColor,
+              color: Colors.blue.shade700, // Blue icon color
               size: iconSize,
             ),
             contentPadding: const EdgeInsets.symmetric(
@@ -365,7 +386,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           focusNode: _quantityFocusNode,
           decoration: InputDecoration(
             labelText: _getTranslatedText('quantity'),
-            labelStyle: TextStyle(fontSize: fontSize - 2), // Adjusted label
+            labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
             hintText: _getTranslatedText('amount_in_currency', {
               'code': _selectedCurrency,
             }),
@@ -373,13 +394,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               borderRadius: BorderRadius.circular(
                 12,
               ), // Increased border radius
-              borderSide: BorderSide(width: 2.0), // Thicker border
+              borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
             ),
             filled: true,
             fillColor: Theme.of(context).inputDecorationTheme.fillColor,
             prefixIcon: Icon(
               Icons.numbers,
-              color: Theme.of(context).primaryColor,
+              color: Colors.blue.shade700, // Blue icon color
               size: iconSize,
             ),
             contentPadding: const EdgeInsets.symmetric(
@@ -412,16 +441,24 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final valueSize = isSmallScreen ? 28.0 : 32.0; // Increased font size
 
     return Card(
-      elevation: 6, // Increased elevation
+      elevation: 6,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // Increased border radius
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
           width: 1.5,
-        ), // Added border
+        ),
       ),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 20 : 24), // Increased padding
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade50, Colors.blue.shade100],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
         child: Center(
           child: Text(
             '${_totalSum.toStringAsFixed(2)} SOM',
@@ -543,282 +580,160 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             : const EdgeInsets.symmetric(vertical: 20); // Increased padding
     final buttonTextSize = isSmallScreen ? 16.0 : 18.0; // Increased font size
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _operationType = 'Purchase';
-                // Update exchange rate based on selected currency
-                if (_selectedCurrency.isNotEmpty) {
-                  final selectedCurrency = _currencies.firstWhere(
-                    (c) => c.code == _selectedCurrency,
-                    orElse: () => CurrencyModel(code: ''),
-                  );
-                  _currencyController.text =
-                      selectedCurrency.defaultBuyRate.toString();
-                  _calculateTotal();
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  _operationType == 'Purchase'
-                      ? Colors.blue.shade700
-                      : Colors.blue.shade50,
-              foregroundColor:
-                  _operationType == 'Purchase'
-                      ? Colors.white
-                      : Colors.blue.shade700,
-              padding: buttonPadding,
-              elevation:
-                  _operationType == 'Purchase'
-                      ? 6
-                      : 2, // Enhanced elevation contrast
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  12,
-                ), // Increased border radius
-                side: BorderSide(
-                  color:
-                      _operationType == 'Purchase'
-                          ? Colors.transparent
-                          : Colors.blue.shade300,
-                  width: 2, // Thicker border
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: _operationType == 'Purchase'
+                    ? LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade900],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  borderRadius: BorderRadius.circular(12),
+                  border: _operationType != 'Purchase'
+                    ? Border.all(color: Colors.blue.shade300, width: 2)
+                    : null,
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _operationType = 'Purchase';
+                      // Update exchange rate based on selected currency
+                      if (_selectedCurrency.isNotEmpty) {
+                        final selectedCurrency = _currencies.firstWhere(
+                          (c) => c.code == _selectedCurrency,
+                          orElse: () => CurrencyModel(code: ''),
+                        );
+                        _currencyController.text =
+                            selectedCurrency.defaultBuyRate.toString();
+                        _calculateTotal();
+                      }
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _operationType == 'Purchase' ? Colors.transparent : Colors.blue.shade50,
+                    foregroundColor: _operationType == 'Purchase' ? Colors.white : Colors.blue.shade700,
+                    padding: buttonPadding,
+                    elevation: _operationType == 'Purchase' ? 6 : 2,
+                    shadowColor: _operationType == 'Purchase' ? Colors.blue.shade300 : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size(0, 60),
+                  ),
+                  child: Text(
+                    _getTranslatedText('purchase'),
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-              minimumSize: const Size(
-                0,
-                60,
-              ), // Ensure minimum height for better touch
             ),
-            child: Text(
-              _getTranslatedText('purchase'),
-              style: TextStyle(
-                fontSize: buttonTextSize,
-                fontWeight: FontWeight.bold,
+            const SizedBox(width: 16), // Increased spacing
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: _operationType == 'Sale'
+                    ? LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade900],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  borderRadius: BorderRadius.circular(12),
+                  border: _operationType != 'Sale'
+                    ? Border.all(color: Colors.blue.shade300, width: 2)
+                    : null,
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _operationType = 'Sale';
+                      // Update exchange rate based on selected currency
+                      if (_selectedCurrency.isNotEmpty) {
+                        final selectedCurrency = _currencies.firstWhere(
+                          (c) => c.code == _selectedCurrency,
+                          orElse: () => CurrencyModel(code: ''),
+                        );
+                        _currencyController.text =
+                            selectedCurrency.defaultSellRate.toString();
+                        _calculateTotal();
+                      }
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _operationType == 'Sale' ? Colors.transparent : Colors.blue.shade50,
+                    foregroundColor: _operationType == 'Sale' ? Colors.white : Colors.blue.shade700,
+                    padding: buttonPadding,
+                    elevation: _operationType == 'Sale' ? 6 : 2,
+                    shadowColor: _operationType == 'Sale' ? Colors.blue.shade300 : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    minimumSize: const Size(0, 60),
+                  ),
+                  child: Text(
+                    _getTranslatedText('sale'),
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
-        const SizedBox(width: 16), // Increased spacing
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _operationType = 'Sale';
-                // Update exchange rate based on selected currency
-                if (_selectedCurrency.isNotEmpty) {
-                  final selectedCurrency = _currencies.firstWhere(
-                    (c) => c.code == _selectedCurrency,
-                    orElse: () => CurrencyModel(code: ''),
-                  );
-                  _currencyController.text =
-                      selectedCurrency.defaultSellRate.toString();
-                  _calculateTotal();
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  _operationType == 'Sale'
-                      ? Colors.blue.shade700
-                      : Colors.blue.shade50,
-              foregroundColor:
-                  _operationType == 'Sale'
-                      ? Colors.white
-                      : Colors.blue.shade700,
-              padding: buttonPadding,
-              elevation:
-                  _operationType == 'Sale'
-                      ? 6
-                      : 2, // Enhanced elevation contrast
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  12,
-                ), // Increased border radius
-                side: BorderSide(
-                  color:
-                      _operationType == 'Sale'
-                          ? Colors.transparent
-                          : Colors.blue.shade300,
-                  width: 2, // Thicker border
-                ),
+        const SizedBox(height: 16), // Spacing between button rows
+        Container(
+          height: 65, // Fixed height for the finish button
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade500, Colors.green.shade800],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.shade300.withOpacity(0.5),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-              minimumSize: const Size(
-                0,
-                60,
-              ), // Ensure minimum height for better touch
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: _finishOperation,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             child: Text(
-              _getTranslatedText('sale'),
-              style: TextStyle(
-                fontSize: buttonTextSize,
+              _getTranslatedText('finish'),
+              style: const TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
               ),
             ),
           ),
         ),
       ],
     );
-  }
-
-  Widget _buildFinishButton() {
-    // Get screen width to adjust sizing
-    final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 360;
-    final isLandscape = screenSize.width > screenSize.height;
-
-    // Larger sizes for landscape mode
-    final fontSize =
-        isLandscape
-            ? 20.0
-            : (isSmallScreen ? 16.0 : 18.0); // Increased font size
-    final verticalPadding =
-        isLandscape ? 22.0 : (isSmallScreen ? 18.0 : 20.0); // Increased padding
-    final buttonHeight =
-        isLandscape ? 70.0 : (isSmallScreen ? 60.0 : 65.0); // Increased height
-
-    return Container(
-      height: buttonHeight,
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 16), // Increased margin
-      child: ElevatedButton(
-        onPressed: _finishOperation,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade600,
-          foregroundColor: Colors.white,
-          elevation: 8, // Increased elevation
-          shadowColor: Colors.blue.shade300,
-          padding: EdgeInsets.symmetric(vertical: verticalPadding),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16), // Increased border radius
-          ),
-        ),
-        child: Text(
-          _getTranslatedText('finish'),
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0, // Increased letter spacing
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _finishOperation() async {
-    try {
-      // Validate inputs
-      if (_selectedCurrency.isEmpty ||
-          _currencyController.text.isEmpty ||
-          _quantityController.text.isEmpty) {
-        _showBriefNotification(
-          _getTranslatedText('enter_valid_numbers'),
-          Colors.red,
-        );
-        return;
-      }
-
-      final rate = double.tryParse(_currencyController.text);
-      final quantity = double.tryParse(_quantityController.text);
-
-      if (rate == null || quantity == null || rate <= 0 || quantity <= 0) {
-        _showBriefNotification(
-          _getTranslatedText('enter_valid_numbers'),
-          Colors.red,
-        );
-        return;
-      }
-
-      // Get the SOM and selected currency
-      final somCurrency = await _databaseHelper.getCurrency('SOM');
-      final selectedCurrency = await _databaseHelper.getCurrency(
-        _selectedCurrency,
-      );
-
-      if (somCurrency == null || selectedCurrency == null) {
-        _showBriefNotification(_getTranslatedText('error'), Colors.red);
-        return;
-      }
-
-      // Check if enough balance
-      if (_operationType == 'Purchase') {
-        // In Purchase: We spend SOM to get foreign currency
-        if (somCurrency.quantity < _totalSum) {
-          _showBriefNotification(
-            _getTranslatedText('not_enough_som'),
-            Colors.red,
-          );
-          return;
-        }
-      } else {
-        // In Sale: We spend foreign currency to get SOM
-        if (selectedCurrency.quantity < quantity) {
-          _showBriefNotification(
-            _getTranslatedText('not_enough_currency', {
-              'code': _selectedCurrency,
-            }),
-            Colors.red,
-          );
-          return;
-        }
-      }
-
-      // Store the transaction in history
-      final history = HistoryModel(
-        currencyCode: _selectedCurrency,
-        operationType: _operationType,
-        rate: rate,
-        quantity: quantity,
-        total: _totalSum,
-      );
-
-      await _databaseHelper.insertHistory(history);
-
-      // Update currency quantities
-      if (_operationType == 'Purchase') {
-        // Subtract SOM, add foreign currency
-        await _databaseHelper.updateCurrencyQuantity(
-          'SOM',
-          somCurrency.quantity - _totalSum,
-        );
-        await _databaseHelper.updateCurrencyQuantity(
-          _selectedCurrency,
-          selectedCurrency.quantity + quantity,
-        );
-      } else {
-        // Add SOM, subtract foreign currency
-        await _databaseHelper.updateCurrencyQuantity(
-          'SOM',
-          somCurrency.quantity + _totalSum,
-        );
-        await _databaseHelper.updateCurrencyQuantity(
-          _selectedCurrency,
-          selectedCurrency.quantity - quantity,
-        );
-      }
-
-      // Show success message and clear form
-      _showBriefNotification(
-        _getTranslatedText('transaction_complete'),
-        Colors.green,
-      );
-
-      setState(() {
-        _quantityController.text = '';
-        // Keep rate and currency selections
-      });
-
-      // Refresh data
-      await _initializeData();
-    } catch (e) {
-      _showBriefNotification(
-        '${_getTranslatedText('error')}: ${e.toString()}',
-        Colors.red,
-      );
-    }
   }
 
   Widget _buildRecentHistory() {
@@ -1095,6 +1010,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Exchange rate and quantity in one row for portrait mode
           _buildCurrencyInputSection(),
 
+          SizedBox(height: spacing * 3), // Increased spacing before total sum card
+
           // Total sum display
           _buildTotalSumCard(),
           SizedBox(height: spacing),
@@ -1164,7 +1081,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _buildCurrencyInputSection(),
-                                SizedBox(height: spacing),
+                                SizedBox(height: spacing * 3), // Increased spacing before total sum card
                                 _buildTotalSumCard(),
                                 SizedBox(height: spacing),
                                 _buildCurrencySelection(),
@@ -1216,7 +1133,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   children: [
                     // Currency input
                     _buildCurrencyInputSection(),
-                    SizedBox(height: spacing),
+                    SizedBox(height: spacing * 3), // Increased spacing before total sum card
 
                     // Total sum card
                     _buildTotalSumCard(),
@@ -1271,7 +1188,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         // Input fields
         _buildCurrencyInputSection(),
 
-        SizedBox(height: 30), // Larger spacing
+        SizedBox(height: 40), // Increased spacing before total sum card
+
         // Total amount card
         _buildTotalSumCard(),
         SizedBox(height: spacing * 2), // Doubled spacing
@@ -1444,14 +1362,37 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     child: ElevatedButton(
                       onPressed: _toggleActiveField,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: activeBorder,
-                        foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        elevation: 3,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Icon(Icons.swap_horiz, size: 20),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade500, Colors.blue.shade900],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: [0.0, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.shade300.withOpacity(0.5),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.swap_horiz, size: 20),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12), // More spacing
@@ -1462,18 +1403,37 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     child: ElevatedButton(
                       onPressed: () => _handleNumpadInput('⌫'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade100,
-                        foregroundColor: Colors.orange.shade900,
                         padding: EdgeInsets.zero, // No padding
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.orange.shade900,
+                        elevation: 3,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          side: BorderSide(
-                            color: Colors.grey.shade300,
-                            width: 1,
-                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Icon(Icons.backspace, size: 20),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.orange.shade300, Colors.deepOrange.shade500],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: [0.0, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.shade200.withOpacity(0.5),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.backspace, color: Colors.white, size: 20),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12), // More spacing
@@ -1484,18 +1444,41 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     child: ElevatedButton(
                       onPressed: _clearActiveField,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade400,
-                        foregroundColor: Colors.white,
                         padding: EdgeInsets.zero, // No padding
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        elevation: 3,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'C',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.red.shade500, Colors.red.shade800],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: [0.0, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.shade300.withOpacity(0.5),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'C',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1648,11 +1631,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       children: [
                         _buildFixedSizeNumpadButton('.', size: buttonSize),
                         _buildFixedSizeNumpadButton('0', size: buttonSize),
-                        _buildFixedSizeNumpadButton(
-                          '⌫',
-                          size: buttonSize,
-                          isSpecial: true,
-                        ),
+                        _buildFixedSizeNumpadButton('00', size: buttonSize),
                       ],
                     ),
                   ],
@@ -1668,20 +1647,83 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     // Toggle button
                     SizedBox(
                       width: 60,
-                      height: buttonSize * 2,
+                      height: buttonSize * 1.3,
                       child: ElevatedButton(
                         onPressed: _toggleActiveField,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: activeBorder,
+                          backgroundColor: Colors.transparent,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(4),
+                          elevation: 3,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [Icon(Icons.swap_vert, size: 16)],
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade500, Colors.blue.shade900],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              stops: [0.0, 1.0],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.shade300.withOpacity(0.5),
+                                spreadRadius: 1,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            alignment: Alignment.center,
+                            child: Icon(Icons.swap_vert, size: 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Backspace button
+                    SizedBox(
+                      width: 60,
+                      height: buttonSize * 1.3,
+                      child: ElevatedButton(
+                        onPressed: () => _handleNumpadInput('⌫'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.orange.shade900,
+                          padding: const EdgeInsets.all(4),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.orange.shade300, Colors.deepOrange.shade500],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              stops: [0.0, 1.0],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.shade200.withOpacity(0.5),
+                                spreadRadius: 1,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.backspace, color: Colors.white, size: 20),
+                          ),
                         ),
                       ),
                     ),
@@ -1689,28 +1731,43 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     // Clear button
                     SizedBox(
                       width: 60,
-                      height: buttonSize * 2,
+                      height: buttonSize * 1.3,
                       child: ElevatedButton(
                         onPressed: _clearActiveField,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
+                          backgroundColor: Colors.transparent,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(4),
+                          elevation: 3,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text(
-                              'C',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.red.shade500, Colors.red.shade800],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              stops: [0.0, 1.0],
                             ),
-                          ],
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.shade300.withOpacity(0.5),
+                                spreadRadius: 1,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'C',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1729,16 +1786,39 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               child: ElevatedButton(
                 onPressed: _clearActiveField,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
+                  backgroundColor: Colors.transparent,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.zero,
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
-                  'C',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red.shade500, Colors.red.shade800],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      stops: [0.0, 1.0],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.shade300.withOpacity(0.5),
+                        spreadRadius: 1,
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'C',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -2018,38 +2098,98 @@ class _MobileCurrencyConverterLayoutState
 
     // Basic navigation items available to all users
     _navigationItems = [
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.currency_exchange, size: 28),
         label: '',
+        activeIcon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade100, Colors.blue.shade200],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.currency_exchange, size: 28),
+        ),
       ),
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.history, size: 28),
         label: '',
+        activeIcon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade100, Colors.blue.shade200],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.history, size: 28),
+        ),
       ),
     ];
 
     // Only add Analytics and Charts options for admin users
     if (isAdmin) {
       _navigationItems.add(
-        const BottomNavigationBarItem(
+        BottomNavigationBarItem(
           icon: Icon(Icons.analytics, size: 28),
           label: '',
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade100, Colors.blue.shade200],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.analytics, size: 28),
+          ),
         ),
       );
 
       _navigationItems.add(
-        const BottomNavigationBarItem(
+        BottomNavigationBarItem(
           icon: Icon(Icons.pie_chart, size: 28),
           label: '',
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade100, Colors.blue.shade200],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.pie_chart, size: 28),
+          ),
         ),
       );
     }
 
     // Settings available for all users
     _navigationItems.add(
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.settings, size: 28),
         label: '',
+        activeIcon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade100, Colors.blue.shade200],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.settings, size: 28),
+        ),
       ),
     );
   }
@@ -2096,7 +2236,15 @@ class _MobileCurrencyConverterLayoutState
       extendBody: true,
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.blue.shade700,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade500, Colors.blue.shade800],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(_getTranslatedText('currency_exchange')),
         centerTitle: true,
         elevation: 0,
@@ -2115,7 +2263,11 @@ class _MobileCurrencyConverterLayoutState
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            gradient: LinearGradient(
+              colors: [Colors.white, Colors.blue.shade50],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
             borderRadius: BorderRadius.circular(24), // Increased border radius
             boxShadow: [
               BoxShadow(
@@ -2290,7 +2442,15 @@ class _TabletCurrencyConverterLayoutState
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.blue.shade700,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade500, Colors.blue.shade800],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(_getTranslatedText('currency_exchange')),
         centerTitle: true,
         elevation: 0,
@@ -2308,16 +2468,22 @@ class _TabletCurrencyConverterLayoutState
                     horizontal: 20,
                   ), // Increased margin
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white,
+                        Colors.blue.shade50,
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(
                       30,
                     ), // Increased border radius
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(
-                          0.15,
-                        ), // More visible shadow
+                        color: Colors.blue.shade100.withOpacity(0.5),
                         blurRadius: 12, // Increased blur
+                        spreadRadius: 2,
                         offset: const Offset(0, 4), // Deeper shadow
                       ),
                     ],
@@ -2350,10 +2516,11 @@ class _TabletCurrencyConverterLayoutState
                                   8,
                                 ), // Inner padding
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors
-                                          .blue
-                                          .shade100, // Light background for active icon
+                                  gradient: LinearGradient(
+                                    colors: [Colors.blue.shade100, Colors.blue.shade200],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                   borderRadius: BorderRadius.circular(
                                     12,
                                   ), // Rounded background
@@ -2372,30 +2539,54 @@ class _TabletCurrencyConverterLayoutState
   Widget _buildLandscapeLayout() {
     return Row(
       children: [
-        NavigationRail(
-          extended: false,
-          backgroundColor: Colors.white,
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: _onDestinationSelected,
-          labelType: NavigationRailLabelType.none,
-          destinations: _navigationDestinations,
-          selectedIconTheme: IconThemeData(
-            color: Colors.blue.shade700,
-            size: 32, // Increased icon size
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white,
+                Colors.blue.shade50,
+              ],
+            ),
+            borderRadius: BorderRadius.only(
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: Offset(1, 0),
+              ),
+            ],
           ),
-          unselectedIconTheme: IconThemeData(
-            color: Colors.grey.shade400, // Lighter grey for better contrast
-            size: 32, // Increased icon size
-          ),
-          useIndicator: true,
-          indicatorColor: Colors.blue.shade100,
-          minWidth: 72, // Increased width for larger touch target
-          leading: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: IconButton(
-              icon: Icon(Icons.menu, size: 32), // Larger menu icon
-              onPressed: () {}, // Placeholder for menu functionality
-              padding: const EdgeInsets.all(12), // Larger touch target
+          child: NavigationRail(
+            extended: false,
+            backgroundColor: Colors.transparent,
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: _onDestinationSelected,
+            labelType: NavigationRailLabelType.none,
+            destinations: _navigationDestinations,
+            selectedIconTheme: IconThemeData(
+              color: Colors.blue.shade700,
+              size: 32, // Increased icon size
+            ),
+            unselectedIconTheme: IconThemeData(
+              color: Colors.grey.shade400, // Lighter grey for better contrast
+              size: 32, // Increased icon size
+            ),
+            useIndicator: true,
+            indicatorColor: Colors.blue.shade100,
+            minWidth: 72, // Increased width for larger touch target
+            leading: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: IconButton(
+                icon: Icon(Icons.menu, size: 32), // Larger menu icon
+                onPressed: () {}, // Placeholder for menu functionality
+                padding: const EdgeInsets.all(12), // Larger touch target
+              ),
             ),
           ),
         ),
@@ -2435,3 +2626,4 @@ class _TabletCurrencyConverterLayoutState
     return text;
   }
 }
+
