@@ -106,10 +106,11 @@ flutter:
 
   assets:
     - assets/translations/
+    - assets/images/
 
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/images/logo.png"
   min_sdk_android: 21 # android min sdk min:16, default 21
   remove_alpha_ios: true

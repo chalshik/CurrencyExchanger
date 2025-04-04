@@ -1277,24 +1277,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddUserDialog(context),
-                  icon: const Icon(Icons.person_add),
-                  label: Text(
-                    _getTranslatedText('add_new_user'),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -1372,6 +1354,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                         },
                       ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _showAddUserDialog(context),
+              icon: const Icon(Icons.person_add),
+              label: Text(
+                _getTranslatedText('add_new_user'),
+                style: const TextStyle(fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                minimumSize: const Size(double.infinity, 56),
+              ),
             ),
           ),
         ],

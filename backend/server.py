@@ -79,14 +79,19 @@ with app.app_context():
     db.create_all()
     
     # Add initial data if not exists
-    if Currency.query.filter_by(code='SOM').first() is None:
+    som_currency = Currency.query.filter_by(code='SOM').first()
+    if som_currency is None:
+        # Create new SOM currency if it doesn't exist
         default_currency = Currency(
             code='SOM',
-            quantity=1000.0,
+            quantity=0.0,
             default_buy_rate=0.0,
             default_sell_rate=0.0
         )
         db.session.add(default_currency)
+    else:
+        # Ensure SOM currency has the correct quantity
+        som_currency.quantity = 0.0
     
     # Add admin user if not exists
     if User.query.filter_by(username='a').first() is None:
@@ -371,10 +376,20 @@ def check_username():
 @app.route('/api/system/reset', methods=['POST'])
 def reset_data():
     try:
-        # Keep only SOM currency
+        # Find or create SOM currency
         som = Currency.query.filter_by(code='SOM').first()
         if som:
-            som.quantity = 1000.0
+            som.quantity = 0.0
+        else:
+            # Create SOM if it doesn't exist
+            som = Currency(
+                code='SOM',
+                quantity=0.0,
+                default_buy_rate=0.0,
+                default_sell_rate=0.0,
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(som)
         
         # Delete all other currencies
         Currency.query.filter(Currency.code != 'SOM').delete()

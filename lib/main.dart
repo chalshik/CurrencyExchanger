@@ -191,28 +191,28 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
 
-              // Brand watermark
+              // "BY" text
               Text(
-                "By Boz Zat",
+                "BY",
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0,
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // User logo
+              Image.asset(
+                'assets/images/logo.png',
+                width: 300,
+                height: 150,
+                fit: BoxFit.contain,
               ),
 
               const SizedBox(height: 48),
-
-              // Loading indicator
-              SizedBox(
-                width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).primaryColor,
-                  strokeWidth: 3,
-                ),
-              ),
             ],
           ),
         ),

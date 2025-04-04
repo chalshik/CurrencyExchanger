@@ -11,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
 
   // Server URL
-  String baseUrl = 'https://chigurick.pythonanywhere.com/api';
+  String baseUrl = 'http://192.168.83.124:5000/api';  
 
   // Offline mode flag
   bool _isOfflineMode = false;
