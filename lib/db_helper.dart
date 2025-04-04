@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import './models/currency.dart';
 import './models/history.dart';
 import './models/user.dart';
@@ -9,836 +9,72 @@ import './models/user.dart';
 class DatabaseHelper {
   // Singleton instance
   static final DatabaseHelper instance = DatabaseHelper._init();
-  static Database? _database;
+
+  // Server URL
+  String baseUrl = 'https://chigurick.pythonanywhere.com/api';
+
+  // Offline mode flag
+  bool _isOfflineMode = false;
+  bool get isOfflineMode => _isOfflineMode;
+  set isOfflineMode(bool value) => _isOfflineMode = value;
 
   DatabaseHelper._init();
 
-  /// Get database instance (initialize if needed)
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('currency_converter.db');
-    return _database!;
-  }
-
-  /// Initialize database file
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-    return await openDatabase(
-      path,
-      version: 3,
-      onCreate: _createDB,
-      onUpgrade: _upgradeDB,
-    );
-  }
-
-  /// Create database tables
-  Future<void> _createDB(Database db, int version) async {
-    // Create currencies table
-    await db.execute('''
-      CREATE TABLE currencies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT NOT NULL UNIQUE,
-        quantity REAL NOT NULL,
-        updated_at TEXT NOT NULL,
-        default_buy_rate REAL NOT NULL DEFAULT 0,
-        default_sell_rate REAL NOT NULL DEFAULT 0
-      )
-    ''');
-
-    // Create history table
-    await db.execute('''
-      CREATE TABLE history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        currency_code TEXT NOT NULL,
-        operation_type TEXT NOT NULL,
-        rate REAL NOT NULL,
-        quantity REAL NOT NULL,
-        total REAL NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    // Create users table
-    await db.execute('''
-      CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    // Initialize with SOM currency
-    final somCurrency = CurrencyModel(code: 'SOM', quantity: 0);
-    await db.insert('currencies', somCurrency.toMap());
-
-    // Create initial admin user (username: a, password: a)
-    final adminUser = UserModel(username: 'a', password: 'a', role: 'admin');
-    await db.insert('users', adminUser.toMap());
-  }
-
-  /// Upgrade database when schema changes
-  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Add users table if upgrading from version 1
-      await db.execute('''
-        CREATE TABLE users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          role TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        )
-      ''');
-
-      // Create initial admin user
-      final adminUser = UserModel(username: 'a', password: 'a', role: 'admin');
-      await db.insert('users', adminUser.toMap());
-    }
-
-    if (oldVersion < 3) {
-      // Add default exchange rate columns to currencies table
-      await db.execute('''
-        ALTER TABLE currencies 
-        ADD COLUMN default_buy_rate REAL NOT NULL DEFAULT 0
-      ''');
-
-      await db.execute('''
-        ALTER TABLE currencies 
-        ADD COLUMN default_sell_rate REAL NOT NULL DEFAULT 0
-      ''');
-    }
-  }
-
-  // ========================
-  // CURRENCY CRUD OPERATIONS
-  // ========================
-
-  /// Create or update currency record
-  Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
-    final db = await instance.database;
-
-    // Try update first
-    final updateCount = await db.update(
-      'currencies',
-      currency.toMap(),
-      where: 'code = ?',
-      whereArgs: [currency.code],
-    );
-
-    // Insert if doesn't exist
-    if (updateCount == 0) {
-      // Force initial quantity to zero for new currencies
-      final initialCurrency = currency.copyWith(quantity: 0.0);
-      currency = initialCurrency.copyWith(
-        id: await db.insert('currencies', initialCurrency.toMap()),
-      );
-    }
-
-    return currency;
-  }
-
-  Future<int> updateHistory({
-    required HistoryModel newHistory,
-    required HistoryModel oldHistory,
+  // Core API call handler
+  Future<dynamic> _apiCall(
+    String endpoint, {
+    String method = 'GET',
+    Map<String, dynamic>? body,
+    Map<String, String>? queryParams,
   }) async {
-    final db = await database;
-
-    return await db.transaction((txn) async {
-      // 1. First revert the old transaction's effect on balances
-      await _revertTransactionEffect(txn, oldHistory);
-
-      // 2. Apply the new transaction's effect on balances
-      await _applyTransactionEffect(txn, newHistory);
-
-      // 3. Update the history record
-      return await txn.update(
-        'history',
-        newHistory.toMap(),
-        where: 'id = ?',
-        whereArgs: [newHistory.id],
-      );
-    });
-  }
-
-  Future<int> deleteHistory(dynamic history) async {
-    final db = await database;
-
-    // Handle both HistoryModel or just ID
-    final id = history is HistoryModel ? history.id : history as int;
-
-    return await db.transaction((txn) async {
-      // If we have full HistoryModel, revert its effect
-      if (history is HistoryModel) {
-        await _revertTransactionEffect(txn, history);
-      }
-
-      return await txn.delete('history', where: 'id = ?', whereArgs: [id]);
-    });
-  }
-
-  Future<void> _updateCurrencyBalance(
-    Transaction txn,
-    String currencyCode,
-    double amount, {
-    required bool isAddition,
-  }) async {
-    // Get current balance
-    final result = await txn.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: [currencyCode],
-    );
-
-    if (result.isEmpty) {
-      if (currencyCode != 'SOM' && isAddition) {
-        // Create new currency entry if it doesn't exist (for non-SOM currencies)
-        // Always initialize with zero and then add the amount separately
-        await txn.insert('currencies', {
-          'code': currencyCode,
-          'quantity': 0.0,
-          'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 0.0,
-          'default_sell_rate': 0.0,
-        });
-
-        // Now update the newly created currency with the amount
-        await txn.update(
-          'currencies',
-          {'quantity': amount, 'updated_at': DateTime.now().toIso8601String()},
-          where: 'code = ?',
-          whereArgs: [currencyCode],
-        );
-      }
-      return;
+    if (_isOfflineMode) {
+      throw Exception('App is in offline mode. Server connection required.');
     }
-
-    final currentBalance = (result.first['quantity'] as num).toDouble();
-    final newBalance =
-        isAddition ? currentBalance + amount : currentBalance - amount;
-
-    // Update balance
-    await txn.update(
-      'currencies',
-      {'quantity': newBalance, 'updated_at': DateTime.now().toIso8601String()},
-      where: 'code = ?',
-      whereArgs: [currencyCode],
-    );
-  }
-
-  Future<void> _revertTransactionEffect(
-    Transaction txn,
-    HistoryModel history,
-  ) async {
-    if (history.operationType == 'Purchase') {
-      // For purchase reversal:
-      // - Add back the SOM that was spent
-      // - Deduct the currency that was bought
-      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
-      await _updateCurrencyBalance(
-        txn,
-        history.currencyCode,
-        history.quantity,
-        isAddition: false,
-      );
-    } else if (history.operationType == 'Sale') {
-      // For sale reversal:
-      // - Deduct the SOM that was gained
-      // - Add back the currency that was sold
-      await _updateCurrencyBalance(
-        txn,
-        'SOM',
-        history.total,
-        isAddition: false,
-      );
-      await _updateCurrencyBalance(
-        txn,
-        history.currencyCode,
-        history.quantity,
-        isAddition: true,
-      );
-    } else if (history.operationType == 'Deposit') {
-      // For deposit reversal:
-      // - Deduct the SOM that was deposited
-      await _updateCurrencyBalance(
-        txn,
-        'SOM',
-        history.total,
-        isAddition: false,
-      );
-    }
-  }
-
-  Future<void> _applyTransactionEffect(
-    Transaction txn,
-    HistoryModel history,
-  ) async {
-    if (history.operationType == 'Purchase') {
-      // For purchase:
-      // - Deduct the SOM being spent
-      // - Add the currency being bought
-      await _updateCurrencyBalance(
-        txn,
-        'SOM',
-        history.total,
-        isAddition: false,
-      );
-      await _updateCurrencyBalance(
-        txn,
-        history.currencyCode,
-        history.quantity,
-        isAddition: true,
-      );
-    } else if (history.operationType == 'Sale') {
-      // For sale:
-      // - Add the SOM being gained
-      // - Deduct the currency being sold
-      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
-      await _updateCurrencyBalance(
-        txn,
-        history.currencyCode,
-        history.quantity,
-        isAddition: false,
-      );
-    } else if (history.operationType == 'Deposit') {
-      // For deposit:
-      // - Just add to SOM balance
-      await _updateCurrencyBalance(txn, 'SOM', history.total, isAddition: true);
-    }
-  }
-
-  /// Get currency by code
-  Future<CurrencyModel?> getCurrency(String code) async {
-    final db = await instance.database;
-    final maps = await db.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: [code],
-    );
-    return maps.isNotEmpty ? CurrencyModel.fromMap(maps.first) : null;
-  }
-
-  /// Insert new currency
-  Future<int> insertCurrency(CurrencyModel currency) async {
-    final db = await instance.database;
-    return await db.insert(
-      'currencies',
-      currency.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Delete currency by ID
-  Future<int> deleteCurrency(int id) async {
-    final db = await instance.database;
-    return await db.delete('currencies', where: 'id = ?', whereArgs: [id]);
-  }
-
-  /// Get all currencies (except SOM)
-  Future<List<CurrencyModel>> getAllCurrencies() async {
-    final db = await instance.database;
-    final maps = await db.query('currencies', orderBy: 'updated_at DESC');
-    print(maps.map((map) => CurrencyModel.fromMap(map)).toList());
-    print(maps.last.values);
-    print(maps.last["quantity"]);
-    return maps.map((map) => CurrencyModel.fromMap(map)).toList();
-  }
-
-  // =====================
-  // BALANCE OPERATIONS
-  // =====================
-
-  /// Add amount to SOM balance
-  Future<void> addToSomBalance(double amount) async {
-    final db = await instance.database;
-
-    await db.transaction((txn) async {
-      // Get current SOM balance
-      final somMaps = await txn.query(
-        'currencies',
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
-
-      if (somMaps.isEmpty) throw Exception('SOM currency not found');
-      print(somMaps.first['quantity']);
-      print("this one");
-      // Calculate new balance
-      final newBalance = (somMaps.first['quantity'] as double) + amount;
-
-      // Update SOM balance
-      await txn.update(
-        'currencies',
-        {
-          'quantity': newBalance,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
-
-      // Record deposit in history
-      await txn.insert('history', {
-        'currency_code': 'SOM',
-        'operation_type': 'Deposit',
-        'rate': 1.0,
-        'quantity': amount,
-        'total': amount,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-    });
-  }
-
-  /// Check if enough SOM available for purchase
-  Future<bool> hasEnoughSomForPurchase(double requiredSom) async {
-    final db = await instance.database;
-    final somMaps = await db.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: ['SOM'],
-    );
-
-    if (somMaps.isEmpty) return false;
-
-    // Safely extract and convert quantity
-    final quantity = (somMaps.first['quantity'] as num?)?.toDouble() ?? 0.0;
-
-    return quantity >= requiredSom;
-  }
-
-  /// Check if enough currency available to sell
-  Future<bool> hasEnoughCurrencyToSell(
-    String currencyCode,
-    double quantity,
-  ) async {
-    if (currencyCode == 'SOM') return false;
-
-    final db = await instance.database;
-    final currencyMaps = await db.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: [currencyCode],
-    );
-
-    if (currencyMaps.isEmpty) return false;
-
-    // Safely extract and convert quantity
-    final availableQuantity =
-        (currencyMaps.first['quantity'] as num?)?.toDouble() ?? 0.0;
-
-    return availableQuantity >= quantity;
-  }
-
-  // =====================
-  // CURRENCY EXCHANGE
-  // =====================
-
-  Future<void> performCurrencyExchange({
-    required String currencyCode,
-    required String operationType, // 'Buy' or 'Sell'
-    required double rate,
-    required double quantity,
-  }) async {
-    final db = await instance.database;
 
     try {
-      // 1. Get SOM balance
-      final somResult = await db.query(
-        'currencies',
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
+      final uri = Uri.parse(
+        '$baseUrl/$endpoint',
+      ).replace(queryParameters: queryParams);
 
-      if (somResult.isEmpty) {
-        throw Exception('SOM currency not found');
-      }
+      final headers = {'Content-Type': 'application/json'};
+      http.Response response;
 
-      final somBalance = (somResult.first['quantity'] as num).toDouble();
-      final totalSom = quantity * rate;
-
-      // 2. Get target currency balance
-      final targetResult = await db.query(
-        'currencies',
-        where: 'code = ?',
-        whereArgs: [currencyCode],
-      );
-      print(currencyCode);
-      print(targetResult);
-      double targetBalance =
-          targetResult.isNotEmpty
-              ? (targetResult.first['quantity'] as num).toDouble()
-              : 0.0;
-      print(operationType);
-      if (operationType == 'Purchase') {
-        // Validate purchase
-        if (somBalance < totalSom) {
-          throw Exception('Not enough SOM to perform this operation');
-        }
-
-        // Update SOM balance (deduct total)
-        await db.update(
-          'currencies',
-          {
-            'quantity': somBalance - totalSom,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-          where: 'code = ?',
-          whereArgs: ['SOM'],
-        );
-        print(targetResult.isNotEmpty);
-        // Update or create target currency (add quantity)
-        if (targetResult.isNotEmpty) {
-          print("targetvalue");
-          await db.update(
-            'currencies',
-            {
-              'quantity': targetBalance + quantity,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            where: 'code = ?',
-            whereArgs: [currencyCode],
+      switch (method) {
+        case 'GET':
+          response = await http.get(uri, headers: headers);
+          break;
+        case 'POST':
+          response = await http.post(
+            uri,
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
           );
-        } else {
-          print("isnottarget");
-          // First create the currency with zero quantity
-          await db.insert('currencies', {
-            'code': currencyCode,
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-
-          // Then update it with the purchased amount
-          await db.update(
-            'currencies',
-            {
-              'quantity': quantity,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            where: 'code = ?',
-            whereArgs: [currencyCode],
+          break;
+        case 'PUT':
+          response = await http.put(
+            uri,
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
           );
-        }
-      } else if (operationType == 'Sale') {
-        print('sell');
-        // Validate sale
-        if (targetBalance < quantity) {
-          throw Exception('Not enough $currencyCode to perform this operation');
-        }
+          break;
+        case 'DELETE':
+          response = await http.delete(uri, headers: headers);
+          break;
+        default:
+          throw Exception('Unsupported HTTP method: $method');
+      }
 
-        // Update SOM balance (add total)
-        await db.update(
-          'currencies',
-          {
-            'quantity': somBalance + totalSom,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-          where: 'code = ?',
-          whereArgs: ['SOM'],
-        );
-
-        // Update target currency (deduct quantity)
-        await db.update(
-          'currencies',
-          {
-            'quantity': targetBalance - quantity,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-          where: 'code = ?',
-          whereArgs: [currencyCode],
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.body.isEmpty) return null;
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(
+          'API Error: ${response.statusCode} - ${response.reasonPhrase} - ${response.body}',
         );
       }
-
-      // Record transaction in history
-      await db.insert('history', {
-        'currency_code': currencyCode,
-        'operation_type': operationType,
-        'rate': rate,
-        'quantity': quantity,
-        'total': totalSom,
-        'created_at': DateTime.now().toIso8601String(),
-      });
     } catch (e) {
-      debugPrint('Error performing currency exchange: $e');
-      rethrow;
-    }
-  }
-
-  // Helper method to update or create currency
-
-  // Helper method to create or update currency
-
-  // =====================
-  // HISTORY OPERATIONS
-  // =====================
-
-  /// Get filtered history by date range
-  Future<List<HistoryModel>> getFilteredHistoryByDate({
-    required DateTime fromDate,
-    required DateTime toDate,
-    String? currencyCode,
-    String? operationType,
-  }) async {
-    final db = await instance.database;
-
-    final whereParts = <String>['created_at >= ? AND created_at <= ?'];
-    final whereArgs = <dynamic>[
-      fromDate.toIso8601String(),
-      toDate
-          .add(Duration(days: 1))
-          .toIso8601String(), // Include the entire end date
-    ];
-
-    if (currencyCode != null && currencyCode.isNotEmpty) {
-      whereParts.add('currency_code = ?');
-      whereArgs.add(currencyCode);
-    }
-
-    if (operationType != null && operationType.isNotEmpty) {
-      whereParts.add('operation_type = ?');
-      whereArgs.add(operationType);
-    }
-
-    final where = whereParts.join(' AND ');
-
-    final maps = await db.query(
-      'history',
-      where: where,
-      whereArgs: whereArgs,
-      orderBy: 'created_at DESC',
-    );
-
-    return maps.map((map) => HistoryModel.fromMap(map)).toList();
-  }
-
-  /// Create new history entry
-  Future<HistoryModel> createHistoryEntry(HistoryModel historyEntry) async {
-    final db = await instance.database;
-    final id = await db.insert('history', historyEntry.toMap());
-    return historyEntry.copyWith(id: id);
-  }
-
-  /// Get history entries with optional filters
-  Future<List<HistoryModel>> getHistoryEntries({
-    int? limit,
-    String? currencyCode,
-  }) async {
-    final db = await instance.database;
-
-    String? where;
-    List<dynamic>? whereArgs;
-
-    if (currencyCode != null) {
-      where = 'currency_code = ?';
-      whereArgs = [currencyCode];
-    }
-
-    final maps = await db.query(
-      'history',
-      where: where,
-      whereArgs: whereArgs,
-      orderBy: 'created_at DESC',
-      limit: limit,
-    );
-
-    return maps.map((map) => HistoryModel.fromMap(map)).toList();
-  }
-
-  /// Get summary of all currency balances
-  Future<Map<String, dynamic>> getCurrencySummary() async {
-    final db = await instance.database;
-
-    // Get SOM balance
-    final somResult = await db.query(
-      'currencies',
-      where: 'code = ?',
-      whereArgs: ['SOM'],
-    );
-
-    // Get other currencies
-    final otherCurrencies = await db.query(
-      'currencies',
-      where: 'code != ?',
-      whereArgs: ['SOM'],
-    );
-
-    return {
-      'som_balance': somResult.isNotEmpty ? somResult.first['quantity'] : 0,
-      'other_currencies': {
-        for (var currency in otherCurrencies)
-          currency['code']: currency['quantity'],
-      },
-    };
-  }
-
-  /// Get list of unique currency codes from history
-  Future<List<String>> getHistoryCurrencyCodes() async {
-    final db = await instance.database;
-    final maps = await db.rawQuery(
-      'SELECT DISTINCT currency_code FROM history ORDER BY currency_code',
-    );
-    return maps.map((map) => map['currency_code'] as String).toList();
-  }
-
-  /// Get list of unique operation types from history
-  Future<List<String>> getHistoryOperationTypes() async {
-    final db = await instance.database;
-    final maps = await db.rawQuery(
-      'SELECT DISTINCT operation_type FROM history ORDER BY operation_type',
-    );
-    return maps.map((map) => map['operation_type'] as String).toList();
-  }
-
-  /// Calculate currency statistics for analytics
-  Future<Map<String, dynamic>> calculateAnalytics({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    try {
-      final db = await database;
-      List<Map<String, dynamic>> currencyStats = [];
-      double totalProfit = 0.0;
-
-      // Build date filter conditions
-      String dateFilter = '';
-      List<String> whereArgs = [];
-
-      if (startDate != null || endDate != null) {
-        dateFilter = 'WHERE ';
-        if (startDate != null) {
-          dateFilter += 'created_at >= ? ';
-          whereArgs.add(startDate.toIso8601String());
-        }
-        if (endDate != null) {
-          if (startDate != null) dateFilter += 'AND ';
-          dateFilter += 'created_at <= ?';
-          whereArgs.add(endDate.add(Duration(days: 1)).toIso8601String());
-        }
-      }
-
-      // Query to get purchase stats
-      final purchaseStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_purchase_rate,
-        SUM(quantity) as total_purchased,
-        SUM(total) as total_purchase_amount
-      FROM history
-      ${dateFilter.isNotEmpty ? dateFilter + ' AND ' : 'WHERE '} 
-      operation_type = 'Purchase'
-      GROUP BY currency_code
-    ''', whereArgs);
-
-      // Query to get sale stats
-      final saleStats = await db.rawQuery('''
-      SELECT 
-        currency_code,
-        AVG(rate) as avg_sale_rate,
-        SUM(quantity) as total_sold,
-        SUM(total) as total_sale_amount
-      FROM history
-      ${dateFilter.isNotEmpty ? dateFilter + ' AND ' : 'WHERE '}
-      operation_type = 'Sale'
-      GROUP BY currency_code
-    ''', whereArgs);
-
-      // Query to get current quantities - this is the accurate value
-      final currentQuantities = await db.rawQuery('''
-        SELECT code, quantity FROM currencies
-      ''');
-
-      // Combine all data
-      final Map<String, Map<String, dynamic>> combinedStats = {};
-
-      // Add purchase stats
-      for (var stat in purchaseStats) {
-        final currencyCode = stat['currency_code'] as String? ?? '';
-        if (currencyCode.isEmpty) continue;
-
-        combinedStats[currencyCode] = {
-          'currency': currencyCode,
-          'avg_purchase_rate': _safeDouble(stat['avg_purchase_rate']),
-          'total_purchased': _safeDouble(stat['total_purchased']),
-          'total_purchase_amount': _safeDouble(stat['total_purchase_amount']),
-          'avg_sale_rate': 0.0,
-          'total_sold': 0.0,
-          'total_sale_amount': 0.0,
-          'current_quantity': 0.0,
-          'profit': 0.0,
-        };
-      }
-
-      // Add sale stats
-      for (var stat in saleStats) {
-        final currencyCode = stat['currency_code'] as String? ?? '';
-        if (currencyCode.isEmpty) continue;
-
-        if (combinedStats.containsKey(currencyCode)) {
-          combinedStats[currencyCode]!.addAll({
-            'avg_sale_rate': _safeDouble(stat['avg_sale_rate']),
-            'total_sold': _safeDouble(stat['total_sold']),
-            'total_sale_amount': _safeDouble(stat['total_sale_amount']),
-          });
-        } else {
-          combinedStats[currencyCode] = {
-            'currency': currencyCode,
-            'avg_purchase_rate': 0.0,
-            'total_purchased': 0.0,
-            'total_purchase_amount': 0.0,
-            'avg_sale_rate': _safeDouble(stat['avg_sale_rate']),
-            'total_sold': _safeDouble(stat['total_sold']),
-            'total_sale_amount': _safeDouble(stat['total_sale_amount']),
-            'current_quantity': 0.0,
-            'profit': 0.0,
-          };
-        }
-      }
-
-      // Add current quantities - these are the authoritative values
-      for (var quantity in currentQuantities) {
-        final currencyCode = quantity['code'] as String? ?? '';
-        if (currencyCode.isEmpty) continue;
-
-        final currentQuantity = _safeDouble(quantity['quantity']);
-
-        if (combinedStats.containsKey(currencyCode)) {
-          combinedStats[currencyCode]!['current_quantity'] = currentQuantity;
-        } else {
-          combinedStats[currencyCode] = {
-            'currency': currencyCode,
-            'avg_purchase_rate': 0.0,
-            'total_purchased': 0.0,
-            'total_purchase_amount': 0.0,
-            'avg_sale_rate': 0.0,
-            'total_sold': 0.0,
-            'total_sale_amount': 0.0,
-            'current_quantity': currentQuantity,
-            'profit': 0.0,
-          };
-        }
-      }
-
-      // Calculate profit for each currency
-      for (var stats in combinedStats.values) {
-        final avgPurchaseRate = stats['avg_purchase_rate'] as double;
-        final avgSaleRate = stats['avg_sale_rate'] as double;
-        final totalSold = stats['total_sold'] as double;
-
-        final profit = (avgSaleRate - avgPurchaseRate) * totalSold;
-        stats['profit'] = profit;
-        if (stats['currency'] != 'SOM') {
-          totalProfit += profit;
-        }
-      }
-
-      return {
-        'currency_stats': combinedStats.values.toList(),
-        'total_profit': totalProfit,
-      };
-    } catch (e) {
-      debugPrint('Error calculating analytics: $e');
-      return {'currency_stats': [], 'total_profit': 0.0};
+      _isOfflineMode = true;
+      throw Exception('Network error: ${e.toString()}');
     }
   }
 
@@ -853,164 +89,559 @@ class DatabaseHelper {
     return 0.0;
   }
 
-  /// Close database connection
-  Future<void> close() async {
-    final db = await instance.database;
-    db.close();
+  // Check server connection
+  Future<bool> verifyServerConnection() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/currencies'))
+          .timeout(const Duration(seconds: 5));
+
+      _isOfflineMode = response.statusCode != 200;
+      return !_isOfflineMode;
+    } catch (e) {
+      _isOfflineMode = true;
+      return false;
+    }
+  }
+
+  // ========================
+  // CURRENCY CRUD OPERATIONS
+  // ========================
+
+  Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
+    try {
+      final response = await _apiCall(
+        'currencies',
+        method: 'POST',
+        body: currency.toMap(),
+      );
+
+      return CurrencyModel.fromMap(response);
+    } catch (e) {
+      debugPrint('Error in createOrUpdateCurrency: $e');
+      rethrow;
+    }
+  }
+
+  /// Get currency by code
+  Future<CurrencyModel?> getCurrency(String code) async {
+    try {
+      final response = await _apiCall('currencies/$code');
+      return CurrencyModel.fromMap(response);
+    } catch (e) {
+      if (e.toString().contains('Resource not found') ||
+          e.toString().contains('404')) {
+        return null;
+      }
+      debugPrint('Error in getCurrency: $e');
+      rethrow;
+    }
+  }
+
+  /// Insert new currency
+  Future<int> insertCurrency(CurrencyModel currency) async {
+    try {
+      final response = await _apiCall(
+        'currencies',
+        method: 'POST',
+        body: currency.toMap(),
+      );
+
+      return response['id'] ?? 0;
+    } catch (e) {
+      debugPrint('Error in insertCurrency: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete currency by ID
+  Future<int> deleteCurrency(int id) async {
+    try {
+      await _apiCall('currencies/$id', method: 'DELETE');
+      return 1; // Return 1 to indicate success (similar to SQLite return value)
+    } catch (e) {
+      debugPrint('Error in deleteCurrency: $e');
+      return 0; // Return 0 to indicate failure
+    }
+  }
+
+  /// Get all currencies
+  Future<List<CurrencyModel>> getAllCurrencies() async {
+    try {
+      final response = await _apiCall('currencies');
+      return (response as List)
+          .map((json) => CurrencyModel.fromMap(json))
+          .toList();
+    } catch (e) {
+      debugPrint('Error in getAllCurrencies: $e');
+      return [];
+    }
+  }
+
+  /// Update currency
+  Future<void> updateCurrency(CurrencyModel currency) async {
+    try {
+      await _apiCall(
+        'currencies/${currency.id}',
+        method: 'PUT',
+        body: currency.toMap(),
+      );
+    } catch (e) {
+      debugPrint('Error in updateCurrency: $e');
+      rethrow;
+    }
+  }
+
+  /// Update currency quantity
+  Future<void> updateCurrencyQuantity(String code, double newQuantity) async {
+    try {
+      await _apiCall(
+        'currencies/$code/quantity',
+        method: 'PUT',
+        body: {'quantity': newQuantity},
+      );
+    } catch (e) {
+      debugPrint('Error in updateCurrencyQuantity: $e');
+      rethrow;
+    }
   }
 
   // =====================
-  // CHART DATA OPERATIONS
+  // SYSTEM OPERATIONS
   // =====================
+
+  /// Reset all data
+  Future<void> resetAllData() async {
+    try {
+      await _apiCall('system/reset', method: 'POST');
+    } catch (e) {
+      debugPrint('Error in resetAllData: $e');
+      rethrow;
+    }
+  }
+
+  /// Get summary of all currency balances
+  Future<Map<String, dynamic>> getCurrencySummary() async {
+    try {
+      return await _apiCall('system/currency-summary');
+    } catch (e) {
+      debugPrint('Error in getCurrencySummary: $e');
+      return {'som_balance': 0, 'other_currencies': {}};
+    }
+  }
+
+  // =====================
+  // BALANCE OPERATIONS
+  // =====================
+
+  /// Add amount to SOM balance
+  Future<void> addToSomBalance(double amount) async {
+    try {
+      // First get the current SOM currency
+      final som = await getCurrency('SOM');
+
+      if (som == null) {
+        throw Exception('SOM currency not found');
+      }
+
+      // Calculate new balance
+      final newBalance = som.quantity + amount;
+
+      // Update SOM balance
+      await updateCurrencyQuantity('SOM', newBalance);
+
+      // Record deposit in history
+      await insertHistory(
+        HistoryModel(
+          currencyCode: 'SOM',
+          operationType: 'Deposit',
+          rate: 1.0,
+          quantity: amount,
+          total: amount,
+          createdAt: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error in addToSomBalance: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if enough SOM available for purchase
+  Future<bool> hasEnoughSomForPurchase(double requiredSom) async {
+    try {
+      final som = await getCurrency('SOM');
+      return som != null && som.quantity >= requiredSom;
+    } catch (e) {
+      debugPrint('Error in hasEnoughSomForPurchase: $e');
+      return false;
+    }
+  }
+
+  /// Check if enough currency available to sell
+  Future<bool> hasEnoughCurrencyToSell(
+    String currencyCode,
+    double quantity,
+  ) async {
+    try {
+      if (currencyCode == 'SOM') return false;
+
+      final currency = await getCurrency(currencyCode);
+      return currency != null && currency.quantity >= quantity;
+    } catch (e) {
+      debugPrint('Error in hasEnoughCurrencyToSell: $e');
+      return false;
+    }
+  }
+
+  // =====================
+  // CURRENCY EXCHANGE
+  // =====================
+
+  Future<void> performCurrencyExchange({
+    required String currencyCode,
+    required String operationType,
+    required double rate,
+    required double quantity,
+  }) async {
+    try {
+      final totalSom = quantity * rate;
+
+      await _apiCall(
+        'system/exchange',
+        method: 'POST',
+        body: {
+          'currency_code': currencyCode,
+          'operation_type': operationType,
+          'rate': rate,
+          'quantity': quantity,
+          'total': totalSom,
+        },
+      );
+    } catch (e) {
+      debugPrint('Error in performCurrencyExchange: $e');
+      rethrow;
+    }
+  }
+
+  // =====================
+  // HISTORY OPERATIONS
+  // =====================
+
+  /// Get filtered history by date range
+  Future<List<HistoryModel>> getFilteredHistoryByDate({
+    required DateTime fromDate,
+    required DateTime toDate,
+    String? currencyCode,
+    String? operationType,
+  }) async {
+    try {
+      final queryParams = {
+        'from_date': fromDate.toIso8601String(),
+        'to_date': toDate.toIso8601String(),
+      };
+
+      if (currencyCode != null && currencyCode.isNotEmpty) {
+        queryParams['currency_code'] = currencyCode;
+      }
+
+      if (operationType != null && operationType.isNotEmpty) {
+        queryParams['operation_type'] = operationType;
+      }
+
+      final response = await _apiCall(
+        'history/filter',
+        queryParams: queryParams,
+      );
+
+      return (response as List)
+          .map((json) => HistoryModel.fromMap(json))
+          .toList();
+    } catch (e) {
+      debugPrint('Error in getFilteredHistoryByDate: $e');
+      return [];
+    }
+  }
+
+  /// Create new history entry
+  Future<HistoryModel> createHistoryEntry(HistoryModel historyEntry) async {
+    try {
+      final response = await _apiCall(
+        'history',
+        method: 'POST',
+        body: historyEntry.toMap(),
+      );
+
+      return HistoryModel.fromMap(response);
+    } catch (e) {
+      debugPrint('Error in createHistoryEntry: $e');
+      rethrow;
+    }
+  }
+
+  /// Get history entries with optional filters
+  Future<List<HistoryModel>> getHistoryEntries({
+    int? limit,
+    String? currencyCode,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+
+      if (limit != null) {
+        queryParams['limit'] = limit.toString();
+      }
+
+      if (currencyCode != null && currencyCode.isNotEmpty) {
+        queryParams['currency_code'] = currencyCode;
+      }
+
+      final response = await _apiCall('history', queryParams: queryParams);
+
+      return (response as List)
+          .map((json) => HistoryModel.fromMap(json))
+          .toList();
+    } catch (e) {
+      debugPrint('Error in getHistoryEntries: $e');
+      return [];
+    }
+  }
+
+  /// Update history
+  Future<int> updateHistory({
+    required HistoryModel newHistory,
+    required HistoryModel oldHistory,
+  }) async {
+    try {
+      await _apiCall(
+        'history/${newHistory.id}',
+        method: 'PUT',
+        body: newHistory.toMap(),
+      );
+
+      return 1; // Return 1 to indicate success
+    } catch (e) {
+      debugPrint('Error in updateHistory: $e');
+      return 0; // Return 0 to indicate failure
+    }
+  }
+
+  /// Delete history
+  Future<int> deleteHistory(dynamic history) async {
+    try {
+      final id = history is HistoryModel ? history.id : history as int;
+
+      await _apiCall('history/$id', method: 'DELETE');
+
+      return 1; // Return 1 to indicate success
+    } catch (e) {
+      debugPrint('Error in deleteHistory: $e');
+      return 0; // Return 0 to indicate failure
+    }
+  }
+
+  /// Get list of unique currency codes from history
+  Future<List<String>> getHistoryCurrencyCodes() async {
+    try {
+      final response = await _apiCall('system/history-codes');
+      return List<String>.from(response);
+    } catch (e) {
+      debugPrint('Error in getHistoryCurrencyCodes: $e');
+      return [];
+    }
+  }
+
+  /// Get list of unique operation types from history
+  Future<List<String>> getHistoryOperationTypes() async {
+    try {
+      final response = await _apiCall('system/history-types');
+      return List<String>.from(response);
+    } catch (e) {
+      debugPrint('Error in getHistoryOperationTypes: $e');
+      return [];
+    }
+  }
+
+  /// Insert history
+  Future<int> insertHistory(HistoryModel history) async {
+    try {
+      final response = await _apiCall(
+        'history',
+        method: 'POST',
+        body: history.toMap(),
+      );
+
+      return response['id'] ?? 0;
+    } catch (e) {
+      debugPrint('Error in insertHistory: $e');
+      return 0;
+    }
+  }
+
+  // =====================
+  // ANALYTICS OPERATIONS
+  // =====================
+
+  /// Calculate currency statistics for analytics
+  Future<Map<String, dynamic>> calculateAnalytics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      // Get data from multiple APIs and combine
+      final profitData = await getMostProfitableCurrencies(
+        startDate: startDate ?? DateTime(2000),
+        endDate: endDate ?? DateTime.now(),
+      );
+
+      // Get currencies for current quantity and details
+      final currencies = await getAllCurrencies();
+
+      // Combine data into the same format expected by the existing API
+      final currencyStats = <Map<String, dynamic>>[];
+      double totalProfit = 0.0;
+
+      for (var currency in currencies) {
+        // Find matching profit data
+        final profitEntry = profitData.firstWhere(
+          (p) => p['currency_code'] == currency.code,
+          orElse:
+              () => <String, dynamic>{
+                'amount': 0.0,
+                'avg_purchase_rate': 0.0,
+                'avg_sale_rate': 0.0,
+                'total_purchased': 0.0,
+                'total_sold': 0.0,
+              },
+        );
+
+        final profit = profitEntry['amount'] ?? 0.0;
+
+        if (currency.code != 'SOM') {
+          totalProfit += profit;
+        }
+
+        currencyStats.add({
+          'currency': currency.code,
+          'avg_purchase_rate': profitEntry['avg_purchase_rate'] ?? 0.0,
+          'total_purchased': profitEntry['total_purchased'] ?? 0.0,
+          'total_purchase_amount':
+              (profitEntry['avg_purchase_rate'] ?? 0.0) *
+              (profitEntry['total_purchased'] ?? 0.0),
+          'avg_sale_rate': profitEntry['avg_sale_rate'] ?? 0.0,
+          'total_sold': profitEntry['total_sold'] ?? 0.0,
+          'total_sale_amount':
+              (profitEntry['avg_sale_rate'] ?? 0.0) *
+              (profitEntry['total_sold'] ?? 0.0),
+          'current_quantity': currency.quantity,
+          'profit': profit,
+        });
+      }
+
+      return {'currency_stats': currencyStats, 'total_profit': totalProfit};
+    } catch (e) {
+      debugPrint('Error in calculateAnalytics: $e');
+      return {'currency_stats': [], 'total_profit': 0.0};
+    }
+  }
+
   /// Enhanced pie chart data with multiple metrics
   Future<Map<String, dynamic>> getEnhancedPieChartData({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final db = await database;
-    final whereArgs = <dynamic>[];
-    var whereClause = '';
+    try {
+      final queryParams = <String, String>{};
 
-    // Add date range filtering if provided
-    if (startDate != null && endDate != null) {
-      whereClause = 'WHERE created_at >= ? AND created_at <= ?';
-      whereArgs.addAll([
-        startDate.toIso8601String(),
-        endDate.add(Duration(days: 1)).toIso8601String(),
-      ]);
+      if (startDate != null) {
+        queryParams['from_date'] = startDate.toIso8601String();
+      }
+
+      if (endDate != null) {
+        queryParams['to_date'] = endDate.toIso8601String();
+      } else {
+        queryParams['to_date'] = DateTime.now().toIso8601String();
+      }
+
+      final response = await _apiCall(
+        'analytics/pie-chart-data',
+        queryParams: queryParams,
+      );
+
+      // Ensure data is properly formatted with numeric values
+      if (response.containsKey('purchases') && response['purchases'] is List) {
+        final purchases = List<Map<String, dynamic>>.from(
+          response['purchases'],
+        );
+        response['purchases'] =
+            purchases.map((item) {
+              // Make sure total_value is a proper number
+              if (item.containsKey('total_value')) {
+                final value = item['total_value'];
+                if (value is String) {
+                  item['total_value'] = double.tryParse(value) ?? 0.0;
+                } else if (value is int) {
+                  item['total_value'] = value.toDouble();
+                } else if (!(value is double)) {
+                  item['total_value'] = 0.0;
+                }
+              } else {
+                item['total_value'] = 0.0;
+              }
+              return item;
+            }).toList();
+      }
+
+      if (response.containsKey('sales') && response['sales'] is List) {
+        final sales = List<Map<String, dynamic>>.from(response['sales']);
+        response['sales'] =
+            sales.map((item) {
+              // Make sure total_value is a proper number
+              if (item.containsKey('total_value')) {
+                final value = item['total_value'];
+                if (value is String) {
+                  item['total_value'] = double.tryParse(value) ?? 0.0;
+                } else if (value is int) {
+                  item['total_value'] = value.toDouble();
+                } else if (!(value is double)) {
+                  item['total_value'] = 0.0;
+                }
+              } else {
+                item['total_value'] = 0.0;
+              }
+              return item;
+            }).toList();
+      }
+
+      debugPrint('Returning pie chart data with:');
+      debugPrint('Purchases: ${(response['purchases'] as List).length} items');
+      debugPrint('Sales: ${(response['sales'] as List).length} items');
+
+      return response;
+    } catch (e) {
+      debugPrint('Error in getEnhancedPieChartData: $e');
+      return {'purchases': [], 'sales': []};
     }
-
-    // Get purchase data (quantity and value)
-    final purchaseData = await db.rawQuery('''
-    SELECT 
-      currency_code,
-      SUM(quantity) as total_quantity,
-      SUM(total) as total_value
-    FROM history
-    $whereClause
-    AND operation_type = 'Purchase'
-    GROUP BY currency_code
-  ''', whereArgs);
-
-    // Get sale data (quantity and value)
-    final saleData = await db.rawQuery('''
-    SELECT 
-      currency_code,
-      SUM(quantity) as total_quantity,
-      SUM(total) as total_value
-    FROM history
-    $whereClause
-    AND operation_type = 'Sale'
-    GROUP BY currency_code
-  ''', whereArgs);
-
-    return {'purchases': purchaseData, 'sales': saleData};
   }
 
   Future<List<Map<String, dynamic>>> getDailyData({
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final db = await database;
-
-    final results = await db.rawQuery(
-      '''
-    SELECT 
-      date(created_at) as day,
-      SUM(CASE WHEN operation_type = 'Purchase' THEN total ELSE 0 END) as purchases,
-      SUM(CASE WHEN operation_type = 'Sale' THEN total ELSE 0 END) as sales,
-      SUM(
-        CASE WHEN operation_type = 'Sale' 
-        THEN quantity * (rate - (
-          SELECT AVG(rate) 
-          FROM history h2 
-          WHERE h2.currency_code = history.currency_code 
-          AND h2.operation_type = 'Purchase'
-          AND date(h2.created_at) <= date(history.created_at)
-        ))
-        ELSE 0 
-        END
-      ) as profit
-    FROM history
-    WHERE date(created_at) BETWEEN date(?) AND date(?)
-    GROUP BY day
-    ORDER BY day ASC
-  ''',
-      [startDate.toIso8601String(), endDate.toIso8601String()],
-    );
-
-    // Convert all numbers to double and handle nulls
-    return results.map((row) {
-      return {
-        'day': row['day'] as String,
-        'purchases': (row['purchases'] as num?)?.toDouble() ?? 0.0,
-        'sales': (row['sales'] as num?)?.toDouble() ?? 0.0,
-        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
-      };
-    }).toList();
-  }
-
-  /// Get profit by currency for charts
-  Future<List<Map<String, dynamic>>> getProfitByCurrency({
-    DateTime? startDate,
-    DateTime? endDate,
-    String? groupBy, // 'day', 'week', 'month'
-  }) async {
-    final db = await database;
-    final whereArgs = <dynamic>[];
-    var whereClause = '';
-
-    if (startDate != null && endDate != null) {
-      whereClause = 'WHERE h.created_at >= ? AND h.created_at <= ?';
-      whereArgs.addAll([
-        startDate.toIso8601String(),
-        endDate.add(Duration(days: 1)).toIso8601String(),
-      ]);
-    }
-
-    String dateGrouping;
-    switch (groupBy?.toLowerCase()) {
-      case 'week':
-        dateGrouping = "strftime('%Y-%W', h.created_at)";
-        break;
-      case 'month':
-        dateGrouping = "strftime('%Y-%m', h.created_at)";
-        break;
-      default: // default to daily
-        dateGrouping = "date(h.created_at)";
-    }
-
     try {
-      return await db.rawQuery('''
-      SELECT 
-        h.currency_code,
-        $dateGrouping as time_period,
-        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.quantity ELSE 0 END) as quantity_sold,
-        AVG(CASE WHEN h.operation_type = 'Sale' THEN h.rate ELSE NULL END) as avg_sale_rate,
-        AVG(CASE WHEN h.operation_type = 'Purchase' THEN h.rate ELSE NULL END) as avg_purchase_rate,
-        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.total ELSE 0 END) as total_sales,
-        SUM(CASE WHEN h.operation_type = 'Purchase' THEN h.total ELSE 0 END) as total_purchases,
-        SUM(
-          CASE WHEN h.operation_type = 'Sale' 
-          THEN h.quantity * (h.rate - (
-            SELECT AVG(p.rate) 
-            FROM history p 
-            WHERE p.currency_code = h.currency_code 
-            AND p.operation_type = 'Purchase'
-            ${startDate != null && endDate != null ? 'AND p.created_at BETWEEN ? AND ?' : ''}
-          ))
-          ELSE 0 
-          END
-        ) as profit
-      FROM history h
-      $whereClause
-      AND (h.operation_type = 'Purchase' OR h.operation_type = 'Sale')
-      GROUP BY h.currency_code, time_period
-      ORDER BY time_period, profit DESC
-    ''', whereArgs + (startDate != null && endDate != null ? whereArgs : []));
+      final queryParams = {
+        'from_date': startDate.toIso8601String(),
+        'to_date': endDate.toIso8601String(),
+      };
+
+      final response = await _apiCall(
+        'analytics/daily-data',
+        queryParams: queryParams,
+      );
+
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('Error in getProfitByCurrency: $e');
-      rethrow;
+      debugPrint('Error in getDailyData: $e');
+      return [];
     }
   }
 
@@ -1019,46 +650,47 @@ class DatabaseHelper {
     required DateTime endDate,
     int limit = 5,
   }) async {
-    final db = await database;
-
     try {
-      return await db.rawQuery(
-        '''
-      SELECT 
-        h.currency_code,
-        SUM(CASE WHEN h.operation_type = 'Sale' THEN h.quantity ELSE 0 END) as quantity_sold,
-        AVG(CASE WHEN h.operation_type = 'Sale' THEN h.rate ELSE NULL END) as avg_sale_rate,
-        AVG(CASE WHEN h.operation_type = 'Purchase' THEN h.rate ELSE NULL END) as avg_purchase_rate,
-        SUM(
-          CASE WHEN h.operation_type = 'Sale' 
-          THEN h.quantity * (h.rate - (
-            SELECT AVG(p.rate) 
-            FROM history p 
-            WHERE p.currency_code = h.currency_code 
-            AND p.operation_type = 'Purchase'
-            AND p.created_at >= ? AND p.created_at <= ?
-          ))
-          ELSE 0 
-          END
-        ) as profit
-      FROM history h
-      WHERE h.created_at >= ? AND h.created_at <= ?
-      AND (h.operation_type = 'Purchase' OR h.operation_type = 'Sale')
-      GROUP BY h.currency_code
-      ORDER BY profit DESC
-      LIMIT ?
-    ''',
-        [
-          startDate.toIso8601String(),
-          endDate.add(Duration(days: 1)).toIso8601String(),
-          startDate.toIso8601String(),
-          endDate.add(Duration(days: 1)).toIso8601String(),
-          limit,
-        ],
+      final queryParams = {
+        'from_date': startDate.toIso8601String(),
+        'to_date': endDate.toIso8601String(),
+        'limit': limit.toString(),
+      };
+
+      final response = await _apiCall(
+        'analytics/profitable-currencies',
+        queryParams: queryParams,
       );
+
+      // Convert response to proper list and ensure numeric values
+      final result = List<Map<String, dynamic>>.from(response);
+
+      return result.map((item) {
+        // Ensure profit is a proper number
+        if (item.containsKey('profit')) {
+          final profit = item['profit'];
+          if (profit is String) {
+            item['profit'] = double.tryParse(profit) ?? 0.0;
+          } else if (profit is int) {
+            item['profit'] = profit.toDouble();
+          } else if (!(profit is double)) {
+            item['profit'] = 0.0;
+          }
+        } else {
+          item['profit'] = 0.0;
+        }
+
+        // Make sure currency_code exists
+        if (!item.containsKey('currency_code') ||
+            item['currency_code'] == null) {
+          item['currency_code'] = 'Unknown';
+        }
+
+        return item;
+      }).toList();
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -1067,44 +699,82 @@ class DatabaseHelper {
     required DateTime endDate,
     required String currencyCode,
   }) async {
-    final db = await database;
-
-    final results = await db.rawQuery(
-      '''
-    SELECT 
-      date(created_at) as day,
-      SUM(CASE WHEN operation_type = 'Purchase' THEN total ELSE 0 END) as purchases,
-      SUM(CASE WHEN operation_type = 'Sale' THEN total ELSE 0 END) as sales,
-      SUM(
-        CASE WHEN operation_type = 'Sale' 
-        THEN quantity * (rate - (
-          SELECT AVG(rate) 
-          FROM history h2 
-          WHERE h2.currency_code = history.currency_code 
-          AND h2.operation_type = 'Purchase'
-          AND date(h2.created_at) <= date(history.created_at)
-        ))
-        ELSE 0 
-        END
-      ) as profit
-    FROM history
-    WHERE date(created_at) BETWEEN date(?) AND date(?)
-    AND currency_code = ?
-    GROUP BY day
-    ORDER BY day ASC
-  ''',
-      [startDate.toIso8601String(), endDate.toIso8601String(), currencyCode],
-    );
-
-    // Convert all numbers to double and handle nulls
-    return results.map((row) {
-      return {
-        'day': row['day'] as String,
-        'purchases': (row['purchases'] as num?)?.toDouble() ?? 0.0,
-        'sales': (row['sales'] as num?)?.toDouble() ?? 0.0,
-        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
+    try {
+      final queryParams = {
+        'from_date': startDate.toIso8601String(),
+        'to_date': endDate.toIso8601String(),
+        'currency_code': currencyCode,
       };
-    }).toList();
+
+      final response = await _apiCall(
+        'analytics/daily-data',
+        queryParams: queryParams,
+      );
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error in getDailyDataByCurrency: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getBatchAnalyticsData({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final queryParams = {
+        'from_date': startDate.toIso8601String(),
+        'to_date': endDate.toIso8601String(),
+      };
+
+      return await _apiCall('analytics/batch-data', queryParams: queryParams);
+    } catch (e) {
+      debugPrint('Error in getBatchAnalyticsData: $e');
+      return {
+        'pieChartData': {'purchases': [], 'sales': []},
+        'profitData': [],
+        'barChartData': [],
+      };
+    }
+  }
+
+  // Add connection methods
+  Future<bool> checkHeartbeat() async {
+    try {
+      final baseUrlWithoutApi = baseUrl.replaceAll('/api', '');
+
+      final response = await http
+          .get(Uri.parse(baseUrlWithoutApi))
+          .timeout(const Duration(seconds: 5));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Heartbeat check failed: $e');
+      return false;
+    }
+  }
+
+  Future<bool> retryConnection({
+    int maxAttempts = 3,
+    int delaySeconds = 1,
+  }) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (await verifyServerConnection()) {
+          _isOfflineMode = false;
+          return true;
+        }
+        await Future.delayed(Duration(seconds: delaySeconds));
+      } catch (e) {
+        if (attempt == maxAttempts) {
+          _isOfflineMode = true;
+          return false;
+        }
+      }
+    }
+    _isOfflineMode = true;
+    return false;
   }
 
   // =====================
@@ -1116,197 +786,99 @@ class DatabaseHelper {
     String username,
     String password,
   ) async {
-    final db = await instance.database;
-    final maps = await db.query(
-      'users',
-      where: 'username = ? AND password = ?',
-      whereArgs: [username, password],
-    );
-    return maps.isNotEmpty ? UserModel.fromMap(maps.first) : null;
+    // Special case for admin user to allow offline access
+    if (username == 'a' && password == 'a') {
+      return UserModel(
+        id: 1,
+        username: 'a',
+        role: 'admin',
+        createdAt: DateTime.now(),
+        password: 'a',
+      );
+    }
+
+    try {
+      final response = await _apiCall(
+        'users/login',
+        method: 'POST',
+        body: {'username': username, 'password': password},
+      );
+
+      return UserModel.fromMap(response);
+    } catch (e) {
+      if (e.toString().contains('Invalid credentials') ||
+          e.toString().contains('401')) {
+        return null;
+      }
+      debugPrint('Error in getUserByCredentials: $e');
+      rethrow;
+    }
   }
 
   /// Get all users
   Future<List<UserModel>> getAllUsers() async {
-    final db = await instance.database;
-    final maps = await db.query('users', orderBy: 'created_at DESC');
-    return maps.map((map) => UserModel.fromMap(map)).toList();
+    try {
+      final response = await _apiCall('users');
+      return (response as List).map((json) => UserModel.fromMap(json)).toList();
+    } catch (e) {
+      debugPrint('Error in getAllUsers: $e');
+      return [];
+    }
   }
 
   /// Create new user
   Future<int> createUser(UserModel user) async {
-    final db = await instance.database;
-    return await db.insert(
-      'users',
-      user.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.abort,
-    );
+    try {
+      final response = await _apiCall(
+        'users',
+        method: 'POST',
+        body: user.toMap(),
+      );
+
+      return response['id'] ?? 0;
+    } catch (e) {
+      debugPrint('Error in createUser: $e');
+      rethrow;
+    }
   }
 
   /// Update user
   Future<int> updateUser(UserModel user) async {
-    final db = await instance.database;
-    return await db.update(
-      'users',
-      user.toMap(),
-      where: 'id = ?',
-      whereArgs: [user.id],
-    );
+    try {
+      await _apiCall('users/${user.id}', method: 'PUT', body: user.toMap());
+
+      return 1; // Return 1 to indicate success
+    } catch (e) {
+      debugPrint('Error in updateUser: $e');
+      return 0; // Return 0 to indicate failure
+    }
   }
 
   /// Delete user
   Future<int> deleteUser(int id) async {
-    final db = await instance.database;
-    return await db.delete('users', where: 'id = ?', whereArgs: [id]);
+    try {
+      await _apiCall('users/$id', method: 'DELETE');
+      return 1; // Return 1 to indicate success
+    } catch (e) {
+      debugPrint('Error in deleteUser: $e');
+      return 0; // Return 0 to indicate failure
+    }
   }
 
   /// Check if a username already exists
   Future<bool> usernameExists(String username) async {
-    final db = await instance.database;
-    final count = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM users WHERE username = ?', [
-        username,
-      ]),
-    );
-    return count != null && count > 0;
-  }
-
-  /// Reset all data - delete all transactions, reset currencies, and delete all users except admin with "a"/"a" credentials
-  Future<void> resetAllData() async {
-    final db = await instance.database;
-
-    await db.transaction((txn) async {
-      // 1. Delete all history entries
-      await txn.delete('history');
-
-      // 2. Get all currencies
-      final currencies = await txn.query('currencies');
-
-      // 3. Reset all currency quantities to zero instead of deleting them
-      for (var currency in currencies) {
-        await txn.update(
-          'currencies',
-          {'quantity': 0.0, 'updated_at': DateTime.now().toIso8601String()},
-          where: 'code = ?',
-          whereArgs: [currency['code']],
-        );
-      }
-
-      // 4. Ensure SOM currency exists (in case it was somehow missing)
-      final somCheck = await txn.query(
-        'currencies',
-        where: 'code = ?',
-        whereArgs: ['SOM'],
+    try {
+      final response = await _apiCall(
+        'users/check-username',
+        method: 'POST',
+        body: {'username': username},
       );
 
-      if (somCheck.isEmpty) {
-        await txn.insert('currencies', {
-          'code': 'SOM',
-          'quantity': 0.0,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-      }
-
-      // 5. Delete all users except the admin user with login "a"
-      await txn.delete('users', where: 'username != ?', whereArgs: ['a']);
-
-      // 6. Check if admin user "a" exists, create if not
-      final adminCheck = await txn.query(
-        'users',
-        where: 'username = ?',
-        whereArgs: ['a'],
-      );
-
-      if (adminCheck.isEmpty) {
-        // Create admin user with "a"/"a" credentials
-        await txn.insert('users', {
-          'username': 'a',
-          'password': 'a', // In production you'd use a hashed password
-          'role': 'admin',
-          'created_at': DateTime.now().toIso8601String(),
-        });
-      } else {
-        // Make sure the existing user is set as admin
-        await txn.update(
-          'users',
-          {'role': 'admin', 'password': 'a'},
-          where: 'username = ?',
-          whereArgs: ['a'],
-        );
-      }
-    });
-  }
-
-  Future<void> updateCurrency(CurrencyModel currency) async {
-    final db = await database;
-    await db.update(
-      'currencies',
-      currency.toMap(),
-      where: 'id = ?',
-      whereArgs: [currency.id],
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> getDailyProfitData({
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    final db = await database;
-
-    final results = await db.rawQuery(
-      '''
-      SELECT 
-        date(created_at) as day,
-        SUM(
-          CASE WHEN operation_type = 'Sale' 
-          THEN quantity * (rate - (
-            SELECT AVG(rate) 
-            FROM history h2 
-            WHERE h2.currency_code = history.currency_code 
-            AND h2.operation_type = 'Purchase'
-            AND date(h2.created_at) <= date(history.created_at)
-          ))
-          ELSE 0 
-          END
-        ) as profit
-      FROM history
-      WHERE date(created_at) BETWEEN date(?) AND date(?)
-      GROUP BY day
-      ORDER BY day ASC
-      ''',
-      [startDate.toIso8601String(), endDate.toIso8601String()],
-    );
-
-    return results.map((row) {
-      return {
-        'day': row['day'] as String,
-        'profit': (row['profit'] as num?)?.toDouble() ?? 0.0,
-      };
-    }).toList();
-  }
-
-  // Add missing methods that were shown in the error
-  Future<int> insertHistory(HistoryModel history) async {
-    final db = await database;
-    return await db.transaction((txn) async {
-      // Apply transaction effect on balances
-      await _applyTransactionEffect(txn, history);
-      
-      // Insert history record
-      return await txn.insert('history', history.toMap());
-    });
-  }
-  
-  Future<void> updateCurrencyQuantity(String code, double newQuantity) async {
-    final db = await database;
-    await db.update(
-      'currencies',
-      {
-        'quantity': newQuantity,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      where: 'code = ?',
-      whereArgs: [code],
-    );
+      return response['exists'] ?? false;
+    } catch (e) {
+      debugPrint('Error in usernameExists: $e');
+      return false;
+    }
   }
 }
 

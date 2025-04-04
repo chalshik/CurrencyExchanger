@@ -38,18 +38,36 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rememberMe = prefs.getBool('remember_me') ?? false;
-      
+
       if (rememberMe) {
         final username = prefs.getString('username');
         final password = prefs.getString('password');
-        
+
         if (username != null && password != null) {
           _usernameController.text = username;
           _passwordController.text = password;
           _rememberMe = true;
-          
-          // Auto login
-          await _login(autoLogin: true);
+
+          // Special case for admin - always allow auto-login
+          if (username == 'a' && password == 'a') {
+            final dbHelper = DatabaseHelper.instance;
+            final adminUser = await dbHelper.getUserByCredentials(
+              username,
+              password,
+            );
+            if (adminUser != null) {
+              await _handleSuccessfulLogin(adminUser);
+              return;
+            }
+          }
+
+          // For regular users, attempt auto-login
+          final dbHelper = DatabaseHelper.instance;
+
+          // Only try auto-login if we can connect to the server (for non-admin users)
+          if (!dbHelper.isOfflineMode || await dbHelper.retryConnection()) {
+            await _login(autoLogin: true);
+          }
         }
       }
     } catch (e) {
@@ -78,50 +96,49 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
     try {
       final dbHelper = DatabaseHelper.instance;
-      final user = await dbHelper.getUserByCredentials(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
 
-      if (user != null) {
-        // Store credentials if remember me is checked
-        if (_rememberMe) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('remember_me', true);
-          await prefs.setString('username', _usernameController.text.trim());
-          await prefs.setString('password', _passwordController.text.trim());
-        } else {
-          // Clear saved credentials if remember me is unchecked
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('remember_me', false);
-          await prefs.remove('username');
-          await prefs.remove('password');
+      // Special case for admin - can login even if server is offline
+      if (username == 'a' && password == 'a') {
+        // Admin login - proceed without checking server connection
+        final user = await dbHelper.getUserByCredentials(username, password);
+        if (user != null) {
+          await _handleSuccessfulLogin(user);
+        }
+      } else {
+        // Non-admin users require server connectivity
+        if (dbHelper.isOfflineMode) {
+          // Try to reconnect to server first
+          final connected = await dbHelper.retryConnection();
+          if (!connected) {
+            setState(() {
+              _errorMessage = 'Cannot login - Server connection required';
+              _isLoading = false;
+            });
+            return;
+          }
         }
 
-        if (!mounted) return;
-        
-        // Store the logged in user globally
-        currentUser = user;
-        
-        // Login successful, navigate to main app
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const ResponsiveCurrencyConverter(),
-          ),
-        );
-      } else {
-        // Only show error message if not auto-login
-        if (!autoLogin) {
-          setState(() {
-            _errorMessage = 'Invalid username or password';
-            _isLoading = false;
-          });
+        // Regular login for non-admin users
+        final user = await dbHelper.getUserByCredentials(username, password);
+        if (user != null) {
+          await _handleSuccessfulLogin(user);
         } else {
-          setState(() {
-            _isLoading = false;
-          });
+          // Invalid credentials
+          if (!autoLogin) {
+            setState(() {
+              _errorMessage = 'Invalid username or password';
+              _isLoading = false;
+            });
+          } else {
+            setState(() {
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
@@ -139,6 +156,34 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleSuccessfulLogin(UserModel user) async {
+    // Store credentials if remember me is checked
+    if (_rememberMe) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me', true);
+      await prefs.setString('username', _usernameController.text.trim());
+      await prefs.setString('password', _passwordController.text.trim());
+    } else {
+      // Clear saved credentials if remember me is unchecked
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me', false);
+      await prefs.remove('username');
+      await prefs.remove('password');
+    }
+
+    if (!mounted) return;
+
+    // Store the logged in user globally
+    currentUser = user;
+
+    // Login successful, navigate to main app
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const ResponsiveCurrencyConverter(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if we're on a tablet in landscape mode
@@ -146,26 +191,31 @@ class _LoginScreenState extends State<LoginScreen> {
     final isTablet = screenSize.width >= 600;
     final isLandscape = screenSize.width > screenSize.height;
     final isWideTablet = isTablet && isLandscape;
-    
+
     final logoSize = isWideTablet ? 100.0 : 80.0;
     final titleFontSize = isWideTablet ? 32.0 : 28.0;
     final formWidth = isWideTablet ? 400.0 : double.infinity;
-    
+
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
       body: Center(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(isWideTablet ? 40.0 : 24.0),
-          child: isWideTablet 
-              ? _buildTabletLayout(logoSize, titleFontSize, formWidth)
-              : _buildMobileLayout(logoSize, titleFontSize),
+          child:
+              isWideTablet
+                  ? _buildTabletLayout(logoSize, titleFontSize, formWidth)
+                  : _buildMobileLayout(logoSize, titleFontSize),
         ),
       ),
     );
   }
 
   // Landscape tablet layout with side-by-side design
-  Widget _buildTabletLayout(double logoSize, double titleFontSize, double formWidth) {
+  Widget _buildTabletLayout(
+    double logoSize,
+    double titleFontSize,
+    double formWidth,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -198,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // App name
               Text(
                 'Currency Converter',
@@ -210,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              
+
               // App description or tagline
               Text(
                 'Manage your currency exchanges\nwith ease and efficiency',
@@ -224,10 +274,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
-        
+
         // Spacer
         const SizedBox(width: 40),
-        
+
         // Right side - login form
         Expanded(
           flex: 5,
@@ -262,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
           color: Colors.blue.shade700,
         ),
         const SizedBox(height: 24),
-        
+
         // App name
         Text(
           'Currency Converter',
@@ -307,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          
+
           // Username field
           TextFormField(
             controller: _usernameController,
@@ -328,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Password field
           TextFormField(
             controller: _passwordController,
@@ -360,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Remember me checkbox
           Row(
             children: [
@@ -376,9 +426,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const Text('Remember me'),
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Error message
           if (_errorMessage.isNotEmpty)
             Padding(
@@ -392,7 +442,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
             ),
-          
+
           // Login button
           ElevatedButton(
             onPressed: _isLoading ? null : () => _login(),
@@ -408,19 +458,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(borderRadius),
               ),
             ),
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Text('Login'),
+            child:
+                _isLoading
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Text('Login'),
           ),
         ],
       ),
     );
   }
-} 
+}
