@@ -14,6 +14,7 @@ import 'package:excel/excel.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:media_scanner/media_scanner.dart';
 import '../services/export_service.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,7 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final ExportService _exportService = ExportService();
   List<CurrencyModel> _currencies = [];
   List<UserModel> _users = [];
-  final TextEditingController _newCurrencyCodeController = TextEditingController();
+  final TextEditingController _newCurrencyCodeController =
+      TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -41,8 +43,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _somController = TextEditingController();
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
-  final TextEditingController _defaultBuyRateController = TextEditingController();
-  final TextEditingController _defaultSellRateController = TextEditingController();
+  final TextEditingController _defaultBuyRateController =
+      TextEditingController();
+  final TextEditingController _defaultSellRateController =
+      TextEditingController();
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -154,7 +158,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _getTranslatedText(String key, [Map<String, String>? params]) {
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    );
     String text = languageProvider.translate(key);
     if (params != null) {
       params.forEach((key, value) {
@@ -167,27 +174,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetAllData() async {
     bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_getTranslatedText('reset_all_data')),
-        content: Text(
-          _getTranslatedText('reset_warning'),
-          style: const TextStyle(color: Colors.red),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(_getTranslatedText('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(
-              _getTranslatedText('reset_everything'),
-              style: const TextStyle(color: Colors.white),
+      builder:
+          (context) => AlertDialog(
+            title: Text(_getTranslatedText('reset_all_data')),
+            content: Text(
+              _getTranslatedText('reset_warning'),
+              style: const TextStyle(color: Colors.red),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(_getTranslatedText('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: Text(
+                  _getTranslatedText('reset_everything'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -195,18 +203,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
-          ),
+          builder:
+              (context) => const Center(child: CircularProgressIndicator()),
         );
-        
+
         // Perform the reset
         await _dbHelper.resetAllData();
-        
+
         // Close loading indicator
         if (!mounted) return;
         Navigator.of(context).pop();
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -214,11 +221,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Refresh the data
         await _loadCurrencies();
         await _loadUsers();
-        
+
         // Return to main settings page
         setState(() {
           _showCurrencyManagement = false;
@@ -227,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } catch (e) {
         if (!mounted) return;
         Navigator.of(context).pop();
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -264,7 +271,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 maxLength: 3,
                 textCapitalization: TextCapitalization.characters,
@@ -277,7 +287,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 keyboardType: TextInputType.number,
               ),
@@ -289,9 +302,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -301,9 +319,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
             ],
           ),
@@ -338,13 +361,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Navigator.pop(context);
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${_getTranslatedText('error')}: ${e.toString()}')),
+                      SnackBar(
+                        content: Text(
+                          '${_getTranslatedText('error')}: ${e.toString()}',
+                        ),
+                      ),
                     );
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -383,7 +413,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -412,20 +445,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       await _dbHelper.addToSomBalance(amount);
                       Navigator.pop(context);
                       _showSuccessNotification(
-                        _getTranslatedText('som_added_success', {'amount': amount.toString()}),
+                        _getTranslatedText('som_added_success', {
+                          'amount': amount.toString(),
+                        }),
                       );
                       // Refresh currencies to show updated SOM balance
                       _loadCurrencies();
                     } catch (e) {
                       Navigator.pop(context);
                       _showErrorNotification(
-                        _getTranslatedText('som_add_error', {'error': e.toString()}),
+                        _getTranslatedText('som_add_error', {
+                          'error': e.toString(),
+                        }),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -483,7 +523,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -494,7 +537,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 obscureText: true,
               ),
@@ -506,18 +552,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 ),
                 items: [
                   DropdownMenuItem(
-                    value: 'user', 
+                    value: 'user',
                     child: Text(
                       _getTranslatedText('user'),
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
                   DropdownMenuItem(
-                    value: 'admin', 
+                    value: 'admin',
                     child: Text(
                       _getTranslatedText('admin'),
                       style: const TextStyle(fontSize: 16),
@@ -570,18 +619,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(_getTranslatedText('user_created_success')),
+                        content: Text(
+                          _getTranslatedText('user_created_success'),
+                        ),
                       ),
                     );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${_getTranslatedText('error')}: ${e.toString()}')),
+                      SnackBar(
+                        content: Text(
+                          '${_getTranslatedText('error')}: ${e.toString()}',
+                        ),
+                      ),
                     );
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -682,7 +740,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Padding(
@@ -709,7 +768,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettings() {
     // Check if user is admin
     final bool isAdmin = currentUser?.role == 'admin';
-    
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,22 +784,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 8.0,
+                  ),
                   title: Text(
                     _getTranslatedText('language'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
                   ),
-                  leading: Icon(Icons.language, color: Colors.blue.shade700, size: 28),
+                  leading: Icon(
+                    Icons.language,
+                    color: Theme.of(context).primaryColor,
+                    size: 28,
+                  ),
                   trailing: const LanguageSelector(),
                 ),
                 Divider(height: 1, color: Colors.grey.shade200),
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 8.0,
+                  ),
+                  title: Text(
+                    _getTranslatedText('theme'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _getTranslatedText('black_white_theme'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  leading: Icon(
+                    themeProvider.isDarkMode
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
+                    color: Theme.of(context).primaryColor,
+                    size: 28,
+                  ),
+                  trailing: Switch(
+                    value: themeProvider.isDarkMode,
+                    onChanged: (value) {
+                      themeProvider.toggleTheme();
+                    },
+                    activeColor: Theme.of(context).primaryColor,
+                  ),
+                ),
+                Divider(height: 1, color: Colors.grey.shade200),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 8.0,
+                  ),
                   title: Text(
                     _getTranslatedText('currency_settings'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
                   ),
-                  leading: Icon(Icons.currency_exchange, color: Colors.blue.shade700, size: 28),
+                  leading: Icon(
+                    Icons.currency_exchange,
+                    color: Theme.of(context).primaryColor,
+                    size: 28,
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 20),
                   onTap: () {
                     setState(() {
@@ -752,12 +864,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 Divider(height: 1, color: Colors.grey.shade200),
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                  title: Text(
-                    _getTranslatedText('export_settings'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 8.0,
                   ),
-                  leading: Icon(Icons.file_download, color: Colors.blue.shade700, size: 28),
+                  title: Text(
+                    _getTranslatedText('export_data'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  leading: Icon(
+                    Icons.file_download,
+                    color: Theme.of(context).primaryColor,
+                    size: 28,
+                  ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 20),
                   onTap: () {
                     final now = DateTime.now();
@@ -765,8 +887,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() {
                       _startDate = today;
                       _endDate = now;
-                      _startDateController.text = DateFormat('dd-MM-yyyy').format(today);
-                      _endDateController.text = DateFormat('dd-MM-yyyy').format(now);
+                      _startDateController.text = DateFormat(
+                        'dd-MM-yyyy',
+                      ).format(today);
+                      _endDateController.text = DateFormat(
+                        'dd-MM-yyyy',
+                      ).format(now);
                       _showExportSection = true;
                       _showCurrencyManagement = false;
                       _showUserManagement = false;
@@ -776,12 +902,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (isAdmin) ...[
                   Divider(height: 1, color: Colors.grey.shade200),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 8.0,
+                    ),
                     title: Text(
                       _getTranslatedText('user_settings'),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
-                    leading: Icon(Icons.people, color: Colors.blue.shade700, size: 28),
+                    leading: Icon(
+                      Icons.people,
+                      color: Theme.of(context).primaryColor,
+                      size: 28,
+                    ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 20),
                     onTap: () {
                       setState(() {
@@ -795,24 +931,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (isAdmin) ...[
                   Divider(height: 1, color: Colors.grey.shade200),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 8.0,
+                    ),
                     title: Text(
                       _getTranslatedText('reset_all_data'),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
-                    leading: const Icon(Icons.delete_forever, color: Colors.red, size: 28),
+                    leading: const Icon(
+                      Icons.delete_forever,
+                      color: Colors.red,
+                      size: 28,
+                    ),
                     onTap: _resetAllData,
                   ),
                 ],
                 Divider(height: 1, color: Colors.grey.shade200),
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 8.0,
+                  ),
                   title: Text(
                     _getTranslatedText('logout'),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
                   ),
-                  leading: const Icon(Icons.logout, color: Colors.red, size: 28),
+                  leading: const Icon(
+                    Icons.logout,
+                    color: Colors.red,
+                    size: 28,
+                  ),
                   onTap: _logout,
+                ),
+              ],
+            ),
+          ),
+
+          // Watermark / Made by section
+          const SizedBox(height: 40),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Divider(color: Colors.grey.shade300),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.copyright,
+                      size: 16,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Made by Boz Zat",
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "v1.0.0",
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withOpacity(0.7),
+                  ),
                 ),
               ],
             ),
@@ -867,7 +1062,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         debugPrint('Error during logout: $e');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_getTranslatedText('logout_error')))
+          SnackBar(content: Text(_getTranslatedText('logout_error'))),
         );
       }
     }
@@ -875,12 +1070,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildCurrencyManagement() {
     return SizedBox(
-      height: MediaQuery.of(context).size.height - 200, // Adjust height to fit the screen
+      height:
+          MediaQuery.of(context).size.height -
+          200, // Adjust height to fit the screen
       child: Column(
         children: [
           // Header section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 16.0,
+            ),
             child: Row(
               children: [
                 IconButton(
@@ -937,71 +1137,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadCurrencies,
-              child: _currencies.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No currencies available',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+              child:
+                  _currencies.isEmpty
+                      ? const Center(
+                        child: Text(
+                          'No currencies available',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      )
+                      : ListView.builder(
+                        itemCount: _currencies.length,
+                        itemBuilder: (context, index) {
+                          final currency = _currencies[index];
+                          // Format quantity with 2 decimal places
+                          final formattedQuantity = NumberFormat.currency(
+                            decimalDigits: 2,
+                            symbol: '',
+                          ).format(currency.quantity);
+
+                          // Use different style for SOM currency
+                          final bool isSom = currency.code == 'SOM';
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            color: isSom ? Colors.blue.shade50 : null,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              title: Text(
+                                currency.code ?? '',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: isSom ? Colors.blue.shade800 : null,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  '${_getTranslatedText('quantity')}: $formattedQuantity\n'
+                                  '${_getTranslatedText('last_updated')}: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isSom) ...[
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                        size: 26,
+                                      ),
+                                      onPressed:
+                                          () =>
+                                              _showEditCurrencyDialog(currency),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                        size: 26,
+                                      ),
+                                      onPressed:
+                                          () => _deleteCurrency(
+                                            currency.id,
+                                            currency.code ?? '',
+                                          ),
+                                    ),
+                                  ] else
+                                    const Icon(
+                                      Icons.payments,
+                                      color: Colors.blue,
+                                      size: 26,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _currencies.length,
-                      itemBuilder: (context, index) {
-                        final currency = _currencies[index];
-                        // Format quantity with 2 decimal places
-                        final formattedQuantity = NumberFormat.currency(
-                          decimalDigits: 2,
-                          symbol: '',
-                        ).format(currency.quantity);
-
-                        // Use different style for SOM currency
-                        final bool isSom = currency.code == 'SOM';
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          color: isSom ? Colors.blue.shade50 : null,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            title: Text(
-                              currency.code ?? '',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: isSom ? Colors.blue.shade800 : null,
-                              ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                '${_getTranslatedText('quantity')}: $formattedQuantity\n'
-                                '${_getTranslatedText('last_updated')}: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (!isSom) ...[
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue, size: 26),
-                                    onPressed: () => _showEditCurrencyDialog(currency),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red, size: 26),
-                                    onPressed: () => _deleteCurrency(currency.id, currency.code ?? ''),
-                                  ),
-                                ] else
-                                  const Icon(Icons.payments, color: Colors.blue, size: 26),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
             ),
           ),
 
@@ -1033,7 +1258,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 16.0,
+            ),
             child: Row(
               children: [
                 IconButton(
@@ -1053,82 +1281,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () => _showAddUserDialog(context),
+                  icon: const Icon(Icons.person_add),
+                  label: Text(
+                    _getTranslatedText('add_new_user'),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadUsers,
-              child: _users.isEmpty
-                  ? Center(
-                      child: Text(
-                        _getTranslatedText('no_users_available'),
-                        style: const TextStyle(fontSize: 18, color: Colors.grey),
+              child:
+                  _users.isEmpty
+                      ? Center(
+                        child: Text(
+                          _getTranslatedText('no_users_available'),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                      : ListView.builder(
+                        itemCount: _users.length,
+                        itemBuilder: (context, index) {
+                          final user = _users[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              leading: CircleAvatar(
+                                radius: 24,
+                                backgroundColor:
+                                    user.role == 'admin'
+                                        ? Colors.orange
+                                        : Colors.blue,
+                                child: Icon(
+                                  user.role == 'admin'
+                                      ? Icons.admin_panel_settings
+                                      : Icons.person,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              title: Text(
+                                user.username,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  '${_getTranslatedText('role')}: ${_getTranslatedText(user.role)}\n'
+                                  '${_getTranslatedText('created')}: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                  size: 26,
+                                ),
+                                onPressed:
+                                    () => _deleteUser(user.id, user.username),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor: 
-                                user.role == 'admin' ? Colors.orange : Colors.blue,
-                              child: Icon(
-                                user.role == 'admin' 
-                                    ? Icons.admin_panel_settings
-                                    : Icons.person,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                            title: Text(
-                              user.username,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                '${_getTranslatedText('role')}: ${_getTranslatedText(user.role)}\n'
-                                '${_getTranslatedText('created')}: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 26),
-                              onPressed: () => _deleteUser(user.id, user.username),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: ElevatedButton(
-              onPressed: () => _showAddUserDialog(context),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(
-                _getTranslatedText('add_new_user'),
-                style: const TextStyle(fontSize: 16),
-              ),
             ),
           ),
         ],
@@ -1144,7 +1391,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // Back button and title
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 16.0,
+            ),
             child: Row(
               children: [
                 IconButton(
@@ -1166,7 +1416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          
+
           // Date range and export settings
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -1182,10 +1432,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text(
                       _getTranslatedText('select_date_range'),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Date Range Selection
                     Row(
                       children: [
@@ -1198,7 +1451,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               suffixIcon: const Icon(Icons.calendar_today),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                             ),
                             readOnly: true,
                             onTap: () => _selectDate(true),
@@ -1214,7 +1470,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               suffixIcon: const Icon(Icons.calendar_today),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                             ),
                             readOnly: true,
                             onTap: () => _selectDate(false),
@@ -1223,13 +1482,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
-                    
+
                     Text(
                       _getTranslatedText('export_format'),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Format Selection
                     Row(
                       children: [
@@ -1266,13 +1528,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
-                    
+
                     Text(
                       _getTranslatedText('export_options'),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Export Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1364,7 +1629,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _showSnackBar(_getTranslatedText('select_date_range_error'));
         return;
       }
-      
+
       if (_endDate!.isBefore(_startDate!)) {
         _showSnackBar(_getTranslatedText('invalid_date_range'));
         return;
@@ -1376,7 +1641,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await directory.create(recursive: true);
       }
 
-      final fileName = '${_exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+      final fileName =
+          '${_exportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
       String filePath;
 
       if (_selectedFormat == 'excel') {
@@ -1384,7 +1650,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else {
         filePath = await _exportToPdf(directory, fileName);
       }
-      
+
       // Trigger media scan
       await MediaScanner.loadMedia(path: filePath);
       _showSnackBar(_getTranslatedText('export_success'));
@@ -1395,19 +1661,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<String> _exportToExcel(Directory directory, String fileName) async {
     final excel = Excel.createExcel();
-    
+
     if (fileName.contains('history')) {
       await _exportHistoryData(excel);
     } else {
       await _exportAnalyticsData(excel);
     }
-    
+
     final filePath = '${directory.path}/${fileName}.xlsx';
     final fileBytes = excel.encode();
     if (fileBytes == null) {
       throw Exception('Failed to generate Excel file');
     }
-    
+
     final file = File(filePath);
     await file.writeAsBytes(fileBytes);
     return filePath;
@@ -1417,7 +1683,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final pdf = pw.Document();
     late final String filePath;
     late final File file;
-    
+
     try {
       if (fileName.contains('history')) {
         // Get history data
@@ -1425,32 +1691,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
           fromDate: _startDate!,
           toDate: _endDate!,
         );
-        
+
         // Create PDF content for history
         pdf.addPage(
           pw.MultiPage(
-            build: (context) => [
-              pw.Header(
-                level: 0,
-                child: pw.Text('Transaction History Report'),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Text(
-                'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                headers: ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'],
-                data: historyData.map((entry) => [
-                  DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt),
-                  entry.currencyCode,
-                  entry.operationType,
-                  entry.rate.toStringAsFixed(2),
-                  entry.quantity.toStringAsFixed(2),
-                  entry.total.toStringAsFixed(2),
-                ]).toList(),
-              ),
-            ],
+            build:
+                (context) => [
+                  pw.Header(
+                    level: 0,
+                    child: pw.Text('Transaction History Report'),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Text(
+                    'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Table.fromTextArray(
+                    headers: [
+                      'Date',
+                      'Currency',
+                      'Operation',
+                      'Rate',
+                      'Quantity',
+                      'Total',
+                    ],
+                    data:
+                        historyData
+                            .map(
+                              (entry) => [
+                                DateFormat(
+                                  'dd-MM-yyyy HH:mm',
+                                ).format(entry.createdAt),
+                                entry.currencyCode,
+                                entry.operationType,
+                                entry.rate.toStringAsFixed(2),
+                                entry.quantity.toStringAsFixed(2),
+                                entry.total.toStringAsFixed(2),
+                              ],
+                            )
+                            .toList(),
+                  ),
+                ],
           ),
         );
       } else {
@@ -1459,61 +1740,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
           startDate: _startDate,
           endDate: _endDate,
         );
-        
+
         // Create PDF content for statistics
         pdf.addPage(
           pw.MultiPage(
-            build: (context) => [
-              pw.Header(
-                level: 0,
-                child: pw.Text('Currency Statistics Report'),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Text(
-                'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                headers: [
-                  'Currency', 'Avg Purchase Rate', 'Total Purchased', 'Purchase Amount',
-                  'Avg Sale Rate', 'Total Sold', 'Sale Amount', 'Current Quantity', 'Profit'
+            build:
+                (context) => [
+                  pw.Header(
+                    level: 0,
+                    child: pw.Text('Currency Statistics Report'),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Text(
+                    'Period: ${DateFormat('dd-MM-yyyy').format(_startDate!)} to ${DateFormat('dd-MM-yyyy').format(_endDate!)}',
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Table.fromTextArray(
+                    headers: [
+                      'Currency',
+                      'Avg Purchase Rate',
+                      'Total Purchased',
+                      'Purchase Amount',
+                      'Avg Sale Rate',
+                      'Total Sold',
+                      'Sale Amount',
+                      'Current Quantity',
+                      'Profit',
+                    ],
+                    data:
+                        (analyticsData['currency_stats'] as List)
+                            .map(
+                              (stat) => [
+                                stat['currency'] as String,
+                                (stat['avg_purchase_rate'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['total_purchased'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['total_purchase_amount'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['avg_sale_rate'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['total_sold'] as double).toStringAsFixed(
+                                  2,
+                                ),
+                                (stat['total_sale_amount'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['current_quantity'] as double)
+                                    .toStringAsFixed(2),
+                                (stat['profit'] as double).toStringAsFixed(2),
+                              ],
+                            )
+                            .toList(),
+                  ),
                 ],
-                data: (analyticsData['currency_stats'] as List).map((stat) => [
-                  stat['currency'] as String,
-                  (stat['avg_purchase_rate'] as double).toStringAsFixed(2),
-                  (stat['total_purchased'] as double).toStringAsFixed(2),
-                  (stat['total_purchase_amount'] as double).toStringAsFixed(2),
-                  (stat['avg_sale_rate'] as double).toStringAsFixed(2),
-                  (stat['total_sold'] as double).toStringAsFixed(2),
-                  (stat['total_sale_amount'] as double).toStringAsFixed(2),
-                  (stat['current_quantity'] as double).toStringAsFixed(2),
-                  (stat['profit'] as double).toStringAsFixed(2),
-                ]).toList(),
-              ),
-            ],
           ),
         );
       }
-      
+
       filePath = '${directory.path}/${fileName}.pdf';
       file = File(filePath);
-      
+
       // Generate a unique filename if file exists
       int counter = 1;
       String newFilePath = filePath;
       File newFile = file;
-      
+
       while (await newFile.exists()) {
         final newFileName = '${fileName}_${counter}';
         newFilePath = '${directory.path}/${newFileName}.pdf';
         newFile = File(newFilePath);
         counter++;
       }
-      
+
       // Write the PDF file
       final bytes = await pdf.save();
       await newFile.writeAsBytes(bytes, flush: true);
-      
+
       return newFilePath;
     } catch (e) {
       debugPrint('Error exporting PDF: $e');
@@ -1525,39 +1827,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _exportHistoryData(Excel excel) async {
     // Create a sheet for history data
     final sheet = excel['History'];
-    
+
     // Add headers
-    final headers = ['Date', 'Currency', 'Operation', 'Rate', 'Quantity', 'Total'];
+    final headers = [
+      'Date',
+      'Currency',
+      'Operation',
+      'Rate',
+      'Quantity',
+      'Total',
+    ];
     for (var i = 0; i < headers.length; i++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = headers[i];
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          .value = headers[i];
     }
-    
+
     // Get history data
     final historyData = await _dbHelper.getFilteredHistoryByDate(
       fromDate: _startDate!,
       toDate: _endDate!,
     );
-    
+
     // Add data rows
     for (var i = 0; i < historyData.length; i++) {
       final entry = historyData[i];
       final rowIndex = i + 1; // +1 because headers are at row 0
-      
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt);
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = entry.currencyCode;
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = entry.operationType;
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = entry.rate;
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = entry.quantity;
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = entry.total;
+
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .value = DateFormat('dd-MM-yyyy HH:mm').format(entry.createdAt);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+          .value = entry.currencyCode;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .value = entry.operationType;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+          .value = entry.rate;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .value = entry.quantity;
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+          .value = entry.total;
     }
-    
+
     // Set column widths
     for (var i = 0; i < headers.length; i++) {
       sheet.setColWidth(i, 20.0);
     }
   }
-  
+
   // Export analytics data
   Future<void> _exportAnalyticsData(Excel excel) async {
     // Get analytics data
@@ -1565,49 +1887,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
       startDate: _startDate,
       endDate: _endDate,
     );
-    
+
     // Delete all existing sheets
     excel.delete('Sheet1');
-    
+
     // Create currencies sheet
     final currencySheet = excel['Currency Statistics'];
-    
+
     // Add headers
     final headers = [
-      'Currency', 'Avg Purchase Rate', 'Total Purchased', 'Purchase Amount',
-      'Avg Sale Rate', 'Total Sold', 'Sale Amount', 'Current Quantity', 'Profit'
+      'Currency',
+      'Avg Purchase Rate',
+      'Total Purchased',
+      'Purchase Amount',
+      'Avg Sale Rate',
+      'Total Sold',
+      'Sale Amount',
+      'Current Quantity',
+      'Profit',
     ];
-    
+
     for (var i = 0; i < headers.length; i++) {
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value = headers[i];
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          .value = headers[i];
     }
-    
+
     // Add data rows
     final currencyStats = analyticsData['currency_stats'] as List;
     for (var i = 0; i < currencyStats.length; i++) {
       final stat = currencyStats[i];
       final rowIndex = i + 1;
-      
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = 
-          stat['currency'] as String;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = 
-          stat['avg_purchase_rate'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = 
-          stat['total_purchased'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = 
-          stat['total_purchase_amount'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = 
-          stat['avg_sale_rate'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = 
-          stat['total_sold'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = 
-          stat['total_sale_amount'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex)).value = 
-          stat['current_quantity'] as double;
-      currencySheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex)).value = 
-          stat['profit'] as double;
+
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .value = stat['currency'] as String;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+          .value = stat['avg_purchase_rate'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+          .value = stat['total_purchased'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+          .value = stat['total_purchase_amount'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .value = stat['avg_sale_rate'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex))
+          .value = stat['total_sold'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex))
+          .value = stat['total_sale_amount'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: rowIndex))
+          .value = stat['current_quantity'] as double;
+      currencySheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: rowIndex))
+          .value = stat['profit'] as double;
     }
-    
+
     // Set column widths
     for (var i = 0; i < headers.length; i++) {
       currencySheet.setColWidth(i, 20.0);
@@ -1619,7 +1959,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: message.contains(_getTranslatedText('error')) ? Colors.red : Colors.green,
+        backgroundColor:
+            message.contains(_getTranslatedText('error'))
+                ? Colors.red
+                : Colors.green,
       ),
     );
   }
@@ -1641,7 +1984,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder:
           (context) => AlertDialog(
             title: Text(
-              _getTranslatedText('edit_currency', {'code': currency.code ?? ''}),
+              _getTranslatedText('edit_currency', {
+                'code': currency.code ?? '',
+              }),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
@@ -1656,7 +2001,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                     maxLength: 3,
                     textCapitalization: TextCapitalization.characters,
@@ -1669,7 +2017,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -1683,7 +2034,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -1697,7 +2051,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -1731,7 +2088,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         newSellRate <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(_getTranslatedText('invalid_values_error')),
+                          content: Text(
+                            _getTranslatedText('invalid_values_error'),
+                          ),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -1746,7 +2105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (existingCurrency != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(_getTranslatedText('currency_exists_error')),
+                            content: Text(
+                              _getTranslatedText('currency_exists_error'),
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -1770,14 +2131,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(_getTranslatedText('invalid_number_error')),
+                        content: Text(
+                          _getTranslatedText('invalid_number_error'),
+                        ),
                         backgroundColor: Colors.red,
                       ),
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
