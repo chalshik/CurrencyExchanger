@@ -580,160 +580,287 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             : const EdgeInsets.symmetric(vertical: 20); // Increased padding
     final buttonTextSize = isSmallScreen ? 16.0 : 18.0; // Increased font size
 
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: _operationType == 'Purchase'
-                    ? LinearGradient(
-                        colors: [Colors.blue.shade600, Colors.blue.shade900],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: _operationType == 'Purchase'
+                ? LinearGradient(
+                    colors: [Colors.blue.shade600, Colors.blue.shade900],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+              borderRadius: BorderRadius.circular(12),
+              border: _operationType != 'Purchase'
+                ? Border.all(color: Colors.blue.shade300, width: 2)
+                : null,
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _operationType = 'Purchase';
+                  // Update exchange rate based on selected currency
+                  if (_selectedCurrency.isNotEmpty) {
+                    final selectedCurrency = _currencies.firstWhere(
+                      (c) => c.code == _selectedCurrency,
+                      orElse: () => CurrencyModel(code: ''),
+                    );
+                    _currencyController.text =
+                        selectedCurrency.defaultBuyRate.toString();
+                    _calculateTotal();
+                  }
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _operationType == 'Purchase' ? Colors.transparent : Colors.blue.shade50,
+                foregroundColor: _operationType == 'Purchase' ? Colors.white : Colors.blue.shade700,
+                padding: buttonPadding,
+                elevation: _operationType == 'Purchase' ? 6 : 2,
+                shadowColor: _operationType == 'Purchase' ? Colors.blue.shade300 : Colors.transparent,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  border: _operationType != 'Purchase'
-                    ? Border.all(color: Colors.blue.shade300, width: 2)
-                    : null,
                 ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _operationType = 'Purchase';
-                      // Update exchange rate based on selected currency
-                      if (_selectedCurrency.isNotEmpty) {
-                        final selectedCurrency = _currencies.firstWhere(
-                          (c) => c.code == _selectedCurrency,
-                          orElse: () => CurrencyModel(code: ''),
-                        );
-                        _currencyController.text =
-                            selectedCurrency.defaultBuyRate.toString();
-                        _calculateTotal();
-                      }
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _operationType == 'Purchase' ? Colors.transparent : Colors.blue.shade50,
-                    foregroundColor: _operationType == 'Purchase' ? Colors.white : Colors.blue.shade700,
-                    padding: buttonPadding,
-                    elevation: _operationType == 'Purchase' ? 6 : 2,
-                    shadowColor: _operationType == 'Purchase' ? Colors.blue.shade300 : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    minimumSize: const Size(0, 60),
-                  ),
-                  child: Text(
-                    _getTranslatedText('purchase'),
-                    style: TextStyle(
-                      fontSize: buttonTextSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                minimumSize: const Size(0, 60),
+              ),
+              child: Text(
+                _getTranslatedText('purchase'),
+                style: TextStyle(
+                  fontSize: buttonTextSize,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(width: 16), // Increased spacing
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: _operationType == 'Sale'
-                    ? LinearGradient(
-                        colors: [Colors.blue.shade600, Colors.blue.shade900],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  borderRadius: BorderRadius.circular(12),
-                  border: _operationType != 'Sale'
-                    ? Border.all(color: Colors.blue.shade300, width: 2)
-                    : null,
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _operationType = 'Sale';
-                      // Update exchange rate based on selected currency
-                      if (_selectedCurrency.isNotEmpty) {
-                        final selectedCurrency = _currencies.firstWhere(
-                          (c) => c.code == _selectedCurrency,
-                          orElse: () => CurrencyModel(code: ''),
-                        );
-                        _currencyController.text =
-                            selectedCurrency.defaultSellRate.toString();
-                        _calculateTotal();
-                      }
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _operationType == 'Sale' ? Colors.transparent : Colors.blue.shade50,
-                    foregroundColor: _operationType == 'Sale' ? Colors.white : Colors.blue.shade700,
-                    padding: buttonPadding,
-                    elevation: _operationType == 'Sale' ? 6 : 2,
-                    shadowColor: _operationType == 'Sale' ? Colors.blue.shade300 : Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    minimumSize: const Size(0, 60),
-                  ),
-                  child: Text(
-                    _getTranslatedText('sale'),
-                    style: TextStyle(
-                      fontSize: buttonTextSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16), // Spacing between button rows
-        Container(
-          height: 65, // Fixed height for the finish button
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade500, Colors.green.shade800],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.shade300.withOpacity(0.5),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
           ),
-          child: ElevatedButton(
-            onPressed: _finishOperation,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+        ),
+        const SizedBox(width: 16), // Increased spacing
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: _operationType == 'Sale'
+                ? LinearGradient(
+                    colors: [Colors.blue.shade600, Colors.blue.shade900],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+              borderRadius: BorderRadius.circular(12),
+              border: _operationType != 'Sale'
+                ? Border.all(color: Colors.blue.shade300, width: 2)
+                : null,
             ),
-            child: Text(
-              _getTranslatedText('finish'),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _operationType = 'Sale';
+                  // Update exchange rate based on selected currency
+                  if (_selectedCurrency.isNotEmpty) {
+                    final selectedCurrency = _currencies.firstWhere(
+                      (c) => c.code == _selectedCurrency,
+                      orElse: () => CurrencyModel(code: ''),
+                    );
+                    _currencyController.text =
+                        selectedCurrency.defaultSellRate.toString();
+                    _calculateTotal();
+                  }
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _operationType == 'Sale' ? Colors.transparent : Colors.blue.shade50,
+                foregroundColor: _operationType == 'Sale' ? Colors.white : Colors.blue.shade700,
+                padding: buttonPadding,
+                elevation: _operationType == 'Sale' ? 6 : 2,
+                shadowColor: _operationType == 'Sale' ? Colors.blue.shade300 : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                minimumSize: const Size(0, 60),
+              ),
+              child: Text(
+                _getTranslatedText('sale'),
+                style: TextStyle(
+                  fontSize: buttonTextSize,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildFinishButton() {
+    // Get screen width to adjust sizing
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 360;
+    final isLandscape = screenSize.width > screenSize.height;
+
+    // Larger sizes for landscape mode
+    final fontSize =
+        isLandscape
+            ? 20.0
+            : (isSmallScreen ? 16.0 : 18.0); // Increased font size
+    final verticalPadding =
+        isLandscape ? 22.0 : (isSmallScreen ? 18.0 : 20.0); // Increased padding
+    final buttonHeight =
+        isLandscape ? 70.0 : (isSmallScreen ? 60.0 : 65.0); // Increased height
+
+    return Container(
+      height: buttonHeight,
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16), // Increased margin
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade500, Colors.blue.shade800],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade300.withOpacity(0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _finishOperation,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(vertical: verticalPadding),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Text(
+          _getTranslatedText('finish'),
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0, // Increased letter spacing
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _finishOperation() async {
+    try {
+      // Validate inputs
+      if (_selectedCurrency.isEmpty ||
+          _currencyController.text.isEmpty ||
+          _quantityController.text.isEmpty) {
+        _showBriefNotification(
+          _getTranslatedText('enter_valid_numbers'),
+          Colors.red,
+        );
+        return;
+      }
+
+      final rate = double.tryParse(_currencyController.text);
+      final quantity = double.tryParse(_quantityController.text);
+
+      if (rate == null || quantity == null || rate <= 0 || quantity <= 0) {
+        _showBriefNotification(
+          _getTranslatedText('enter_valid_numbers'),
+          Colors.red,
+        );
+        return;
+      }
+
+      // Get the SOM and selected currency
+      final somCurrency = await _databaseHelper.getCurrency('SOM');
+      final selectedCurrency = await _databaseHelper.getCurrency(
+        _selectedCurrency,
+      );
+
+      if (somCurrency == null || selectedCurrency == null) {
+        _showBriefNotification(_getTranslatedText('error'), Colors.red);
+        return;
+      }
+
+      // Check if enough balance
+      if (_operationType == 'Purchase') {
+        // In Purchase: We spend SOM to get foreign currency
+        if (somCurrency.quantity < _totalSum) {
+          _showBriefNotification(
+            _getTranslatedText('not_enough_som'),
+            Colors.red,
+          );
+          return;
+        }
+      } else {
+        // In Sale: We spend foreign currency to get SOM
+        if (selectedCurrency.quantity < quantity) {
+          _showBriefNotification(
+            _getTranslatedText('not_enough_currency', {
+              'code': _selectedCurrency,
+            }),
+            Colors.red,
+          );
+          return;
+        }
+      }
+
+      // Store the transaction in history
+      final history = HistoryModel(
+        currencyCode: _selectedCurrency,
+        operationType: _operationType,
+        rate: rate,
+        quantity: quantity,
+        total: _totalSum,
+      );
+
+      await _databaseHelper.insertHistory(history);
+
+      // Update currency quantities
+      if (_operationType == 'Purchase') {
+        // Subtract SOM, add foreign currency
+        await _databaseHelper.updateCurrencyQuantity(
+          'SOM',
+          somCurrency.quantity - _totalSum,
+        );
+        await _databaseHelper.updateCurrencyQuantity(
+          _selectedCurrency,
+          selectedCurrency.quantity + quantity,
+        );
+      } else {
+        // Add SOM, subtract foreign currency
+        await _databaseHelper.updateCurrencyQuantity(
+          'SOM',
+          somCurrency.quantity + _totalSum,
+        );
+        await _databaseHelper.updateCurrencyQuantity(
+          _selectedCurrency,
+          selectedCurrency.quantity - quantity,
+        );
+      }
+
+      // Show success message and clear form
+      _showBriefNotification(
+        _getTranslatedText('transaction_complete'),
+        Colors.green,
+      );
+
+      setState(() {
+        _quantityController.text = '';
+        // Keep rate and currency selections
+      });
+
+      // Refresh data
+      await _initializeData();
+    } catch (e) {
+      _showBriefNotification(
+        '${_getTranslatedText('error')}: ${e.toString()}',
+        Colors.red,
+      );
+    }
   }
 
   Widget _buildRecentHistory() {
