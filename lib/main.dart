@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/currency_converter.dart';
 import 'providers/language_provider.dart';
 import 'providers/theme_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'db_helper.dart';
+import 'models/user.dart';
 
 // Custom theme extension for additional text styling
 class TextStyleExtension extends ThemeExtension<TextStyleExtension> {
@@ -147,15 +151,77 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   _navigateToHome() async {
-    // Simulate loading time for 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
+    // First check if we have saved credentials
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rememberMe = prefs.getBool('remember_me') ?? false;
 
-    // Navigate to the login screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
+      if (rememberMe) {
+        final username = prefs.getString('username');
+        final password = prefs.getString('password');
+
+        if (username != null && password != null) {
+          // Wait a bit to show the splash screen
+          await Future.delayed(const Duration(seconds: 2));
+          if (!mounted) return;
+          
+          // Try to auto-login
+          final dbHelper = DatabaseHelper.instance;
+          
+          // Special case for admin credentials
+          if (username == 'a' && password == 'a') {
+            final adminUser = await dbHelper.getUserByCredentials(username, password);
+            if (adminUser != null) {
+              // Set the current user (using the global variable from login_screen.dart)
+              currentUser = adminUser;
+              
+              // Navigate directly to the main app
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
+              );
+              return;
+            }
+          }
+          
+          // For regular users, check connectivity
+          if (!dbHelper.isOfflineMode || await dbHelper.retryConnection()) {
+            final user = await dbHelper.getUserByCredentials(username, password);
+            if (user != null) {
+              // Set the current user (using the global variable from login_screen.dart)
+              currentUser = user;
+              
+              // Navigate directly to the main app
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
+              );
+              return;
+            }
+          }
+        }
+      }
+      
+      // If auto-login failed or no saved credentials, go to login screen
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } catch (e) {
+      debugPrint('Error in auto-login: $e');
+      
+      // If error, default to login screen
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
   }
 
   @override
@@ -163,58 +229,69 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Container(
         color: Theme.of(context).scaffoldBackgroundColor,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // App logo/icon
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.currency_exchange,
-                  size: 72,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ),
-              const SizedBox(height: 32),
+        child: Column(
+          children: [
+            // Main content in center
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // App logo/icon
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade700.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.currency_exchange,
+                        size: 100,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
 
-              // App name
-              Text(
-                "Currency Changer",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // "BY" text
-              Text(
-                "BY",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2.0,
+                    // App name
+                    Text(
+                      "Currency Exchanger",
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+            
+            // "By" and logo at bottom
+            Container(
+              margin: const EdgeInsets.only(bottom: 32),
+              child: Column(
+                children: [
+                  // "BY" text
+                  Text(
+                    "BY",
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // User logo
-              Image.asset(
-                'assets/images/logo.png',
-                width: 300,
-                height: 150,
-                fit: BoxFit.contain,
+                  // User logo
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 250,
+                    height: 80,
+                    fit: BoxFit.contain,
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 48),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
