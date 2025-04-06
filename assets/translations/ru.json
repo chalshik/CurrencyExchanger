@@ -104,7 +104,7 @@
   "enter_amount": "Пожалуйста, введите сумму",
   "enter_valid_number": "Пожалуйста, введите корректное число",
   "som_added_success": "Успешно добавлено {amount} СОМ",
-  "user_management": "Управление пользователями",
+  "user_management": "Пользователи",
   "currency_exchange": "Обмен валют",
   "hide_numpad": "Скрыть клавиатуру",
   "show_numpad": "Показать клавиатуру",

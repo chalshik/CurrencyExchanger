@@ -2008,7 +2008,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: codeController,
                     decoration: InputDecoration(
                       labelText: _getTranslatedText('currency_code'),
-                      hintText: _getTranslatedText('currency_code_hint'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
