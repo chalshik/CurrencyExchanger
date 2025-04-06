@@ -43,8 +43,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _fromDateController.text = DateFormat('dd-MM-yy').format(_fromDate);
-    _toDateController.text = DateFormat('dd-MM-yy').format(_toDate);
+    _fromDateController.text = DateFormat('dd/MM/yy').format(_fromDate);
+    _toDateController.text = DateFormat('dd/MM/yy').format(_toDate);
     _loadFilters();
     _loadHistory();
     _searchController.addListener(_filterEntries);
@@ -92,7 +92,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             // Search by currency code or operation type
             final basicMatch =
                 entry.currencyCode.toLowerCase().contains(query) ||
-                entry.operationType.toLowerCase().contains(query);
+                    entry.operationType.toLowerCase().contains(query);
 
             // Search by amount - check if query is part of formatted amount string
             final amountString = entry.quantity.toStringAsFixed(2);
@@ -112,8 +112,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
 
     try {
-      final fromDate = DateFormat('dd-MM-yy').parse(_fromDateController.text);
-      final toDate = DateFormat('dd-MM-yy').parse(_toDateController.text);
+      final fromDate = DateFormat('dd/MM/yy').parse(_fromDateController.text);
+      final toDate = DateFormat('dd/MM/yy').parse(_toDateController.text);
 
       final adjustedToDate = DateTime(
         toDate.year,
@@ -128,13 +128,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
         fromDate: fromDate,
         toDate: adjustedToDate,
         currencyCode:
-            _selectedCurrency == null || _selectedCurrency!.isEmpty
-                ? null
-                : _selectedCurrency,
+        _selectedCurrency == null || _selectedCurrency!.isEmpty
+            ? null
+            : _selectedCurrency,
         operationType:
-            _selectedOperationType == null || _selectedOperationType!.isEmpty
-                ? null
-                : _selectedOperationType,
+        _selectedOperationType == null || _selectedOperationType!.isEmpty
+            ? null
+            : _selectedOperationType,
       );
 
       if (!mounted) return;
@@ -178,10 +178,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       setState(() {
         if (isFromDate) {
           _fromDate = picked;
-          _fromDateController.text = DateFormat('dd-MM-yy').format(picked);
+          _fromDateController.text = DateFormat('dd/MM/yy').format(picked);
         } else {
           _toDate = picked;
-          _toDateController.text = DateFormat('dd-MM-yy').format(picked);
+          _toDateController.text = DateFormat('dd/MM/yy').format(picked);
         }
       });
       _loadHistory();
@@ -194,8 +194,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() {
       _fromDate = DateTime.now().subtract(const Duration(days: 30));
       _toDate = DateTime.now();
-      _fromDateController.text = DateFormat('dd-MM-yy').format(_fromDate);
-      _toDateController.text = DateFormat('dd-MM-yy').format(_toDate);
+      _fromDateController.text = DateFormat('dd/MM/yy').format(_fromDate);
+      _toDateController.text = DateFormat('dd/MM/yy').format(_toDate);
       _selectedCurrency = null;
       _selectedOperationType = null;
     });
@@ -203,39 +203,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _showDeleteDialog(
-    BuildContext context,
-    HistoryModel entry,
-  ) async {
+      BuildContext context,
+      HistoryModel entry,
+      ) async {
     await showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(_getTranslatedText("delete_transaction")),
-            content: Text(
-              _getTranslatedText("delete_transaction_confirm", {
-                "type": entry.operationType.toLowerCase(),
-              }),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(_getTranslatedText("cancel")),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await _dbHelper.deleteHistory(entry);
-                  if (mounted) {
-                    Navigator.pop(context);
-                    _loadHistory();
-                  }
-                },
-                child: Text(
-                  _getTranslatedText("delete"),
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
+        title: Text(_getTranslatedText("delete_transaction")),
+        content: Text(
+          _getTranslatedText("delete_transaction_confirm", {
+            "type": entry.operationType.toLowerCase(),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText("cancel")),
           ),
+          TextButton(
+            onPressed: () async {
+              await _dbHelper.deleteHistory(entry);
+              if (mounted) {
+                Navigator.pop(context);
+                _loadHistory();
+              }
+            },
+            child: Text(
+              _getTranslatedText("delete"),
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -244,26 +244,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(_getTranslatedText("delete_transaction")),
-            content: Text(
-              _getTranslatedText("delete_transaction_confirm", {
-                "type": entry.operationType.toLowerCase(),
-              }),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(_getTranslatedText("cancel")),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  _getTranslatedText("delete"),
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
+        title: Text(_getTranslatedText("delete_transaction")),
+        content: Text(
+          _getTranslatedText("delete_transaction_confirm", {
+            "type": entry.operationType.toLowerCase(),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(_getTranslatedText("cancel")),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              _getTranslatedText("delete"),
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (shouldDelete == true) {
@@ -286,7 +286,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _editQuantityController.text = entry.quantity.toStringAsFixed(2);
     _editRateController.text = entry.rate.toStringAsFixed(2);
     _editDateController.text = DateFormat(
-      'dd-MM-yyyy HH:mm',
+      'dd/MM/yy HH:mm',
     ).format(entry.createdAt);
     _editOperationType = entry.operationType;
     _editCurrencyCode = entry.currencyCode;
@@ -300,185 +300,194 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder:
           (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text(_getTranslatedText("edit_transaction")),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!isDeposit) ...[
-                        DropdownButtonFormField<String>(
-                          value: _editOperationType,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("type"),
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(_getTranslatedText("edit_transaction")),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isDeposit) ...[
+                    DropdownButtonFormField<String>(
+                      value: _editOperationType,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("type"),
+                      ),
+                      items:
+                      _operationTypes
+                          .where((type) => type != 'Deposit')
+                          .map((type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(
+                            _getTranslatedText(type.toLowerCase()),
                           ),
-                          items:
-                              _operationTypes
-                                  .where((type) => type != 'Deposit')
-                                  .map((type) {
-                                    return DropdownMenuItem<String>(
-                                      value: type,
-                                      child: Text(
-                                        _getTranslatedText(type.toLowerCase()),
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _editOperationType = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: _editCurrencyCode,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("currency"),
-                          ),
-                          items:
-                              _currencyCodes.map((code) {
-                                return DropdownMenuItem<String>(
-                                  value: code,
-                                  child: Text(code),
-                                );
-                              }).toList(),
-                          onChanged:
-                              isDeposit
-                                  ? null
-                                  : (value) {
-                                    setState(() {
-                                      _editCurrencyCode = value;
-                                    });
-                                  },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _editQuantityController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("amount_label"),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _editRateController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("rate"),
-                          ),
-                          keyboardType: TextInputType.number,
-                          readOnly: isDeposit,
-                        ),
-                      ] else ...[
-                        TextFormField(
-                          controller: _editQuantityController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("amount_label"),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "${_getTranslatedText("currency")}: ${entry.currencyCode}",
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      InkWell(
-                        onTap: () async {
-                          final DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) {
-                            final TimeOfDay? time = await showTimePicker(
-                              context: context,
-                              initialTime: TimeOfDay.fromDateTime(selectedDate),
+                        );
+                      })
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _editOperationType = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _editCurrencyCode,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("currency"),
+                      ),
+                      items:
+                      _currencyCodes.map((code) {
+                        return DropdownMenuItem<String>(
+                          value: code,
+                          child: Text(code),
+                        );
+                      }).toList(),
+                      onChanged:
+                      isDeposit
+                          ? null
+                          : (value) {
+                        setState(() {
+                          _editCurrencyCode = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _editQuantityController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("amount_label"),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _editRateController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("rate"),
+                      ),
+                      keyboardType: TextInputType.number,
+                      readOnly: isDeposit,
+                    ),
+                  ] else ...[
+                    TextFormField(
+                      controller: _editQuantityController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("amount_label"),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "${_getTranslatedText("currency")}: ${entry.currencyCode}",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        final TimeOfDay? time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(selectedDate),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            selectedDate = DateTime(
+                              picked.year,
+                              picked.month,
+                              picked.day,
+                              time.hour,
+                              time.minute,
                             );
-                            if (time != null) {
-                              setState(() {
-                                selectedDate = DateTime(
-                                  picked.year,
-                                  picked.month,
-                                  picked.day,
-                                  time.hour,
-                                  time.minute,
-                                );
-                                _editDateController.text = DateFormat(
-                                  'dd-MM-yyyy HH:mm',
-                                ).format(selectedDate);
-                              });
-                            }
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("date_time"),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(_editDateController.text),
-                              const Icon(Icons.calendar_today),
-                            ],
-                          ),
-                        ),
+                            _editDateController.text = DateFormat(
+                              'dd/MM/yy HH:mm',
+                            ).format(selectedDate);
+                          });
+                        }
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("date_time"),
                       ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(_getTranslatedText("cancel")),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_editDateController.text),
+                          const Icon(Icons.calendar_today),
+                        ],
                       ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final updatedEntry = HistoryModel(
-                            id: entry.id,
-                            currencyCode:
-                                isDeposit ? entry.currencyCode : _editCurrencyCode!,
-                            operationType:
-                                isDeposit ? 'Deposit' : _editOperationType!,
-                            rate:
-                                isDeposit
-                                    ? 1.0
-                                    : double.parse(_editRateController.text),
-                            quantity: double.parse(_editQuantityController.text),
-                            total:
-                                isDeposit
-                                    ? double.parse(_editQuantityController.text)
-                                    : double.parse(_editRateController.text) *
-                                        double.parse(_editQuantityController.text),
-                            createdAt: selectedDate,
-                          );
-
-                          _saveEditedEntry(entry, updatedEntry);
-                        },
-                        child: Text(_getTranslatedText("save")),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _resetFilters();
+                    },
+                    child: Text(_getTranslatedText("reset_filters")),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(_getTranslatedText("cancel")),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade400, Colors.blue.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _loadHistory();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size(50, 36),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _getTranslatedText("apply"),
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -510,25 +519,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ),
         title:
-            _isSearching
-                ? TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: _getTranslatedText("search_transactions"),
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    contentPadding: EdgeInsets.zero,
-                    fillColor: Colors.blue.shade700,
-                    filled: true,
-                  ),
-                  style: TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
-                  autofocus: true,
-                )
-                : Text(
-                    _getTranslatedText("transaction_history"),
-                    style: TextStyle(color: Colors.white),
-                  ),
+        _isSearching
+            ? TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: _getTranslatedText("search_transactions"),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            contentPadding: EdgeInsets.all(8.0),
+            filled: false,
+          ),
+          style: TextStyle(color: Colors.white),
+          cursorColor: Colors.white,
+          autofocus: true,
+        )
+            : Text(
+          _getTranslatedText("transaction_history"),
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
@@ -545,13 +557,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
           _buildSummaryCard(),
           Expanded(
             child:
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _filteredEntries.isEmpty
-                    ? _buildEmptyHistoryMessage()
-                    : isWideTablet
-                    ? _buildTabletHistoryTable()
-                    : _buildMobileHistoryList(),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredEntries.isEmpty
+                ? _buildEmptyHistoryMessage()
+                : isWideTablet
+                ? _buildTabletHistoryTable()
+                : _buildMobileHistoryList(),
           ),
         ],
       ),
@@ -562,7 +574,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Row(
       children: [
         Expanded(
-          flex: 3,
+          flex: 4,
           child: TextField(
             controller: _fromDateController,
             style: const TextStyle(fontSize: 14),
@@ -570,7 +582,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               labelText: _getTranslatedText("from"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 12,
                 vertical: 10,
               ),
               isDense: true,
@@ -585,7 +597,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         const SizedBox(width: 8),
         Expanded(
-          flex: 3,
+          flex: 4,
           child: TextField(
             controller: _toDateController,
             style: const TextStyle(fontSize: 14),
@@ -593,7 +605,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               labelText: _getTranslatedText("to"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 12,
                 vertical: 10,
               ),
               isDense: true,
@@ -701,7 +713,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               labelText: _getTranslatedText("from"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 12,
                 vertical: 10,
               ),
               isDense: true,
@@ -724,7 +736,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               labelText: _getTranslatedText("to"),
               prefixIcon: const Icon(Icons.calendar_today, size: 18),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 12,
                 vertical: 10,
               ),
               isDense: true,
@@ -744,32 +756,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color:
-                  (_selectedCurrency != null &&
-                              _selectedCurrency!.isNotEmpty) ||
-                          (_selectedOperationType != null &&
-                              _selectedOperationType!.isNotEmpty)
-                      ? Colors.blue.shade100
-                      : Colors.grey.shade100,
+              (_selectedCurrency != null &&
+                  _selectedCurrency!.isNotEmpty) ||
+                  (_selectedOperationType != null &&
+                      _selectedOperationType!.isNotEmpty)
+                  ? Colors.blue.shade100
+                  : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color:
-                    (_selectedCurrency != null &&
-                                _selectedCurrency!.isNotEmpty) ||
-                            (_selectedOperationType != null &&
-                                _selectedOperationType!.isNotEmpty)
-                        ? Colors.blue.shade300
-                        : Colors.grey.shade300,
+                (_selectedCurrency != null &&
+                    _selectedCurrency!.isNotEmpty) ||
+                    (_selectedOperationType != null &&
+                        _selectedOperationType!.isNotEmpty)
+                    ? Colors.blue.shade300
+                    : Colors.grey.shade300,
               ),
             ),
             child: Icon(
               Icons.filter_list,
               color:
-                  (_selectedCurrency != null &&
-                              _selectedCurrency!.isNotEmpty) ||
-                          (_selectedOperationType != null &&
-                              _selectedOperationType!.isNotEmpty)
-                      ? Colors.blue.shade700
-                      : Colors.grey.shade600,
+              (_selectedCurrency != null &&
+                  _selectedCurrency!.isNotEmpty) ||
+                  (_selectedOperationType != null &&
+                      _selectedOperationType!.isNotEmpty)
+                  ? Colors.blue.shade700
+                  : Colors.grey.shade600,
               size: 24,
             ),
           ),
@@ -796,8 +808,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         borderRadius: BorderRadius.circular(12),
         child: DataTable(
           headingRowColor: MaterialStateProperty.resolveWith<Color>((
-            Set<MaterialState> states,
-          ) {
+              Set<MaterialState> states,
+              ) {
             return Theme.of(context).colorScheme.primary.withOpacity(0.1);
           }),
           dataRowMaxHeight: 60,
@@ -860,74 +872,74 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ],
           rows:
-              _filteredEntries.map((entry) {
-                final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
-                final formattedDate = dateFormat.format(entry.createdAt);
-                final backgroundColor =
-                    entry.operationType == 'Purchase'
-                        ? Colors.red.shade50
-                        : (entry.operationType == 'Sale'
-                            ? Colors.green.shade50
-                            : Colors.blue.shade50);
+          _filteredEntries.map((entry) {
+            final dateFormat = DateFormat('dd-MM-yy HH:mm');
+            final formattedDate = dateFormat.format(entry.createdAt);
+            final backgroundColor =
+            entry.operationType == 'Purchase'
+                ? Colors.red.shade50
+                : (entry.operationType == 'Sale'
+                ? Colors.green.shade50
+                : Colors.blue.shade50);
 
-                return DataRow(
-                  color: MaterialStateProperty.all(backgroundColor),
-                  cells: [
-                    DataCell(Text(formattedDate)),
-                    DataCell(Text(entry.currencyCode)),
-                    DataCell(
-                      Text(
-                        _getTranslatedText(entry.operationType.toLowerCase()),
-                      ),
+            return DataRow(
+              color: MaterialStateProperty.all(backgroundColor),
+              cells: [
+                DataCell(Text(formattedDate)),
+                DataCell(Text(entry.currencyCode)),
+                DataCell(
+                  Text(
+                    _getTranslatedText(entry.operationType.toLowerCase()),
+                  ),
+                ),
+                DataCell(Text('${entry.rate.toStringAsFixed(2)}')),
+                DataCell(Text('${entry.quantity.toStringAsFixed(2)}')),
+                DataCell(
+                  Text(
+                    '${entry.total.toStringAsFixed(2)} SOM',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color:
+                      entry.operationType == 'Purchase'
+                          ? Colors.red.shade700
+                          : (entry.operationType == 'Sale'
+                          ? Colors.green.shade700
+                          : Colors.blue.shade700),
                     ),
-                    DataCell(Text('${entry.rate.toStringAsFixed(2)}')),
-                    DataCell(Text('${entry.quantity.toStringAsFixed(2)}')),
-                    DataCell(
-                      Text(
-                        '${entry.total.toStringAsFixed(2)} SOM',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color:
-                              entry.operationType == 'Purchase'
-                                  ? Colors.red.shade700
-                                  : (entry.operationType == 'Sale'
-                                      ? Colors.green.shade700
-                                      : Colors.blue.shade700),
+                  ),
+                ),
+                DataCell(
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: entry.operationType == 'Deposit'
+                            ? null // Disable edit button for deposit entries
+                            : () => _showEditDialog(context, entry),
+                      ),
+                      GestureDetector(
+                        onLongPress: () {
+                          if (entry.operationType != 'Deposit') {
+                            _showDeleteDialog(context, entry);
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: entry.operationType != 'Deposit'
+                              ? Icon(
+                            Icons.delete_outline,
+                            color: Colors.transparent,
+                            size: 0,
+                          )
+                              : SizedBox(width: 0),
                         ),
                       ),
-                    ),
-                    DataCell(
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: entry.operationType == 'Deposit' 
-                                ? null // Disable edit button for deposit entries
-                                : () => _showEditDialog(context, entry),
-                          ),
-                          GestureDetector(
-                            onLongPress: () {
-                              if (entry.operationType != 'Deposit') {
-                                _showDeleteDialog(context, entry);
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: entry.operationType != 'Deposit' 
-                                  ? Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.transparent,
-                                      size: 0,
-                                    ) 
-                                  : SizedBox(width: 0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );
@@ -939,7 +951,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       itemBuilder: (context, index) {
         final entry = _filteredEntries[index];
-        final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
+        final dateFormat = DateFormat('dd-MM-yy HH:mm');
         final formattedDate = dateFormat.format(entry.createdAt);
 
         // Choose background color based on operation type
@@ -1031,7 +1043,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } else {
       gradientColors = [Colors.blue.shade50, Colors.blue.shade100];
     }
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
@@ -1048,11 +1060,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: InkWell(
-          onTap: entry.operationType == 'Deposit' 
+          onTap: entry.operationType == 'Deposit'
               ? null // Disable tap for deposit entries
               : () {
-                  _showEditDialog(context, entry);
-                },
+            _showEditDialog(context, entry);
+          },
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -1076,7 +1088,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           children: [
                             Row(
                               mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   entry.currencyCode,
@@ -1098,7 +1110,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             const SizedBox(height: 4),
                             Row(
                               mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   _getTranslatedText(
@@ -1207,9 +1219,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               _buildStatItem(
                 _getTranslatedText("date_range"),
-                '${_fromDateController.text} - ${_toDateController.text}',
+                DateFormat('dd/MM/yy').format(_fromDate) +
+                    ' - ' +
+                    DateFormat('dd/MM/yy').format(_toDate),
                 Icons.date_range,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ],
           ),
@@ -1219,11 +1233,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon, {
-    double fontSize = 14,
-  }) {
+      String label,
+      String value,
+      IconData icon, {
+        double fontSize = 14,
+      }) {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 18),
@@ -1255,8 +1269,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Text(
             _searchController.text.isNotEmpty
                 ? _getTranslatedText("no_results", {
-                  "query": _searchController.text,
-                })
+              "query": _searchController.text,
+            })
                 : _getTranslatedText("no_transaction_history"),
             style: Theme.of(context).textTheme.titleMedium,
             textAlign: TextAlign.center,
@@ -1302,170 +1316,189 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder:
           (dialogContext) => StatefulBuilder(
-            builder:
-                (dialogContext, setStateDialog) => AlertDialog(
-                  title: Text(_getTranslatedText("filter_history")),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getTranslatedText("date_range"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _fromDateController,
-                                decoration: InputDecoration(
-                                  labelText: _getTranslatedText("from"),
-                                  suffixIcon: Icon(Icons.calendar_today),
-                                  border: OutlineInputBorder(),
-                                ),
-                                readOnly: true,
-                                onTap: () {
-                                  _selectDate(dialogContext, true);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _toDateController,
-                                decoration: InputDecoration(
-                                  labelText: _getTranslatedText("to"),
-                                  suffixIcon: Icon(Icons.calendar_today),
-                                  border: OutlineInputBorder(),
-                                ),
-                                readOnly: true,
-                                onTap: () {
-                                  _selectDate(dialogContext, false);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _getTranslatedText("currency"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
+        builder:
+            (dialogContext, setStateDialog) => AlertDialog(
+          title: Text(_getTranslatedText("filter_history")),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getTranslatedText("date_range"),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _fromDateController,
+                        style: TextStyle(fontSize: 15.5),
+                        decoration: InputDecoration(
+                          labelText: _getTranslatedText("from"),
+                          labelStyle: TextStyle(fontSize: 16),
+                          suffixIcon: Icon(Icons.calendar_today, size: 20),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
                           ),
-                          value: _selectedCurrency,
-                          hint: Text(_getTranslatedText("all_currencies")),
-                          isExpanded: true,
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: null,
-                              child: Text(_getTranslatedText("all_currencies")),
-                            ),
-                            ..._currencyCodes.map((String code) {
-                              return DropdownMenuItem<String>(
-                                value: code,
-                                child: Text(code),
-                              );
-                            }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _selectedCurrency = value;
-                            });
-                          },
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _getTranslatedText("type"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                          value: _selectedOperationType,
-                          hint: Text(_getTranslatedText("all_types")),
-                          isExpanded: true,
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: null,
-                              child: Text(_getTranslatedText("all_types")),
-                            ),
-                            ..._operationTypes.map((String type) {
-                              return DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(
-                                  _getTranslatedText(type.toLowerCase()),
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _selectedOperationType = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _resetFilters();
-                      },
-                      child: Text(_getTranslatedText("reset_filters")),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(_getTranslatedText("cancel")),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade400, Colors.blue.shade700],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _loadHistory();
+                        readOnly: true,
+                        onTap: () {
+                          _selectDate(dialogContext, true);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          elevation: 0,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _toDateController,
+                        style: TextStyle(fontSize: 15.5),
+                        decoration: InputDecoration(
+                          labelText: _getTranslatedText("to"),
+                          labelStyle: TextStyle(fontSize: 12),
+                          suffixIcon: Icon(Icons.calendar_today, size: 20),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
                         ),
-                        child: Text(
-                          _getTranslatedText("apply"),
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        readOnly: true,
+                        onTap: () {
+                          _selectDate(dialogContext, false);
+                        },
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  _getTranslatedText("currency"),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  value: _selectedCurrency,
+                  hint: Text(_getTranslatedText("all_currencies")),
+                  isExpanded: true,
+                  items: [
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text(_getTranslatedText("all_currencies")),
+                    ),
+                    ..._currencyCodes.map((String code) {
+                      return DropdownMenuItem<String>(
+                        value: code,
+                        child: Text(code),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (value) {
+                    setStateDialog(() {
+                      _selectedCurrency = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _getTranslatedText("type"),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                  value: _selectedOperationType,
+                  hint: Text(_getTranslatedText("all_types")),
+                  isExpanded: true,
+                  items: [
+                    DropdownMenuItem<String>(
+                      value: null,
+                      child: Text(_getTranslatedText("all_types")),
+                    ),
+                    ..._operationTypes.map((String type) {
+                      return DropdownMenuItem<String>(
+                        value: type,
+                        child: Text(
+                          _getTranslatedText(type.toLowerCase()),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (value) {
+                    setStateDialog(() {
+                      _selectedOperationType = value;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _resetFilters();
+                  },
+                  child: Text(_getTranslatedText("reset_filters")),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(_getTranslatedText("cancel")),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade400, Colors.blue.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _loadHistory();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size(50, 36),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      _getTranslatedText("apply"),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
