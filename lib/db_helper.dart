@@ -8,15 +8,10 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-/// Main database helper class for currency conversion operations
+/// Main database helper class for SQLite local storage operations
 class DatabaseHelper {
   // Singleton instance
   static final DatabaseHelper instance = DatabaseHelper._init();
-
-  // Offline mode flag is no longer needed as we're always using local database
-  // We'll keep it for backward compatibility but set it to false
-  final bool _isOfflineMode = false;
-  bool get isOfflineMode => _isOfflineMode;
 
   // Database version
   static const _dbVersion = 1;
@@ -121,9 +116,8 @@ class DatabaseHelper {
     return 0.0;
   }
 
-  // Check server connection
-  Future<bool> verifyServerConnection() async {
-    // In local mode, we always return true as we're using SQLite
+  // Check database availability - always returns true since this is local SQLite
+  Future<bool> verifyDatabaseAvailability() async {
     return true;
   }
 
@@ -266,18 +260,16 @@ class DatabaseHelper {
     try {
       final db = await database;
       
-      // Clear all tables except users
-      await db.delete(tableCurrencies);
+      // Only clear history table
       await db.delete(tableHistory);
       
-      // Re-initialize SOM currency
-      await db.insert(tableCurrencies, {
-        'code': 'SOM',
-        'quantity': 0.0,
-        'updated_at': DateTime.now().toIso8601String(),
-        'default_buy_rate': 1.0,
-        'default_sell_rate': 1.0,
-      });
+      // Reset all currency quantities to 0, but keep the currencies
+      final currencies = await getAllCurrencies();
+      for (var currency in currencies) {
+        await updateCurrencyQuantity(currency.code!, 0.0);
+      }
+      
+      debugPrint('Transaction history reset. Currency quantities reset to 0. Users preserved.');
     } catch (e) {
       debugPrint('Error in resetAllData: $e');
       rethrow;
@@ -665,12 +657,38 @@ class DatabaseHelper {
     try {
       final db = await database;
       
-      return await db.update(
+      // Debug output to track the update process
+      debugPrint('Updating history entry:');
+      debugPrint('Old entry: ${oldHistory.toString()}');
+      debugPrint('New entry: ${newHistory.toString()}');
+      
+      // Convert to maps for detailed comparison
+      final oldMap = oldHistory.toMap();
+      final newMap = newHistory.toMap();
+      
+      // Print what changed
+      final changes = <String>[];
+      newMap.forEach((key, value) {
+        if (oldMap[key] != value && key != 'id') {
+          changes.add('$key: ${oldMap[key]} -> $value');
+        }
+      });
+      
+      debugPrint('Changes: ${changes.join(', ')}');
+      debugPrint('Using ID for update: ${newHistory.id}');
+      
+      // Perform the update
+      final result = await db.update(
         tableHistory,
         newHistory.toMap(),
         where: 'id = ?',
         whereArgs: [newHistory.id],
       );
+      
+      // Debug the result
+      debugPrint('Update result (rows affected): $result');
+      
+      return result;
     } catch (e) {
       debugPrint('Error in updateHistory: $e');
       return 0; // Return 0 to indicate failure
@@ -759,6 +777,7 @@ class DatabaseHelper {
       final profitData = await getMostProfitableCurrencies(
         startDate: fromDate,
         endDate: toDate,
+        limit: 1000, // High limit to get all currencies
       );
 
       // Get all currencies
@@ -778,6 +797,7 @@ class DatabaseHelper {
                 'avg_sale_rate': 0.0,
                 'total_purchased': 0.0,
                 'total_sold': 0.0,
+                'cost_of_sold': 0.0,
               },
         );
 
@@ -799,6 +819,7 @@ class DatabaseHelper {
               _safeDouble(profitEntry['total_sold']),
           'current_quantity': currency.quantity,
           'profit': profit,
+          'cost_of_sold': _safeDouble(profitEntry['cost_of_sold']),
         });
       }
 
@@ -831,7 +852,7 @@ class DatabaseHelper {
           SUM(total) as total_value,
           COUNT(*) as count
         FROM $tableHistory
-        WHERE operation_type = 'Buy'
+        WHERE operation_type = 'Purchase'
         AND created_at BETWEEN ? AND ?
         GROUP BY currency_code
         ORDER BY total_value DESC
@@ -849,7 +870,7 @@ class DatabaseHelper {
           SUM(total) as total_value,
           COUNT(*) as count
         FROM $tableHistory
-        WHERE operation_type = 'Sell'
+        WHERE operation_type = 'Sale'
         AND created_at BETWEEN ? AND ?
         GROUP BY currency_code
         ORDER BY total_value DESC
@@ -889,30 +910,145 @@ class DatabaseHelper {
       
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
+
+      debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
       
-      // SQLite doesn't have DATE() function like PostgreSQL,
-      // so we'll need to extract the date part from ISO string
+      // First get purchase and sale data by date and currency
       final query = '''
         SELECT 
           substr(created_at, 1, 10) as date,
+          currency_code,
           operation_type,
           SUM(total) as total_amount,
+          SUM(quantity) as total_quantity,
           COUNT(*) as transaction_count
         FROM $tableHistory
         WHERE created_at BETWEEN ? AND ?
-        GROUP BY substr(created_at, 1, 10), operation_type
+        GROUP BY substr(created_at, 1, 10), currency_code, operation_type
         ORDER BY date
       ''';
       
       final result = await db.rawQuery(query, [fromDateStr, toDateStr]);
+      debugPrint('Raw daily data: ${result.length} records found');
       
-      // Format the result
-      return result.map((item) => {
-        'date': item['date'],
-        'operation_type': item['operation_type'],
-        'total_amount': _safeDouble(item['total_amount']),
-        'transaction_count': item['transaction_count'],
-      }).toList();
+      // Group transactions by date first
+      final Map<String, Map<String, dynamic>> dailyData = {};
+      
+      // Process all transactions first
+      for (var item in result) {
+        final date = item['date'] as String;
+        final operationType = item['operation_type'] as String;
+        final currencyCode = item['currency_code'] as String;
+        final amount = _safeDouble(item['total_amount']);
+        final quantity = _safeDouble(item['total_quantity']);
+        
+        // Initialize daily data entry
+        if (!dailyData.containsKey(date)) {
+          dailyData[date] = {
+            'day': date,
+            'purchases': 0.0,
+            'sales': 0.0,
+            'profit': 0.0,
+            'deposits': 0.0,
+            'currencies': <String, Map<String, dynamic>>{},
+          };
+        }
+        
+        // Initialize currency entry for this day
+        if (!(dailyData[date]!['currencies'] as Map).containsKey(currencyCode)) {
+          (dailyData[date]!['currencies'] as Map)[currencyCode] = {
+            'purchase_amount': 0.0,
+            'purchase_quantity': 0.0,
+            'sale_amount': 0.0,
+            'sale_quantity': 0.0,
+          };
+        }
+        
+        // Add transaction data
+        final currencyData = (dailyData[date]!['currencies'] as Map)[currencyCode] as Map<String, dynamic>;
+        
+        if (operationType == 'Purchase') {
+          dailyData[date]!['purchases'] = (dailyData[date]!['purchases'] as double) + amount;
+          currencyData['purchase_amount'] = (currencyData['purchase_amount'] as double) + amount;
+          currencyData['purchase_quantity'] = (currencyData['purchase_quantity'] as double) + quantity;
+        } else if (operationType == 'Sale') {
+          dailyData[date]!['sales'] = (dailyData[date]!['sales'] as double) + amount;
+          currencyData['sale_amount'] = (currencyData['sale_amount'] as double) + amount;
+          currencyData['sale_quantity'] = (currencyData['sale_quantity'] as double) + quantity;
+        } else if (operationType == 'Deposit') {
+          dailyData[date]!['deposits'] = (dailyData[date]!['deposits'] as double) + amount;
+        }
+      }
+      
+      // Now calculate profit based on selling cost only for sold currencies
+      for (var date in dailyData.keys) {
+        final dayData = dailyData[date]!;
+        double dailyProfit = 0.0;
+        
+        debugPrint('Calculating profit for date: $date');
+        
+        // For each currency, calculate profit on the sold amount
+        for (var currencyCode in (dayData['currencies'] as Map).keys) {
+          final currencyData = (dayData['currencies'] as Map)[currencyCode] as Map<String, dynamic>;
+          final saleAmount = currencyData['sale_amount'] as double;
+          final saleQuantity = currencyData['sale_quantity'] as double;
+          
+          debugPrint('  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity');
+          
+          if (saleQuantity > 0) {
+            // Get average purchase rate from the database for this currency up to this date
+            final avgRateQuery = '''
+              SELECT
+                CASE 
+                  WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
+                  ELSE 0 
+                END as avg_rate
+              FROM $tableHistory
+              WHERE operation_type = 'Purchase'
+              AND currency_code = ?
+              AND created_at <= ?
+            ''';
+            
+            final avgRateResult = await db.rawQuery(
+              avgRateQuery, 
+              [currencyCode, '$date 23:59:59.999Z']
+            );
+            
+            final avgPurchaseRate = _safeDouble(avgRateResult.first['avg_rate']);
+            
+            // Calculate cost of sold currency
+            final costOfSold = saleQuantity * avgPurchaseRate;
+            
+            // Calculate profit for this currency on this day
+            final currencyProfit = saleAmount - costOfSold;
+            
+            debugPrint('    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit');
+            
+            // Add to daily profit
+            dailyProfit += currencyProfit;
+          }
+        }
+        
+        // Update daily profit
+        dayData['profit'] = dailyProfit;
+        debugPrint('  Total daily profit for $date: $dailyProfit');
+        
+        // Extra validation to ensure profit field is properly set
+        if (!dayData.containsKey('profit') || dayData['profit'] == null) {
+          debugPrint('  WARNING: Profit field was null or missing, setting to 0.0');
+          dayData['profit'] = 0.0;
+        }
+      }
+      
+      // Convert to list and sort by date
+      final formattedResult = dailyData.values.toList();
+      formattedResult.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
+      
+      if (formattedResult.isNotEmpty) {
+        debugPrint('First day data: ${formattedResult.first}');
+      }
+      
+      return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
       return [];
@@ -930,49 +1066,6 @@ class DatabaseHelper {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
       
-      // We need to calculate profit by comparing Buy and Sell operations
-      final query = '''
-        WITH buys AS (
-          SELECT 
-            currency_code,
-            SUM(quantity) as total_quantity,
-            SUM(total) as total_spent,
-            CASE 
-              WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-              ELSE 0 
-            END as avg_rate
-          FROM $tableHistory
-          WHERE operation_type = 'Buy'
-          AND created_at BETWEEN ? AND ?
-          GROUP BY currency_code
-        ),
-        sells AS (
-          SELECT 
-            currency_code,
-            SUM(quantity) as total_quantity,
-            SUM(total) as total_earned,
-            CASE 
-              WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-              ELSE 0 
-            END as avg_rate
-          FROM $tableHistory
-          WHERE operation_type = 'Sell'
-          AND created_at BETWEEN ? AND ?
-          GROUP BY currency_code
-        )
-        SELECT 
-          COALESCE(buys.currency_code, sells.currency_code) as currency_code,
-          COALESCE(sells.total_earned, 0) - COALESCE(buys.total_spent, 0) as amount,
-          COALESCE(buys.avg_rate, 0) as avg_purchase_rate,
-          COALESCE(sells.avg_rate, 0) as avg_sale_rate,
-          COALESCE(buys.total_quantity, 0) as total_purchased,
-          COALESCE(sells.total_quantity, 0) as total_sold
-        FROM buys
-        FULL OUTER JOIN sells ON buys.currency_code = sells.currency_code
-        ORDER BY amount DESC
-        LIMIT ?
-      ''';
-      
       // SQLite doesn't support FULL OUTER JOIN, so we need to do this differently
       final buysQuery = '''
         SELECT 
@@ -984,7 +1077,7 @@ class DatabaseHelper {
             ELSE 0 
           END as avg_rate
         FROM $tableHistory
-        WHERE operation_type = 'Buy'
+        WHERE operation_type = 'Purchase'
         AND created_at BETWEEN ? AND ?
         GROUP BY currency_code
       ''';
@@ -999,7 +1092,7 @@ class DatabaseHelper {
             ELSE 0 
           END as avg_rate
         FROM $tableHistory
-        WHERE operation_type = 'Sell'
+        WHERE operation_type = 'Sale'
         AND created_at BETWEEN ? AND ?
         GROUP BY currency_code
       ''';
@@ -1038,18 +1131,29 @@ class DatabaseHelper {
           },
         );
         
-        final totalSpent = _safeDouble(buyData['total_spent']);
+        final totalQuantitySold = _safeDouble(sellData['total_quantity']);
+        final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
         final totalEarned = _safeDouble(sellData['total_earned']);
-        final profit = totalEarned - totalSpent;
         
-        profitData.add({
-          'currency_code': code,
-          'amount': profit,
-          'avg_purchase_rate': _safeDouble(buyData['avg_rate']),
-          'avg_sale_rate': _safeDouble(sellData['avg_rate']),
-          'total_purchased': _safeDouble(buyData['total_quantity']),
-          'total_sold': _safeDouble(sellData['total_quantity']),
-        });
+        // Calculate profit only on the amount that was sold
+        final costOfSoldCurrency = totalQuantitySold * avgPurchaseRate;
+        final profit = totalEarned - costOfSoldCurrency;
+        
+        // Only add a profit record if there were actual sales
+        // or if the currency has been both bought and sold
+        final shouldAdd = totalQuantitySold > 0 || (_safeDouble(buyData['total_quantity']) > 0 && _safeDouble(sellData['total_quantity']) > 0);
+        
+        if (shouldAdd) {
+          profitData.add({
+            'currency_code': code,
+            'amount': profit,
+            'avg_purchase_rate': avgPurchaseRate,
+            'avg_sale_rate': _safeDouble(sellData['avg_rate']),
+            'total_purchased': _safeDouble(buyData['total_quantity']),
+            'total_sold': totalQuantitySold,
+            'cost_of_sold': costOfSoldCurrency, // Add this for debugging or future use
+          });
+        }
       }
       
       // Sort by profit and limit
@@ -1079,6 +1183,8 @@ class DatabaseHelper {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
       
+      debugPrint('Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr');
+      
       final query = '''
         SELECT 
           substr(created_at, 1, 10) as date,
@@ -1098,13 +1204,107 @@ class DatabaseHelper {
         [fromDateStr, toDateStr, currencyCode]
       );
       
-      return result.map((item) => {
-        'date': item['date'],
-        'operation_type': item['operation_type'],
-        'total_amount': _safeDouble(item['total_amount']),
-        'total_quantity': _safeDouble(item['total_quantity']),
-        'transaction_count': item['transaction_count'],
-      }).toList();
+      debugPrint('Raw daily data: ${result.length} records found for $currencyCode');
+      if (result.isNotEmpty) {
+        debugPrint('Sample raw data: ${result.first}');
+      }
+      
+      // Group transactions by date
+      final Map<String, Map<String, dynamic>> dailyData = {};
+      
+      // Process all transactions
+      for (var item in result) {
+        final date = item['date'] as String;
+        final operationType = item['operation_type'] as String;
+        final amount = _safeDouble(item['total_amount']);
+        final quantity = _safeDouble(item['total_quantity']);
+        
+        debugPrint('Processing $date - $operationType: Amount=$amount, Quantity=$quantity');
+        
+        // Initialize daily data entry
+        if (!dailyData.containsKey(date)) {
+          dailyData[date] = {
+            'day': date,
+            'purchases': 0.0,
+            'purchase_quantity': 0.0,
+            'sales': 0.0,
+            'sale_quantity': 0.0,
+            'profit': 0.0,
+            'deposits': 0.0,
+          };
+        }
+        
+        // Add transaction data
+        if (operationType == 'Purchase') {
+          dailyData[date]!['purchases'] = (dailyData[date]!['purchases'] as double) + amount;
+          dailyData[date]!['purchase_quantity'] = (dailyData[date]!['purchase_quantity'] as double) + quantity;
+        } else if (operationType == 'Sale') {
+          dailyData[date]!['sales'] = (dailyData[date]!['sales'] as double) + amount;
+          dailyData[date]!['sale_quantity'] = (dailyData[date]!['sale_quantity'] as double) + quantity;
+        } else if (operationType == 'Deposit') {
+          dailyData[date]!['deposits'] = (dailyData[date]!['deposits'] as double) + amount;
+        }
+      }
+      
+      // Calculate profit for each day based on sold quantity
+      for (var date in dailyData.keys) {
+        final dayData = dailyData[date]!;
+        final saleAmount = dayData['sales'] as double;
+        final saleQuantity = dayData['sale_quantity'] as double;
+        
+        debugPrint('Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity');
+        
+        if (saleQuantity > 0) {
+          // Get average purchase rate from the database for this currency up to this date
+          final avgRateQuery = '''
+            SELECT
+              CASE 
+                WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
+                ELSE 0 
+              END as avg_rate
+            FROM $tableHistory
+            WHERE operation_type = 'Purchase'
+            AND currency_code = ?
+            AND created_at <= ?
+          ''';
+          
+          final avgRateResult = await db.rawQuery(
+            avgRateQuery, 
+            [currencyCode, '$date 23:59:59.999Z']
+          );
+          
+          final avgPurchaseRate = _safeDouble(avgRateResult.first['avg_rate']);
+          
+          // Calculate cost of sold currency
+          final costOfSold = saleQuantity * avgPurchaseRate;
+          
+          // Calculate profit for this currency on this day (sale amount minus cost of sold)
+          final profit = saleAmount - costOfSold;
+          dayData['profit'] = profit;
+          
+          debugPrint('  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit');
+        } else {
+          // If nothing was sold, profit is 0 (not negative)
+          dayData['profit'] = 0.0;
+          debugPrint('  No sales, profit is 0');
+        }
+        
+        // Extra validation to ensure profit field is properly set
+        if (!dayData.containsKey('profit') || dayData['profit'] == null) {
+          debugPrint('  WARNING: Profit field was null or missing, setting to 0.0');
+          dayData['profit'] = 0.0;
+        }
+      }
+      
+      // Convert to list and sort by date
+      final formattedResult = dailyData.values.toList();
+      formattedResult.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
+      
+      if (formattedResult.isNotEmpty) {
+        debugPrint('First day formatted data: ${formattedResult.first}');
+      }
+      
+      return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
       return [];
@@ -1147,25 +1347,6 @@ class DatabaseHelper {
     }
   }
 
-  // Add connection methods
-  Future<bool> checkHeartbeat() async {
-    // For local SQLite, we just check if the database exists
-    return await _databaseExists();
-  }
-
-  Future<bool> retryConnection({
-    int maxAttempts = 3,
-    int delaySeconds = 1,
-  }) async {
-    // For local SQLite, we just try to initialize the database
-      try {
-      final db = await database;
-          return true;
-      } catch (e) {
-          return false;
-        }
-  }
-
   // =====================
   // USER OPERATIONS
   // =====================
@@ -1175,17 +1356,6 @@ class DatabaseHelper {
     String username,
     String password,
   ) async {
-    // Special case for admin user to allow offline access
-    if (username == 'a' && password == 'a') {
-      return UserModel(
-        id: 1,
-        username: 'a',
-        role: 'admin',
-        createdAt: DateTime.now(),
-        password: 'a',
-      );
-    }
-
     try {
       final db = await database;
       
@@ -1396,6 +1566,23 @@ class DatabaseHelper {
       return false;
     } catch (e) {
       debugPrint('Error in restoreDatabase: $e');
+      return false;
+    }
+  }
+
+  // Check if database is accessible
+  Future<bool> checkDatabaseAccess() async {
+    // For local SQLite, we just check if the database exists
+    return await _databaseExists();
+  }
+
+  // Initialize database if needed
+  Future<bool> initializeDatabaseIfNeeded() async {
+    try {
+      final db = await database;
+      return true;
+    } catch (e) {
+      debugPrint('Error initializing database: $e');
       return false;
     }
   }

@@ -272,32 +272,64 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
-        data['purchases'] =
-            (data['purchases'] as List)
-                .where((item) => item['currency_code'] != 'SOM')
-                .toList();
-        data['sales'] =
-            (data['sales'] as List)
-                .where((item) => item['currency_code'] != 'SOM')
-                .toList();
-        data['profit'] = await _dbHelper.getMostProfitableCurrencies(
+        
+        // Debug the raw data
+        debugPrint("Raw purchase data keys: ${data['purchases'].isNotEmpty ? (data['purchases'][0] as Map).keys.join(', ') : 'Empty'}");
+        debugPrint("Raw sales data keys: ${data['sales'].isNotEmpty ? (data['sales'][0] as Map).keys.join(', ') : 'Empty'}");
+        
+        // Filter out SOM entries and process purchase/sale data
+        data['purchases'] = (data['purchases'] as List)
+            .where((item) => item['currency'] != 'SOM')
+            .toList();
+        
+        data['sales'] = (data['sales'] as List)
+            .where((item) => item['currency'] != 'SOM')
+            .toList();
+            
+        // Get profit data
+        final profitData = await _dbHelper.getMostProfitableCurrencies(
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
+        
+        data['profit'] = profitData;
+        
+        // Debug the processed data
+        debugPrint("Processed purchases: ${data['purchases'].length} items");
+        debugPrint("Processed sales: ${data['sales'].length} items");
+        debugPrint("Profit data count: ${profitData.length} items");
+        if (profitData.isNotEmpty) {
+          debugPrint("Profit data keys: ${profitData[0].keys.join(', ')}");
+        }
+        
         return data;
+        
       case ChartType.bar:
+        List<Map<String, dynamic>> dailyData;
+        
         if (_selectedCurrency != null &&
             _selectedCurrency != _getTranslatedText('all_currencies')) {
-          return await _dbHelper.getDailyDataByCurrency(
+          // Get data for specific currency
+          dailyData = await _dbHelper.getDailyDataByCurrency(
             startDate: _selectedStartDate,
             endDate: _selectedEndDate,
             currencyCode: _selectedCurrency!,
           );
+        } else {
+          // Get data for all currencies
+          dailyData = await _dbHelper.getDailyData(
+            startDate: _selectedStartDate,
+            endDate: _selectedEndDate,
+          );
         }
-        return await _dbHelper.getDailyData(
-          startDate: _selectedStartDate,
-          endDate: _selectedEndDate,
-        );
+        
+        // The daily data is now already processed by the DB helper methods
+        if (dailyData.isNotEmpty) {
+          final firstDay = dailyData.first;
+          debugPrint("Sample daily data: day=${firstDay['day']}, purchases=${firstDay['purchases']}, sales=${firstDay['sales']}, profit=${firstDay['profit']}");
+        }
+        
+        return dailyData;
     }
   }
 
@@ -438,13 +470,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     // Convert data to ensure proper types
     final chartData =
         data.map((item) {
+          // Check if all required fields exist
+          if (!item.containsKey('profit')) {
+            debugPrint('Warning: Item is missing profit field: $item');
+          }
+          
           return {
             'day': item['day'] as String,
             'purchases': (item['purchases'] as num?)?.toDouble() ?? 0.0,
             'sales': (item['sales'] as num?)?.toDouble() ?? 0.0,
             'profit': (item['profit'] as num?)?.toDouble() ?? 0.0,
+            'deposits': (item['deposits'] as num?)?.toDouble() ?? 0.0,
           };
         }).toList();
+
+    // Debug profit values to verify data
+    for (var entry in chartData) {
+      debugPrint('Bar chart data - Day: ${entry['day']}, Profit: ${entry['profit']}');
+    }
 
     String title;
     String valueKey;
@@ -480,6 +523,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         color = Colors.blue;
         icon = Icons.bar_chart;
         isProfit = false;
+    }
+
+    // For profit tab, recalculate profit directly from sales and purchases if profit is 0
+    // This is a workaround in case the database helper has an issue with profit calculation
+    if (activeTab == 'profit') {
+      bool needsRecalculation = false;
+      
+      // Check if profit values are all zeros while we have sales data
+      if (chartData.every((item) => (item['profit'] as double?) == 0.0) && 
+          chartData.any((item) => ((item['sales'] as double?) ?? 0.0) > 0.0)) {
+        needsRecalculation = true;
+      }
+      
+      if (needsRecalculation) {
+        debugPrint('Recalculating profit values as sales - purchases');
+        for (var item in chartData) {
+          // Simple profit calculation as sales minus purchases
+          final sales = (item['sales'] as double?) ?? 0.0;
+          final purchases = (item['purchases'] as double?) ?? 0.0;
+          item['profit'] = sales - purchases;
+        }
+      }
     }
 
     final total = chartData.fold<double>(
@@ -531,7 +596,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     xValueMapper: (data, _) => data['day'],
                     yValueMapper: (data, _) => data[valueKey],
                     name: activeTab.capitalize(),
-                    color: color,
+                    color: isProfit 
+                      ? (total >= 0 ? Colors.green : Colors.red) 
+                      : color,
                     dataLabelSettings: const DataLabelSettings(
                       isVisible: true,
                       labelAlignment: ChartDataLabelAlignment.top,
@@ -714,7 +781,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           title: _getTranslatedText('purchased_currencies'),
           data: purchases,
           valueKey: 'total_value',
-          labelKey: 'currency_code',
+          labelKey: 'currency',
           isCurrency: true,
         );
       case 'sales':
@@ -722,7 +789,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           title: _getTranslatedText('sold_currencies'),
           data: sales,
           valueKey: 'total_value',
-          labelKey: 'currency_code',
+          labelKey: 'currency',
           isCurrency: true,
         );
       case 'profit':
@@ -735,7 +802,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   double _calculateTotalProfit(List<Map<String, dynamic>> profitData) {
     return profitData.fold<double>(
       0,
-      (sum, item) => sum + ((item['profit'] as num?)?.toDouble() ?? 0.0),
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
   }
 
@@ -755,7 +822,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return _buildPieChart(
       title: _getTranslatedText('profit_by_currency'),
       data: data,
-      valueKey: 'profit',
+      valueKey: 'amount',
       labelKey: 'currency_code',
       isCurrency: true,
       isProfit: true,
@@ -775,12 +842,44 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     bool showTotal = false,
   }) {
     if (data.isEmpty) {
+      debugPrint("No data to display for $title chart");
       return Center(
         child: Text(
           isProfit
               ? _getTranslatedText('no_profit_data')
               : _getTranslatedText('no_data_available'),
           style: Theme.of(context).textTheme.titleMedium,
+        ),
+      );
+    }
+
+    // Debug: Show data being passed to the chart
+    debugPrint("Building pie chart with ${data.length} items for $title");
+    debugPrint("First item keys: ${data.first.keys.join(', ')}");
+    debugPrint("Looking for label key: $labelKey, value key: $valueKey");
+    
+    // Check if the required keys exist in the data
+    final missingLabelKey = data.any((item) => !item.containsKey(labelKey));
+    final missingValueKey = data.any((item) => !item.containsKey(valueKey));
+    
+    if (missingLabelKey || missingValueKey) {
+      debugPrint("WARNING: Some items are missing required keys!");
+      if (missingLabelKey) debugPrint("Missing label key: $labelKey");
+      if (missingValueKey) debugPrint("Missing value key: $valueKey");
+      
+      // Show a more informative empty state
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.warning, color: Colors.orange, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              "Data format issue - chart cannot be displayed",
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }

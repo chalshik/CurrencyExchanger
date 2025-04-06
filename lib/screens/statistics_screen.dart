@@ -365,28 +365,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _getTranslatedText('statistics_and_balance'),
-                              style: TextStyle(
-                                fontSize: isTablet ? 24 : 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.refresh),
-                              onPressed: _loadCurrencyStats,
-                              tooltip: _getTranslatedText('refresh_statistics'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       _buildDateFilterRow(),
                       isLandscape
                           ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode

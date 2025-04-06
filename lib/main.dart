@@ -165,39 +165,20 @@ class _SplashScreenState extends State<SplashScreen> {
           await Future.delayed(const Duration(seconds: 2));
           if (!mounted) return;
           
-          // Try to auto-login
+          // Try to auto-login with local SQLite database
           final dbHelper = DatabaseHelper.instance;
+          final user = await dbHelper.getUserByCredentials(username, password);
           
-          // Special case for admin credentials
-          if (username == 'a' && password == 'a') {
-            final adminUser = await dbHelper.getUserByCredentials(username, password);
-            if (adminUser != null) {
-              // Set the current user (using the global variable from login_screen.dart)
-              currentUser = adminUser;
-              
-              // Navigate directly to the main app
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
-              );
-              return;
-            }
-          }
-          
-          // For regular users, check connectivity
-          if (!dbHelper.isOfflineMode || await dbHelper.retryConnection()) {
-            final user = await dbHelper.getUserByCredentials(username, password);
-            if (user != null) {
-              // Set the current user (using the global variable from login_screen.dart)
-              currentUser = user;
-              
-              // Navigate directly to the main app
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
-              );
-              return;
-            }
+          if (user != null) {
+            // Set the current user (using the global variable from login_screen.dart)
+            currentUser = user;
+            
+            // Navigate directly to the main app
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
+            );
+            return;
           }
         }
       }

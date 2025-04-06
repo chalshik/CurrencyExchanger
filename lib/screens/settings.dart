@@ -267,7 +267,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 controller: _newCurrencyCodeController,
                 decoration: InputDecoration(
                   labelText: _getTranslatedText('currency_code'),
-                  hintText: _getTranslatedText('currency_code_hint'),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -620,7 +619,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          _getTranslatedText('user_created_success'),
+                          _getTranslatedText('user_created'),
                         ),
                       ),
                     );
@@ -1408,7 +1407,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   _getTranslatedText('export_data'),
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1459,7 +1458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () => _selectDate(true),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: TextField(
                             controller: _endDateController,
@@ -1528,72 +1527,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 30),
 
-                    // Export Buttons - complete redesign with vertical layout
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    Text(
+                      _getTranslatedText('export_options'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Export Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        
-                        // History Button
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _exportType = 'history';
-                            });
-                            _exportData();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _exportType = 'history';
+                              });
+                              _exportData();
+                            },
+                            icon: const Icon(Icons.history, size: 24),
+                            label: Text(
+                              _getTranslatedText('export_history'),
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.history, size: 22),
-                              const SizedBox(width: 12),
-                              Flexible(
-                                child: Text(
-                                  _getTranslatedText('export_history'),
-                                  style: const TextStyle(fontSize: 16),
-                                  softWrap: true,
-                                  textAlign: TextAlign.center,
-                                ),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Statistics Button
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _exportType = 'statistics';
-                            });
-                            _exportData();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _exportType = 'statistics';
+                              });
+                              _exportData();
+                            },
+                            icon: const Icon(Icons.analytics, size: 24),
+                            label: Text(
+                              _getTranslatedText('export_statistics'),
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.analytics, size: 22),
-                              const SizedBox(width: 12),
-                              Flexible(
-                                child: Text(
-                                  _getTranslatedText('export_statistics'),
-                                  style: const TextStyle(fontSize: 16),
-                                  softWrap: true,
-                                  textAlign: TextAlign.center,
-                                ),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ],

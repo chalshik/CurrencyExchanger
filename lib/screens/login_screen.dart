@@ -53,25 +53,12 @@ class _LoginScreenState extends State<LoginScreen> {
           _passwordController.text = password;
           _rememberMe = true;
 
-          // Special case for admin - always allow auto-login
-          if (username == 'a' && password == 'a') {
-            final dbHelper = DatabaseHelper.instance;
-            final adminUser = await dbHelper.getUserByCredentials(
-              username,
-              password,
-            );
-            if (adminUser != null) {
-              await _handleSuccessfulLogin(adminUser);
-              return;
-            }
-          }
-
-          // For regular users, attempt auto-login
+          // Try automatic login with saved credentials
           final dbHelper = DatabaseHelper.instance;
-
-          // Only try auto-login if we can connect to the server (for non-admin users)
-          if (!dbHelper.isOfflineMode || await dbHelper.retryConnection()) {
-            await _login(autoLogin: true);
+          final user = await dbHelper.getUserByCredentials(username, password);
+          
+          if (user != null) {
+            await _handleSuccessfulLogin(user);
           }
         }
       }
@@ -107,43 +94,22 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final dbHelper = DatabaseHelper.instance;
 
-      // Special case for admin - can login even if server is offline
-      if (username == 'a' && password == 'a') {
-        // Admin login - proceed without checking server connection
-        final user = await dbHelper.getUserByCredentials(username, password);
-        if (user != null) {
-          await _handleSuccessfulLogin(user);
-        }
+      // Try login with SQLite database
+      final user = await dbHelper.getUserByCredentials(username, password);
+      
+      if (user != null) {
+        await _handleSuccessfulLogin(user);
       } else {
-        // Non-admin users require server connectivity
-        if (dbHelper.isOfflineMode) {
-          // Try to reconnect to server first
-          final connected = await dbHelper.retryConnection();
-          if (!connected) {
-            setState(() {
-              _errorMessage = 'Cannot login - Server connection required';
-              _isLoading = false;
-            });
-            return;
-          }
-        }
-
-        // Regular login for non-admin users
-        final user = await dbHelper.getUserByCredentials(username, password);
-        if (user != null) {
-          await _handleSuccessfulLogin(user);
+        // Invalid credentials
+        if (!autoLogin) {
+          setState(() {
+            _errorMessage = 'Invalid username or password';
+            _isLoading = false;
+          });
         } else {
-          // Invalid credentials
-          if (!autoLogin) {
-            setState(() {
-              _errorMessage = 'Invalid username or password';
-              _isLoading = false;
-            });
-          } else {
-            setState(() {
-              _isLoading = false;
-            });
-          }
+          setState(() {
+            _isLoading = false;
+          });
         }
       }
     } catch (e) {

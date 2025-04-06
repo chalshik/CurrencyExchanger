@@ -275,10 +275,51 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _saveEditedEntry(HistoryModel oldEntry, HistoryModel newEntry) async {
-    await _dbHelper.updateHistory(newHistory: newEntry, oldHistory: oldEntry);
-    if (mounted) {
-      Navigator.pop(context);
-      _loadHistory();
+    try {
+      debugPrint('Attempting to save edited entry:');
+      debugPrint('Old entry: $oldEntry');
+      debugPrint('New entry: $newEntry');
+      
+      final result = await _dbHelper.updateHistory(newHistory: newEntry, oldHistory: oldEntry);
+      
+      if (result > 0) {
+        // Update was successful
+        debugPrint('Entry updated successfully (rows affected: $result)');
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_getTranslatedText("transaction_updated")),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          _loadHistory();
+        }
+      } else {
+        // Update failed
+        debugPrint('Update failed (rows affected: $result)');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_getTranslatedText("update_failed")),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error saving edited entry: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_getTranslatedText("error")}: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -466,8 +507,45 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
-                        _loadHistory();
+                        try {
+                          // Create new history model with edited values
+                          final quantity = double.tryParse(_editQuantityController.text) ?? entry.quantity;
+                          final rate = double.tryParse(_editRateController.text) ?? entry.rate;
+                          final total = quantity * rate;
+                          
+                          // Parse the date from the controller with error handling
+                          DateTime updatedDate;
+                          try {
+                            updatedDate = DateFormat('dd/MM/yy HH:mm').parse(_editDateController.text);
+                          } catch (e) {
+                            // If date parsing fails, use the original date
+                            debugPrint('Date parsing failed: $e');
+                            updatedDate = entry.createdAt;
+                          }
+                          
+                          // Create updated history model
+                          final updatedEntry = HistoryModel(
+                            id: entry.id,
+                            currencyCode: _editCurrencyCode ?? entry.currencyCode,
+                            operationType: _editOperationType ?? entry.operationType,
+                            rate: rate,
+                            quantity: quantity,
+                            total: total,
+                            createdAt: updatedDate,
+                          );
+                          
+                          // Save the edited entry
+                          debugPrint('Saving updated entry with ID: ${entry.id}');
+                          _saveEditedEntry(entry, updatedEntry);
+                        } catch (e) {
+                          debugPrint('Error in edit dialog: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${_getTranslatedText("error")}: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,

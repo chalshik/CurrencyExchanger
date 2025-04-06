@@ -212,5 +212,8 @@
   "show_numpad": "Show Numpad",
   "buy_foreign_currency": "Buy Foreign Currency",
   "sell_foreign_currency": "Sell Foreign Currency",
-  "foreign_currency_value_breakdown": "Foreign Currency Value Breakdown"
+  "foreign_currency_value_breakdown": "Foreign Currency Value Breakdown",
+  "currency_converter": "Currency Converter",
+  "transaction_updated": "Transaction updated successfully"
+  
 } 
