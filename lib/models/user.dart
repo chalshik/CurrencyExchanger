@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
+
 class UserModel {
-  final int? id;
+  final String? id; // Firestore document ID
+  final String? uid; // Firebase Auth UID
   final String username;
   final String password;
   final String role;
@@ -7,37 +10,43 @@ class UserModel {
 
   UserModel({
     this.id,
+    this.uid,
     required this.username,
     required this.password,
     this.role = 'user',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  // Convert a UserModel into a Map
+  // Convert a UserModel to Firestore map
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'username': username,
       'password': password,
       'role': role,
       'created_at': createdAt.toIso8601String(),
+      if (uid != null) 'uid': uid,
     };
   }
 
-  // Create a UserModel from a Map
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  // Create UserModel from Firestore doc
+  factory UserModel.fromFirestore(Map<String, dynamic> data, String id) {
     return UserModel(
-      id: map['id'],
-      username: map['username'],
-      password: map['password'],
-      role: map['role'] ?? 'user',
-      createdAt: DateTime.parse(map['created_at']),
+      id: id,
+      uid: data['uid'] as String?,
+      username: data['username'] ?? '',
+      password: data['password'] ?? '',
+      role: data['role'] ?? 'user',
+      createdAt:
+          data['created_at'] != null
+              ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
+              : DateTime.now(),
     );
   }
 
-  // Create a copy of this UserModel with given field values updated
+  // Optional: update fields
   UserModel copyWith({
-    int? id,
+    String? id,
+    String? uid,
     String? username,
     String? password,
     String? role,
@@ -45,10 +54,11 @@ class UserModel {
   }) {
     return UserModel(
       id: id ?? this.id,
+      uid: uid ?? this.uid,
       username: username ?? this.username,
       password: password ?? this.password,
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
     );
   }
-} 
+}

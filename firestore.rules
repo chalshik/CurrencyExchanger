@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/a) &&
+        get(/databases/$(database)/documents/users/a).data.role == 'admin';
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Currencies collection rules
+    match /currencies/{currencyId} {
+      allow read, write: if true;
+    }
+
+    // History collection rules
+    match /history/{historyId} {
+      allow read, write: if true;
+    }
+  }
+} 

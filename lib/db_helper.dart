@@ -1,124 +1,114 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:convert';
-import './models/currency.dart';
-import './models/history.dart';
-import './models/user.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/currency.dart';
+import '../models/history.dart';
+import '../models/user.dart';
+import '../screens/login_screen.dart'; // Import for currentUser
 
-/// Main database helper class for SQLite local storage operations
 class DatabaseHelper {
   // Singleton instance
   static final DatabaseHelper instance = DatabaseHelper._init();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isInitialized = false;
 
-  // Database version
-  static const _dbVersion = 1;
-  
-  // Database instance
-  Database? _database;
-
-  // Tables
-  static const String tableCurrencies = 'currencies';
-  static const String tableHistory = 'history';
-  static const String tableUsers = 'users';
-
-  // Get database instance
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
-
+  // Private constructor
   DatabaseHelper._init();
 
-  // Initialize the database
-  Future<Database> _initDatabase() async {
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'currency_changer.db');
-    
-    return await openDatabase(
-      path,
-      version: _dbVersion,
-      onCreate: _createDb,
-    );
-  }
+  // Internal constructor for singleton
+  DatabaseHelper._internal();
 
-  // Create database tables
-  Future<void> _createDb(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE $tableCurrencies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT NOT NULL UNIQUE,
-        quantity REAL NOT NULL DEFAULT 0,
-        updated_at TEXT NOT NULL,
-        default_buy_rate REAL NOT NULL DEFAULT 0,
-        default_sell_rate REAL NOT NULL DEFAULT 0
-      )
-    ''');
+  // Collections
+  static const String collectionCurrencies = 'currencies';
+  static const String collectionHistory = 'history';
+  static const String collectionUsers = 'users';
 
-    await db.execute('''
-      CREATE TABLE $tableHistory (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        currency_code TEXT NOT NULL,
-        operation_type TEXT NOT NULL,
-        rate REAL NOT NULL,
-        quantity REAL NOT NULL,
-        total REAL NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableUsers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    // Initialize SOM currency
-    await db.insert(tableCurrencies, {
-      'code': 'SOM',
-      'quantity': 0.0,
-      'updated_at': DateTime.now().toIso8601String(),
-      'default_buy_rate': 1.0,
-      'default_sell_rate': 1.0,
-    });
-
-    // Create admin user
-    await db.insert(tableUsers, {
-      'username': 'a',
-      'password': 'a',
-      'role': 'admin',
-      'created_at': DateTime.now().toIso8601String(),
-    });
-  }
-
-  // Helper method to check if database exists
-  Future<bool> _databaseExists() async {
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'currency_changer.db');
-    return await File(path).exists();
-  }
-
-  // Helper function to safely convert values to double
-  double _safeDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) {
-      return double.tryParse(value) ?? 0.0;
+  Future<void> initialize() async {
+    if (!_isInitialized) {
+      await Firebase.initializeApp();
+      _isInitialized = true;
     }
-    return 0.0;
   }
 
-  // Check database availability - always returns true since this is local SQLite
+  Future<void> initDatabase() async {
+    try {
+      debugPrint("Starting database initialization...");
+
+      // Initialize Firebase if not already initialized
+      if (!_isInitialized) {
+        await initialize();
+        debugPrint("Firebase initialized successfully");
+      }
+
+      // Ensure admin user exists
+      final adminExists = await ensureAdminUserExists();
+      debugPrint(
+        "Admin user verification complete: ${adminExists ? 'exists' : 'failed to create'}",
+      );
+
+      // Initialize default data (SOM currency)
+      await _initializeDefaultData();
+      debugPrint("Default data initialization complete");
+
+      debugPrint("Database initialization completed successfully");
+    } catch (e) {
+      debugPrint("Error during database initialization: $e");
+      if (e is FirebaseException) {
+        debugPrint("Firebase error code: ${e.code}");
+        debugPrint("Firebase error message: ${e.message}");
+      }
+      // Don't rethrow - we want to handle errors gracefully
+    }
+  }
+
+  // Create collections and documents in Firestore
+  Future<void> initializeFirestoreData() async {
+    try {
+      debugPrint("Initializing Firestore data...");
+
+      // Add default SOM currency
+      await _firestore.collection(collectionCurrencies).doc('SOM').set({
+        'code': 'SOM',
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+        'default_buy_rate': 1.0,
+        'default_sell_rate': 1.0,
+      });
+      debugPrint("SOM currency initialized");
+
+      // Create admin user with document ID 'a'
+      await _firestore.collection(collectionUsers).doc('a').set({
+        'username': 'a',
+        'password': 'a',
+        'role': 'admin',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint("Admin user initialized");
+
+      debugPrint("Firestore collections and documents initialized.");
+    } catch (e) {
+      debugPrint("Error initializing Firestore data: $e");
+    }
+  }
+
+  // Helper method to check if Firestore collection exists (you can modify this for specific collection/document)
+  Future<bool> doesDocumentExist(String collection, String docId) async {
+    try {
+      final docSnapshot =
+          await _firestore.collection(collection).doc(docId).get();
+      return docSnapshot.exists;
+    } catch (e) {
+      debugPrint("Error checking document existence: $e");
+      return false;
+    }
+  }
+
+  // Check database availability - always returns true since Firestore is cloud-based
   Future<bool> verifyDatabaseAvailability() async {
-    return true;
+    return true; // Firestore is always available when Firebase is initialized
   }
 
   // ========================
@@ -127,29 +117,22 @@ class DatabaseHelper {
 
   Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
     try {
-      final db = await database;
-      
-      // Check if currency exists
-      final List<Map<String, dynamic>> result = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: [currency.code],
-      );
-      
-      if (result.isNotEmpty) {
+      // Reference to the currency document by its code
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currency.code);
+
+      // Check if the document exists by fetching it
+      DocumentSnapshot snapshot = await currencyRef.get();
+
+      if (snapshot.exists) {
         // Update existing currency
-        await db.update(
-          tableCurrencies,
-          currency.toMap(),
-          where: 'code = ?',
-          whereArgs: [currency.code],
-        );
+        await currencyRef.update(currency.toMap());
       } else {
         // Insert new currency
-        final id = await db.insert(tableCurrencies, currency.toMap());
-        currency = currency.copyWith(id: id);
+        await currencyRef.set(currency.toMap());
       }
-      
+
       return currency;
     } catch (e) {
       debugPrint('Error in createOrUpdateCurrency: $e');
@@ -157,96 +140,123 @@ class DatabaseHelper {
     }
   }
 
-  /// Get currency by code
+  // Get currency by code (this method is now inside the DatabaseHelper class)
   Future<CurrencyModel?> getCurrency(String code) async {
     try {
-      final db = await database;
-      final List<Map<String, dynamic>> result = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: [code],
-      );
-      
-      if (result.isNotEmpty) {
-        return CurrencyModel.fromMap(result.first);
+      final doc =
+          await _firestore.collection(collectionCurrencies).doc(code).get();
+      if (doc.exists && doc.data() != null) {
+        return CurrencyModel.fromFirestore(doc.data()!, doc.id);
       }
       return null;
     } catch (e) {
-      debugPrint('Error in getCurrency: $e');
-      rethrow;
+      debugPrint('Error getting currency: $e');
+      return null;
     }
   }
 
-  /// Insert new currency
-  Future<int> insertCurrency(CurrencyModel currency) async {
+  Future<void> insertCurrency(CurrencyModel currency) async {
     try {
-      final db = await database;
-      return await db.insert(tableCurrencies, currency.toMap());
+      // Reference to the currency document by its code
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currency.code);
+
+      // Insert new currency (set data in Firestore)
+      await currencyRef.set(currency.toMap());
     } catch (e) {
       debugPrint('Error in insertCurrency: $e');
       rethrow;
     }
   }
 
-  /// Delete currency by ID
-  Future<int> deleteCurrency(int id) async {
+  // Delete currency by code
+  Future<void> deleteCurrency(String code) async {
     try {
-      final db = await database;
-      return await db.delete(
-        tableCurrencies,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      // Reference to the currency document by its code
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(code);
+
+      // Delete the currency document
+      await currencyRef.delete();
     } catch (e) {
       debugPrint('Error in deleteCurrency: $e');
-      return 0; // Return 0 to indicate failure
+      rethrow;
     }
   }
 
-  /// Get all currencies
   Future<List<CurrencyModel>> getAllCurrencies() async {
     try {
-      final db = await database;
-      final List<Map<String, dynamic>> result = await db.query(tableCurrencies);
-      
-      return result.map((item) => CurrencyModel.fromMap(item)).toList();
+      // Get all currencies from Firestore
+      final snapshot = await _firestore.collection(collectionCurrencies).get();
+
+      // Convert Firestore documents to CurrencyModel objects
+      final currencies =
+          snapshot.docs
+              .map((doc) => CurrencyModel.fromFirestore(doc.data(), doc.id))
+              .toList();
+
+      return currencies;
     } catch (e) {
-      debugPrint('Error in getAllCurrencies: $e');
+      debugPrint('Error getting all currencies: $e');
       return [];
     }
   }
 
-  /// Update currency
+  // Update currency
   Future<void> updateCurrency(CurrencyModel currency) async {
     try {
-      final db = await database;
-      await db.update(
-        tableCurrencies,
-        currency.toMap(),
-        where: 'id = ?',
-        whereArgs: [currency.id],
-      );
+      // Reference to the currency document by its code
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currency.code);
+
+      // Update the currency document with the new data
+      await currencyRef.update(currency.toMap());
     } catch (e) {
       debugPrint('Error in updateCurrency: $e');
       rethrow;
     }
   }
 
-  /// Update currency quantity
-  Future<void> updateCurrencyQuantity(String code, double newQuantity) async {
+  Future<void> updateCurrencyQuantity(
+    String currencyCode,
+    double newQuantity,
+  ) async {
     try {
-      final db = await database;
-      await db.update(
-        tableCurrencies,
-        {
-          'quantity': newQuantity,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'code = ?',
-        whereArgs: [code],
-      );
+      final currencyRef = _firestore.collection('currencies').doc(currencyCode);
+
+      // Use transaction to ensure atomic updates
+      await _firestore.runTransaction((transaction) async {
+        final currencyDoc = await transaction.get(currencyRef);
+
+        if (!currencyDoc.exists) {
+          throw Exception('Currency $currencyCode not found');
+        }
+
+        // Special handling for SOM currency
+        if (currencyCode == 'SOM') {
+          // Verify the change is valid (prevent negative balance)
+          if (newQuantity < 0) {
+            throw Exception('Cannot set SOM quantity below 0');
+          }
+
+          // Update SOM quantity atomically
+          transaction.update(currencyRef, {
+            'quantity': newQuantity,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // For other currencies, update normally
+          transaction.update(currencyRef, {
+            'quantity': newQuantity,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          });
+        }
+      });
     } catch (e) {
-      debugPrint('Error in updateCurrencyQuantity: $e');
+      debugPrint('Error updating currency quantity: $e');
       rethrow;
     }
   }
@@ -256,63 +266,63 @@ class DatabaseHelper {
   // =====================
 
   /// Reset all data
+  // Reset all data in Firestore
   Future<void> resetAllData() async {
     try {
-      final db = await database;
-      
-      // Only clear history table
-      await db.delete(tableHistory);
-      
-      // Reset all currency quantities to 0, but keep the currencies
-      final currencies = await getAllCurrencies();
-      for (var currency in currencies) {
-        await updateCurrencyQuantity(currency.code!, 0.0);
+      // Clear history collection
+      await _firestore.collection(collectionHistory).get().then((
+        snapshot,
+      ) async {
+        for (var doc in snapshot.docs) {
+          await doc.reference.delete();
+        }
+      });
+
+      // Reset ALL currencies to 0, including SOM
+      final currenciesSnapshot =
+          await _firestore.collection(collectionCurrencies).get();
+      for (var doc in currenciesSnapshot.docs) {
+        await doc.reference.update({
+          'quantity': 0.0,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
       }
-      
-      debugPrint('Transaction history reset. Currency quantities reset to 0. Users preserved.');
+
+      debugPrint(
+        'Transaction history reset. All currency quantities reset to 0. Users preserved.',
+      );
     } catch (e) {
       debugPrint('Error in resetAllData: $e');
       rethrow;
     }
   }
 
-  /// Get summary of all currency balances
+  // Get summary of all currency balances
   Future<Map<String, dynamic>> getCurrencySummary() async {
     try {
-      final db = await database;
-      
       // Get SOM balance
-      final somResult = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
-      
+      final somDoc =
+          await _firestore.collection(collectionCurrencies).doc('SOM').get();
       double somBalance = 0.0;
-      if (somResult.isNotEmpty) {
-        somBalance = _safeDouble(somResult.first['quantity']);
+      if (somDoc.exists) {
+        somBalance = somDoc.data()?['quantity'] ?? 0.0;
       }
-      
+
       // Get other currencies
-      final currenciesResult = await db.query(
-        tableCurrencies,
-        where: 'code != ?',
-        whereArgs: ['SOM'],
-      );
-      
       final otherCurrencies = <String, dynamic>{};
-      for (var currency in currenciesResult) {
-        otherCurrencies[currency['code'] as String] = {
-          'quantity': _safeDouble(currency['quantity']),
-          'default_buy_rate': _safeDouble(currency['default_buy_rate']),
-          'default_sell_rate': _safeDouble(currency['default_sell_rate']),
-        };
+      final currenciesSnapshot =
+          await _firestore.collection(collectionCurrencies).get();
+      for (var doc in currenciesSnapshot.docs) {
+        if (doc.id != 'SOM') {
+          otherCurrencies[doc.id] = {
+            'quantity': doc.data()?['quantity'] ?? 0.0,
+            'default_buy_rate': doc.data()?['default_buy_rate'] ?? 0.0,
+            'default_sell_rate': doc.data()?['default_sell_rate'] ?? 0.0,
+          };
+        }
       }
-      
-      return {
-        'som_balance': somBalance,
-        'other_currencies': otherCurrencies,
-      };
+
+      return {'som_balance': somBalance, 'other_currencies': otherCurrencies};
     } catch (e) {
       debugPrint('Error in getCurrencySummary: $e');
       return {'som_balance': 0, 'other_currencies': {}};
@@ -324,39 +334,34 @@ class DatabaseHelper {
   // =====================
 
   /// Add amount to SOM balance
+  // Add to SOM balance in Firestore
   Future<void> addToSomBalance(double amount) async {
     try {
-      final db = await database;
-      
-      // Get current SOM currency
-      final somResult = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
-      
-      if (somResult.isEmpty) {
+      // Reference to the SOM currency document
+      DocumentReference somRef = _firestore
+          .collection(collectionCurrencies)
+          .doc('SOM');
+
+      // Get current SOM currency document
+      DocumentSnapshot somSnapshot = await somRef.get();
+
+      if (!somSnapshot.exists) {
         throw Exception('SOM currency not found');
       }
-      
-      final som = CurrencyModel.fromMap(somResult.first);
+
+      final somData = somSnapshot.data() as Map<String, dynamic>;
 
       // Calculate new balance
-      final newBalance = som.quantity + amount;
+      final newBalance = somData['quantity'] + amount;
 
       // Update SOM balance
-      await db.update(
-        tableCurrencies,
-        {
-          'quantity': newBalance,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
+      await somRef.update({
+        'quantity': newBalance,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
 
       // Record deposit in history
-      await db.insert(tableHistory, {
+      await _firestore.collection(collectionHistory).add({
         'currency_code': 'SOM',
         'operation_type': 'Deposit',
         'rate': 1.0,
@@ -370,23 +375,25 @@ class DatabaseHelper {
     }
   }
 
-  /// Check if enough SOM available for purchase
+  // Check if there is enough SOM for a purchase in Firestore
   Future<bool> hasEnoughSomForPurchase(double requiredSom) async {
     try {
-      final db = await database;
-      
-      final somResult = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: ['SOM'],
-      );
-      
-      if (somResult.isNotEmpty) {
-        final som = CurrencyModel.fromMap(somResult.first);
-        return som.quantity >= requiredSom;
+      // Reference to the SOM currency document
+      DocumentReference somRef = _firestore
+          .collection(collectionCurrencies)
+          .doc('SOM');
+
+      // Get current SOM currency document
+      DocumentSnapshot somSnapshot = await somRef.get();
+
+      if (!somSnapshot.exists) {
+        return false; // SOM currency not found
       }
-      
-      return false;
+
+      final somData = somSnapshot.data() as Map<String, dynamic>;
+
+      // Check if the quantity is sufficient
+      return somData['quantity'] >= requiredSom;
     } catch (e) {
       debugPrint('Error in hasEnoughSomForPurchase: $e');
       return false;
@@ -394,6 +401,7 @@ class DatabaseHelper {
   }
 
   /// Check if enough currency available to sell
+  // Check if there is enough currency to sell (other than SOM)
   Future<bool> hasEnoughCurrencyToSell(
     String currencyCode,
     double quantity,
@@ -401,20 +409,22 @@ class DatabaseHelper {
     try {
       if (currencyCode == 'SOM') return false;
 
-      final db = await database;
-      
-      final currencyResult = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: [currencyCode],
-      );
-      
-      if (currencyResult.isNotEmpty) {
-        final currency = CurrencyModel.fromMap(currencyResult.first);
-        return currency.quantity >= quantity;
+      // Reference to the currency document
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currencyCode);
+
+      // Get current currency document
+      DocumentSnapshot currencySnapshot = await currencyRef.get();
+
+      if (!currencySnapshot.exists) {
+        return false; // Currency not found
       }
-      
-      return false;
+
+      final currencyData = currencySnapshot.data() as Map<String, dynamic>;
+
+      // Check if the quantity is sufficient
+      return currencyData['quantity'] >= quantity;
     } catch (e) {
       debugPrint('Error in hasEnoughCurrencyToSell: $e');
       return false;
@@ -432,60 +442,54 @@ class DatabaseHelper {
     required double quantity,
   }) async {
     try {
-      final db = await database;
-      final totalSom = quantity * rate;
+      // Reference to the SOM and foreign currency documents
+      DocumentReference somRef = _firestore
+          .collection(collectionCurrencies)
+          .doc('SOM');
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currencyCode);
 
-      // Run in transaction to ensure data integrity
-      await db.transaction((txn) async {
+      // Start a Firestore transaction
+      await _firestore.runTransaction((transaction) async {
+        // Get current SOM document
+        DocumentSnapshot somSnapshot = await transaction.get(somRef);
+        if (!somSnapshot.exists) {
+          throw Exception('SOM currency not found');
+        }
+        final somData = somSnapshot.data() as Map<String, dynamic>;
+
+        // Calculate the total SOM required
+        final totalSom = quantity * rate;
+
         if (operationType == 'Buy') {
-          // Check if we have enough SOM
-          final somResult = await txn.query(
-            tableCurrencies,
-            where: 'code = ?',
-            whereArgs: ['SOM'],
-          );
-          
-          if (somResult.isEmpty) {
-            throw Exception('SOM currency not found');
-          }
-          
-          final som = CurrencyModel.fromMap(somResult.first);
-          if (som.quantity < totalSom) {
+          // Check if we have enough SOM for the purchase
+          if (somData['quantity'] < totalSom) {
             throw Exception('Insufficient SOM balance for purchase');
           }
-          
+
           // Update SOM quantity (decrease)
-          await txn.update(
-            tableCurrencies,
-            {
-              'quantity': som.quantity - totalSom,
+          transaction.update(somRef, {
+            'quantity': somData['quantity'] - totalSom,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+
+          // Get current foreign currency document
+          DocumentSnapshot currencySnapshot = await transaction.get(
+            currencyRef,
+          );
+          if (currencySnapshot.exists) {
+            final currencyData =
+                currencySnapshot.data() as Map<String, dynamic>;
+
+            // Update foreign currency quantity (increase)
+            transaction.update(currencyRef, {
+              'quantity': currencyData['quantity'] + quantity,
               'updated_at': DateTime.now().toIso8601String(),
-            },
-            where: 'code = ?',
-            whereArgs: ['SOM'],
-          );
-          
-          // Update foreign currency quantity (increase)
-          final currencyResult = await txn.query(
-            tableCurrencies,
-            where: 'code = ?',
-            whereArgs: [currencyCode],
-          );
-          
-          if (currencyResult.isNotEmpty) {
-            final currency = CurrencyModel.fromMap(currencyResult.first);
-            await txn.update(
-              tableCurrencies,
-              {
-                'quantity': currency.quantity + quantity,
-                'updated_at': DateTime.now().toIso8601String(),
-              },
-              where: 'code = ?',
-              whereArgs: [currencyCode],
-            );
+            });
           } else {
-            // Currency doesn't exist, create it
-            await txn.insert(tableCurrencies, {
+            // Create new foreign currency if not found
+            transaction.set(currencyRef, {
               'code': currencyCode,
               'quantity': quantity,
               'updated_at': DateTime.now().toIso8601String(),
@@ -494,58 +498,34 @@ class DatabaseHelper {
             });
           }
         } else if (operationType == 'Sell') {
-          // Check if we have enough of the foreign currency
-          final currencyResult = await txn.query(
-            tableCurrencies,
-            where: 'code = ?',
-            whereArgs: [currencyCode],
+          // Get current foreign currency document
+          DocumentSnapshot currencySnapshot = await transaction.get(
+            currencyRef,
           );
-          
-          if (currencyResult.isEmpty) {
+          if (!currencySnapshot.exists) {
             throw Exception('Currency not found: $currencyCode');
           }
-          
-          final currency = CurrencyModel.fromMap(currencyResult.first);
-          if (currency.quantity < quantity) {
+
+          final currencyData = currencySnapshot.data() as Map<String, dynamic>;
+          if (currencyData['quantity'] < quantity) {
             throw Exception('Insufficient $currencyCode balance for sale');
           }
-          
+
           // Update foreign currency quantity (decrease)
-          await txn.update(
-            tableCurrencies,
-            {
-              'quantity': currency.quantity - quantity,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            where: 'code = ?',
-            whereArgs: [currencyCode],
-          );
-          
+          transaction.update(currencyRef, {
+            'quantity': currencyData['quantity'] - quantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+
           // Update SOM quantity (increase)
-          final somResult = await txn.query(
-            tableCurrencies,
-            where: 'code = ?',
-            whereArgs: ['SOM'],
-          );
-          
-          if (somResult.isNotEmpty) {
-            final som = CurrencyModel.fromMap(somResult.first);
-            await txn.update(
-              tableCurrencies,
-              {
-                'quantity': som.quantity + totalSom,
-                'updated_at': DateTime.now().toIso8601String(),
-              },
-              where: 'code = ?',
-              whereArgs: ['SOM'],
-            );
-          } else {
-            throw Exception('SOM currency not found');
-          }
+          transaction.update(somRef, {
+            'quantity': somData['quantity'] + totalSom,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
         }
-        
-        // Record transaction in history
-        await txn.insert(tableHistory, {
+
+        // Record the transaction in history
+        await transaction.set(_firestore.collection(collectionHistory).doc(), {
           'currency_code': currencyCode,
           'operation_type': operationType,
           'rate': rate,
@@ -564,54 +544,105 @@ class DatabaseHelper {
   // HISTORY OPERATIONS
   // =====================
 
-  /// Get filtered history by date range
+  /// Get filtered history by date range, currency code, and operation type
   Future<List<HistoryModel>> getFilteredHistoryByDate({
-    required DateTime fromDate,
-    required DateTime toDate,
+    DateTime? startDate,
+    DateTime? endDate,
     String? currencyCode,
     String? operationType,
   }) async {
     try {
-      final db = await database;
-      
-      final fromDateStr = fromDate.toIso8601String();
-      final toDateStr = toDate.toIso8601String();
-      
-      String whereClause = 'created_at BETWEEN ? AND ?';
-      List<dynamic> whereArgs = [fromDateStr, toDateStr];
-
-      if (currencyCode != null && currencyCode.isNotEmpty) {
-        whereClause += ' AND currency_code = ?';
-        whereArgs.add(currencyCode);
-      }
-
-      if (operationType != null && operationType.isNotEmpty) {
-        whereClause += ' AND operation_type = ?';
-        whereArgs.add(operationType);
-      }
-      
-      final List<Map<String, dynamic>> result = await db.query(
-        tableHistory,
-        where: whereClause,
-        whereArgs: whereArgs,
-        orderBy: 'created_at DESC',
+      debugPrint('Getting filtered history...');
+      debugPrint(
+        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}',
       );
-      
-      return result.map((item) => HistoryModel.fromMap(item)).toList();
+
+      // Start with a query on the history collection
+      Query query = _firestore.collection(collectionHistory);
+
+      // If current user is not admin, filter by username first
+      if (currentUser != null && currentUser!.role != 'admin') {
+        debugPrint('Filtering by username: ${currentUser!.username}');
+        query = query.where('username', isEqualTo: currentUser!.username);
+      }
+
+      // Add date range filters if provided
+      if (startDate != null) {
+        query = query.where(
+          'created_at',
+          isGreaterThanOrEqualTo: startDate.toIso8601String(),
+        );
+      }
+
+      if (endDate != null) {
+        query = query.where(
+          'created_at',
+          isLessThanOrEqualTo: endDate.toIso8601String(),
+        );
+      }
+
+      // Add currency code filter if provided
+      if (currencyCode != null && currencyCode.isNotEmpty) {
+        query = query.where('currency_code', isEqualTo: currencyCode);
+      }
+
+      // Add operation type filter if provided
+      if (operationType != null && operationType.isNotEmpty) {
+        query = query.where('operation_type', isEqualTo: operationType);
+      }
+
+      // Order by created_at in descending order
+      query = query.orderBy('created_at', descending: true);
+
+      // Execute the query
+      final querySnapshot = await query.get();
+      debugPrint('Found ${querySnapshot.docs.length} history documents');
+
+      // Convert Firestore documents to HistoryModel objects
+      final historyEntries =
+          querySnapshot.docs
+              .map(
+                (doc) => HistoryModel.fromFirestore(
+                  doc.data() as Map<String, dynamic>,
+                  doc.id,
+                ),
+              )
+              .toList();
+
+      // Debug output to verify the entries
+      for (var entry in historyEntries) {
+        debugPrint(
+          'History entry: ${entry.currencyCode}, ${entry.operationType}, ${entry.username}',
+        );
+      }
+
+      return historyEntries;
     } catch (e) {
       debugPrint('Error in getFilteredHistoryByDate: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
 
-  /// Create new history entry
+  /// Create a new history entry
   Future<HistoryModel> createHistoryEntry(HistoryModel historyEntry) async {
     try {
-      final db = await database;
-      
-      final id = await db.insert(tableHistory, historyEntry.toMap());
-      
-      return historyEntry.copyWith(id: id);
+      // Add username to history entry if not already set
+      final entryWithUsername =
+          historyEntry.username.isEmpty && currentUser != null
+              ? historyEntry.copyWith(username: currentUser!.username)
+              : historyEntry;
+
+      // Add the history entry to Firestore
+      final docRef = await _firestore
+          .collection(collectionHistory)
+          .add(entryWithUsername.toMap());
+
+      // Return the history entry with the new document ID
+      return entryWithUsername.copyWith(id: docRef.id);
     } catch (e) {
       debugPrint('Error in createHistoryEntry: $e');
       rethrow;
@@ -620,52 +651,100 @@ class DatabaseHelper {
 
   /// Get history entries with optional filters
   Future<List<HistoryModel>> getHistoryEntries({
-    int? limit,
     String? currencyCode,
+    String? operationType,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? limit,
   }) async {
     try {
-      final db = await database;
-
-      String? whereClause;
-      List<dynamic>? whereArgs;
-
-      if (currencyCode != null && currencyCode.isNotEmpty) {
-        whereClause = 'currency_code = ?';
-        whereArgs = [currencyCode];
-      }
-      
-      final List<Map<String, dynamic>> result = await db.query(
-        tableHistory,
-        where: whereClause,
-        whereArgs: whereArgs,
-        orderBy: 'created_at DESC',
-        limit: limit,
+      debugPrint('Getting history entries...');
+      debugPrint(
+        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}',
       );
-      
-      return result.map((item) => HistoryModel.fromMap(item)).toList();
+
+      // Start with a query on the history collection
+      Query query = _firestore.collection(collectionHistory);
+
+      // If current user is not admin, filter by username
+      if (currentUser != null && currentUser!.role != 'admin') {
+        query = query.where(
+          'username',
+          isEqualTo: currentUser!.username.toLowerCase(),
+        );
+      }
+
+      // Apply currency code filter if provided
+      if (currencyCode != null && currencyCode.isNotEmpty) {
+        query = query.where('currency_code', isEqualTo: currencyCode);
+      }
+
+      // Apply operation type filter if provided
+      if (operationType != null && operationType.isNotEmpty) {
+        query = query.where('operation_type', isEqualTo: operationType);
+      }
+
+      // Apply date range filters if provided
+      if (startDate != null) {
+        query = query.where(
+          'created_at',
+          isGreaterThanOrEqualTo: startDate.toIso8601String(),
+        );
+      }
+      if (endDate != null) {
+        query = query.where(
+          'created_at',
+          isLessThanOrEqualTo: endDate.toIso8601String(),
+        );
+      }
+
+      // Order by creation date (newest first)
+      query = query.orderBy('created_at', descending: true);
+
+      // Apply limit if provided
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+
+      // Get all history documents
+      final querySnapshot = await query.get();
+      debugPrint('Found ${querySnapshot.docs.length} history documents');
+
+      // Convert to HistoryModel objects
+      final List<HistoryModel> historyEntries = [];
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          historyEntries.add(HistoryModel.fromFirestore(data, doc.id));
+        }
+      }
+
+      return historyEntries;
     } catch (e) {
       debugPrint('Error in getHistoryEntries: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
 
   /// Update history
-  Future<int> updateHistory({
+  Future<bool> updateHistory({
     required HistoryModel newHistory,
     required HistoryModel oldHistory,
   }) async {
     try {
-      final db = await database;
-      
       // Debug output to track the update process
       debugPrint('Updating history entry:');
       debugPrint('Old entry: ${oldHistory.toString()}');
       debugPrint('New entry: ${newHistory.toString()}');
-      
+
       // Convert to maps for detailed comparison
       final oldMap = oldHistory.toMap();
       final newMap = newHistory.toMap();
-      
+
       // Print what changed
       final changes = <String>[];
       newMap.forEach((key, value) {
@@ -673,58 +752,80 @@ class DatabaseHelper {
           changes.add('$key: ${oldMap[key]} -> $value');
         }
       });
-      
+
       debugPrint('Changes: ${changes.join(', ')}');
       debugPrint('Using ID for update: ${newHistory.id}');
-      
-      // Perform the update
-      final result = await db.update(
-        tableHistory,
-        newHistory.toMap(),
-        where: 'id = ?',
-        whereArgs: [newHistory.id],
-      );
-      
+
+      // Update the document in Firestore
+      await _firestore
+          .collection(collectionHistory)
+          .doc(newHistory.id)
+          .update(newMap);
+
       // Debug the result
-      debugPrint('Update result (rows affected): $result');
-      
-      return result;
+      debugPrint('Update successful');
+
+      return true;
     } catch (e) {
       debugPrint('Error in updateHistory: $e');
-      return 0; // Return 0 to indicate failure
+      return false; // Return false to indicate failure
     }
   }
 
   /// Delete history
-  Future<int> deleteHistory(dynamic history) async {
+  Future<bool> deleteHistory(dynamic history) async {
     try {
-      final db = await database;
-      
-      final id = history is HistoryModel ? history.id : history as int;
+      final id = history is HistoryModel ? history.id : history as String;
 
-      return await db.delete(
-        tableHistory,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      // Delete the document from Firestore
+      await _firestore.collection(collectionHistory).doc(id).delete();
+
+      return true;
     } catch (e) {
       debugPrint('Error in deleteHistory: $e');
-      return 0; // Return 0 to indicate failure
+      return false; // Return false to indicate failure
     }
   }
 
   /// Get list of unique currency codes from history
   Future<List<String>> getHistoryCurrencyCodes() async {
     try {
-      final db = await database;
-      
-      final List<Map<String, dynamic>> result = await db.rawQuery(
-        'SELECT DISTINCT currency_code FROM $tableHistory ORDER BY currency_code'
+      debugPrint('Getting history currency codes...');
+      debugPrint(
+        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}',
       );
-      
-      return result.map((item) => item['currency_code'] as String).toList();
+
+      // Start with a query on the history collection
+      Query query = _firestore.collection(collectionHistory);
+
+      // If current user is not admin, filter by username
+      if (currentUser != null && currentUser!.role != 'admin') {
+        query = query.where('username', isEqualTo: currentUser!.username);
+      }
+
+      // Get all history documents
+      final querySnapshot = await query.get();
+      debugPrint('Found ${querySnapshot.docs.length} history documents');
+
+      // Extract unique currency codes
+      final Set<String> currencyCodes = {};
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('currency_code')) {
+          currencyCodes.add(data['currency_code'] as String);
+        }
+      }
+
+      // Convert to list and sort
+      final result = currencyCodes.toList()..sort();
+      debugPrint('Final currency codes: $result');
+      return result;
     } catch (e) {
       debugPrint('Error in getHistoryCurrencyCodes: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
@@ -732,28 +833,82 @@ class DatabaseHelper {
   /// Get list of unique operation types from history
   Future<List<String>> getHistoryOperationTypes() async {
     try {
-      final db = await database;
-      
-      final List<Map<String, dynamic>> result = await db.rawQuery(
-        'SELECT DISTINCT operation_type FROM $tableHistory ORDER BY operation_type'
+      debugPrint('Getting history operation types...');
+      debugPrint(
+        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}',
       );
-      
-      return result.map((item) => item['operation_type'] as String).toList();
+
+      // Start with a query on the history collection
+      Query query = _firestore.collection(collectionHistory);
+
+      // If current user is not admin, filter by username
+      if (currentUser != null && currentUser!.role != 'admin') {
+        query = query.where('username', isEqualTo: currentUser!.username);
+      }
+
+      // Get all history documents
+      final querySnapshot = await query.get();
+      debugPrint('Found ${querySnapshot.docs.length} history documents');
+
+      // Extract unique operation types
+      final Set<String> operationTypes = {};
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        debugPrint('History document data: $data');
+
+        if (data != null && data.containsKey('operation_type')) {
+          operationTypes.add(data['operation_type'] as String);
+          debugPrint('Added operation type: ${data['operation_type']}');
+        }
+      }
+
+      // Convert to list and sort
+      final result = operationTypes.toList()..sort();
+      debugPrint('Final operation types: $result');
+      return result;
     } catch (e) {
       debugPrint('Error in getHistoryOperationTypes: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
 
-  /// Insert history
-  Future<int> insertHistory(HistoryModel history) async {
+  /// Insert a new history entry
+  Future<String> insertHistory({
+    required String currencyCode,
+    required String operationType,
+    required double rate,
+    required double quantity,
+    required double total,
+  }) async {
     try {
-      final db = await database;
-      
-      return await db.insert(tableHistory, history.toMap());
+      if (currentUser == null) {
+        throw Exception('No user logged in');
+      }
+
+      // Create a new history entry
+      final history = HistoryModel(
+        id: '', // Firestore will generate this
+        currencyCode: currencyCode,
+        operationType: operationType,
+        rate: rate,
+        quantity: quantity,
+        total: total,
+        createdAt: DateTime.now(),
+        username: currentUser!.username,
+      );
+
+      // Add to Firestore using toMap method
+      final docRef = await _firestore
+          .collection(collectionHistory)
+          .add(history.toMap());
+      return docRef.id;
     } catch (e) {
       debugPrint('Error in insertHistory: $e');
-      return 0;
+      return '';
     }
   }
 
@@ -767,12 +922,10 @@ class DatabaseHelper {
     DateTime? endDate,
   }) async {
     try {
-      final db = await database;
-      
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-      
+
       // Get profitable currencies data
       final profitData = await getMostProfitableCurrencies(
         startDate: fromDate,
@@ -791,7 +944,8 @@ class DatabaseHelper {
         // Find matching profit data
         final profitEntry = profitData.firstWhere(
           (p) => p['currency_code'] == currency.code,
-          orElse: () => <String, dynamic>{
+          orElse:
+              () => <String, dynamic>{
                 'amount': 0.0,
                 'avg_purchase_rate': 0.0,
                 'avg_sale_rate': 0.0,
@@ -811,11 +965,13 @@ class DatabaseHelper {
           'currency': currency.code,
           'avg_purchase_rate': _safeDouble(profitEntry['avg_purchase_rate']),
           'total_purchased': _safeDouble(profitEntry['total_purchased']),
-          'total_purchase_amount': _safeDouble(profitEntry['avg_purchase_rate']) *
+          'total_purchase_amount':
+              _safeDouble(profitEntry['avg_purchase_rate']) *
               _safeDouble(profitEntry['total_purchased']),
           'avg_sale_rate': _safeDouble(profitEntry['avg_sale_rate']),
           'total_sold': _safeDouble(profitEntry['total_sold']),
-          'total_sale_amount': _safeDouble(profitEntry['avg_sale_rate']) *
+          'total_sale_amount':
+              _safeDouble(profitEntry['avg_sale_rate']) *
               _safeDouble(profitEntry['total_sold']),
           'current_quantity': currency.quantity,
           'profit': profit,
@@ -836,64 +992,96 @@ class DatabaseHelper {
     DateTime? endDate,
   }) async {
     try {
-      final db = await database;
-      
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-      
+
       final fromDateStr = fromDate.toIso8601String();
       final toDateStr = toDate.toIso8601String();
-      
-      // Get purchase data
-      final purchaseQuery = '''
-        SELECT 
-          currency_code, 
-          SUM(total) as total_value,
-          COUNT(*) as count
-        FROM $tableHistory
-        WHERE operation_type = 'Purchase'
-        AND created_at BETWEEN ? AND ?
-        GROUP BY currency_code
-        ORDER BY total_value DESC
-      ''';
-      
-      final purchaseResult = await db.rawQuery(
-        purchaseQuery,
-        [fromDateStr, toDateStr],
-      );
-      
-      // Get sales data
-      final salesQuery = '''
-        SELECT 
-          currency_code, 
-          SUM(total) as total_value,
-          COUNT(*) as count
-        FROM $tableHistory
-        WHERE operation_type = 'Sale'
-        AND created_at BETWEEN ? AND ?
-        GROUP BY currency_code
-        ORDER BY total_value DESC
-      ''';
-      
-      final salesResult = await db.rawQuery(
-        salesQuery,
-        [fromDateStr, toDateStr],
-      );
-      
-      // Format the data
-      final purchases = purchaseResult.map((item) => {
-        'currency': item['currency_code'],
-        'total_value': _safeDouble(item['total_value']),
-        'count': item['count'],
-            }).toList();
-      
-      final sales = salesResult.map((item) => {
-        'currency': item['currency_code'],
-        'total_value': _safeDouble(item['total_value']),
-        'count': item['count'],
-            }).toList();
-      
+
+      debugPrint('Fetching data from $fromDateStr to $toDateStr');
+
+      // Get all transactions within the date range
+      final querySnapshot =
+          await _firestore
+              .collection(collectionHistory)
+              .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
+              .where('created_at', isLessThanOrEqualTo: toDateStr)
+              .get();
+
+      debugPrint('Found ${querySnapshot.docs.length} total transactions');
+
+      // Process purchase data
+      final Map<String, Map<String, dynamic>> purchaseData = {};
+      // Process sales data
+      final Map<String, Map<String, dynamic>> salesData = {};
+
+      // Process all transactions
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final operationType = data['operation_type'] as String;
+        final currencyCode = data['currency_code'] as String;
+        final total = _safeDouble(data['total']);
+
+        // Skip if currency code is SOM
+        if (currencyCode == 'SOM') continue;
+
+        // Process based on operation type
+        if (operationType == 'Purchase') {
+          if (!purchaseData.containsKey(currencyCode)) {
+            purchaseData[currencyCode] = {
+              'currency': currencyCode,
+              'total_value': 0.0,
+              'count': 0,
+            };
+          }
+          purchaseData[currencyCode]!['total_value'] =
+              _safeDouble(purchaseData[currencyCode]!['total_value']) + total;
+          purchaseData[currencyCode]!['count'] =
+              _safeDouble(purchaseData[currencyCode]!['count']) + 1;
+        } else if (operationType == 'Sale') {
+          if (!salesData.containsKey(currencyCode)) {
+            salesData[currencyCode] = {
+              'currency': currencyCode,
+              'total_value': 0.0,
+              'count': 0,
+            };
+          }
+          salesData[currencyCode]!['total_value'] =
+              _safeDouble(salesData[currencyCode]!['total_value']) + total;
+          salesData[currencyCode]!['count'] =
+              _safeDouble(salesData[currencyCode]!['count']) + 1;
+        }
+      }
+
+      // Convert to lists and sort by total_value
+      final purchases =
+          purchaseData.values.toList()..sort(
+            (a, b) =>
+                (_safeDouble(b['total_value']) - _safeDouble(a['total_value']))
+                    .toInt(),
+          );
+
+      final sales =
+          salesData.values.toList()..sort(
+            (a, b) =>
+                (_safeDouble(b['total_value']) - _safeDouble(a['total_value']))
+                    .toInt(),
+          );
+
+      debugPrint('Processed ${purchases.length} purchase currencies');
+      debugPrint('Processed ${sales.length} sales currencies');
+
+      if (purchases.isNotEmpty) {
+        debugPrint('Sample purchase data: ${purchases.first}');
+        debugPrint(
+          'All purchase currencies: ${purchases.map((p) => p['currency']).join(', ')}',
+        );
+      }
+      if (sales.isNotEmpty) {
+        debugPrint('Sample sales data: ${sales.first}');
+      }
+
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
@@ -906,42 +1094,46 @@ class DatabaseHelper {
     required DateTime endDate,
   }) async {
     try {
-      final db = await database;
-      
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
 
       debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
-      
-      // First get purchase and sale data by date and currency
-      final query = '''
-        SELECT 
-          substr(created_at, 1, 10) as date,
-          currency_code,
-          operation_type,
-          SUM(total) as total_amount,
-          SUM(quantity) as total_quantity,
-          COUNT(*) as transaction_count
-        FROM $tableHistory
-        WHERE created_at BETWEEN ? AND ?
-        GROUP BY substr(created_at, 1, 10), currency_code, operation_type
-        ORDER BY date
-      ''';
-      
-      final result = await db.rawQuery(query, [fromDateStr, toDateStr]);
-      debugPrint('Raw daily data: ${result.length} records found');
-      
+
+      // Get ALL transactions without complex queries
+      final querySnapshot =
+          await _firestore.collection(collectionHistory).get();
+
+      debugPrint('Total history records: ${querySnapshot.docs.length}');
+
       // Group transactions by date first
       final Map<String, Map<String, dynamic>> dailyData = {};
-      
-      // Process all transactions first
-      for (var item in result) {
-        final date = item['date'] as String;
-        final operationType = item['operation_type'] as String;
-        final currencyCode = item['currency_code'] as String;
-        final amount = _safeDouble(item['total_amount']);
-        final quantity = _safeDouble(item['total_quantity']);
-        
+
+      // Process all transactions and filter by date in code
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final createdAt = data['created_at'] as String;
+
+        // Parse the date string to DateTime for comparison
+        final transactionDate = DateTime.parse(createdAt);
+
+        // Skip if outside the date range
+        if (transactionDate.isBefore(startDate) ||
+            transactionDate.isAfter(endDate)) {
+          continue;
+        }
+
+        final date = createdAt.substring(
+          0,
+          10,
+        ); // Extract date part (YYYY-MM-DD)
+        final operationType = data['operation_type'] as String;
+        final currencyCode = data['currency_code'] as String;
+        final total = _safeDouble(data['total']);
+        final quantity = _safeDouble(data['quantity']);
+
+        // Skip if currency code is SOM
+        if (currencyCode == 'SOM') continue;
+
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -953,101 +1145,135 @@ class DatabaseHelper {
             'currencies': <String, Map<String, dynamic>>{},
           };
         }
-        
+
         // Initialize currency entry for this day
-        if (!(dailyData[date]!['currencies'] as Map).containsKey(currencyCode)) {
+        if (!(dailyData[date]!['currencies'] as Map).containsKey(
+          currencyCode,
+        )) {
           (dailyData[date]!['currencies'] as Map)[currencyCode] = {
+            'currency': currencyCode,
             'purchase_amount': 0.0,
             'purchase_quantity': 0.0,
             'sale_amount': 0.0,
             'sale_quantity': 0.0,
+            'count_purchase': 0,
+            'count_sale': 0,
           };
         }
-        
+
         // Add transaction data
-        final currencyData = (dailyData[date]!['currencies'] as Map)[currencyCode] as Map<String, dynamic>;
-        
+        final currencyData =
+            (dailyData[date]!['currencies'] as Map)[currencyCode]
+                as Map<String, dynamic>;
+
         if (operationType == 'Purchase') {
-          dailyData[date]!['purchases'] = (dailyData[date]!['purchases'] as double) + amount;
-          currencyData['purchase_amount'] = (currencyData['purchase_amount'] as double) + amount;
-          currencyData['purchase_quantity'] = (currencyData['purchase_quantity'] as double) + quantity;
+          dailyData[date]!['purchases'] =
+              (dailyData[date]!['purchases'] as double) + total;
+          currencyData['purchase_amount'] =
+              (currencyData['purchase_amount'] as double) + total;
+          currencyData['purchase_quantity'] =
+              (currencyData['purchase_quantity'] as double) + quantity;
+          currencyData['count_purchase'] =
+              (currencyData['count_purchase'] as int) + 1;
         } else if (operationType == 'Sale') {
-          dailyData[date]!['sales'] = (dailyData[date]!['sales'] as double) + amount;
-          currencyData['sale_amount'] = (currencyData['sale_amount'] as double) + amount;
-          currencyData['sale_quantity'] = (currencyData['sale_quantity'] as double) + quantity;
+          dailyData[date]!['sales'] =
+              (dailyData[date]!['sales'] as double) + total;
+          currencyData['sale_amount'] =
+              (currencyData['sale_amount'] as double) + total;
+          currencyData['sale_quantity'] =
+              (currencyData['sale_quantity'] as double) + quantity;
+          currencyData['count_sale'] = (currencyData['count_sale'] as int) + 1;
         } else if (operationType == 'Deposit') {
-          dailyData[date]!['deposits'] = (dailyData[date]!['deposits'] as double) + amount;
+          dailyData[date]!['deposits'] =
+              (dailyData[date]!['deposits'] as double) + total;
         }
       }
-      
+
       // Now calculate profit based on selling cost only for sold currencies
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         double dailyProfit = 0.0;
-        
+
         debugPrint('Calculating profit for date: $date');
-        
+
         // For each currency, calculate profit on the sold amount
         for (var currencyCode in (dayData['currencies'] as Map).keys) {
-          final currencyData = (dayData['currencies'] as Map)[currencyCode] as Map<String, dynamic>;
+          final currencyData =
+              (dayData['currencies'] as Map)[currencyCode]
+                  as Map<String, dynamic>;
           final saleAmount = currencyData['sale_amount'] as double;
           final saleQuantity = currencyData['sale_quantity'] as double;
-          
-          debugPrint('  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity');
-          
+
+          debugPrint(
+            '  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
+          );
+
           if (saleQuantity > 0) {
-            // Get average purchase rate from the database for this currency up to this date
-            final avgRateQuery = '''
-              SELECT
-                CASE 
-                  WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-                  ELSE 0 
-                END as avg_rate
-              FROM $tableHistory
-              WHERE operation_type = 'Purchase'
-              AND currency_code = ?
-              AND created_at <= ?
-            ''';
-            
-            final avgRateResult = await db.rawQuery(
-              avgRateQuery, 
-              [currencyCode, '$date 23:59:59.999Z']
-            );
-            
-            final avgPurchaseRate = _safeDouble(avgRateResult.first['avg_rate']);
-            
+            // Get average purchase rate for this currency up to this date
+            // Instead of querying Firestore again, we'll use the data we already have
+            double totalQuantity = 0.0;
+            double totalAmount = 0.0;
+
+            // Find all purchase transactions for this currency up to this date
+            for (var doc in querySnapshot.docs) {
+              final data = doc.data();
+              final docDate = data['created_at'] as String;
+
+              // Skip if after the current date
+              if (docDate.compareTo('$date 23:59:59.999Z') > 0) continue;
+
+              final docCurrencyCode = data['currency_code'] as String;
+              final docOperationType = data['operation_type'] as String;
+
+              // Only count purchase transactions for this currency
+              if (docCurrencyCode == currencyCode &&
+                  docOperationType == 'Purchase') {
+                totalQuantity += _safeDouble(data['quantity']);
+                totalAmount += _safeDouble(data['total']);
+              }
+            }
+
+            final avgPurchaseRate =
+                totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
+
             // Calculate cost of sold currency
             final costOfSold = saleQuantity * avgPurchaseRate;
-            
+
             // Calculate profit for this currency on this day
             final currencyProfit = saleAmount - costOfSold;
-            
-            debugPrint('    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit');
-            
+
+            debugPrint(
+              '    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit',
+            );
+
             // Add to daily profit
             dailyProfit += currencyProfit;
           }
         }
-        
+
         // Update daily profit
         dayData['profit'] = dailyProfit;
         debugPrint('  Total daily profit for $date: $dailyProfit');
-        
+
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
-          debugPrint('  WARNING: Profit field was null or missing, setting to 0.0');
+          debugPrint(
+            '  WARNING: Profit field was null or missing, setting to 0.0',
+          );
           dayData['profit'] = 0.0;
         }
       }
-      
+
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
-      formattedResult.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
-      
+      formattedResult.sort(
+        (a, b) => (a['day'] as String).compareTo(b['day'] as String),
+      );
+
       if (formattedResult.isNotEmpty) {
         debugPrint('First day data: ${formattedResult.first}');
       }
-      
+
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
@@ -1061,110 +1287,127 @@ class DatabaseHelper {
     int limit = 5,
   }) async {
     try {
-      final db = await database;
-      
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-      
-      // SQLite doesn't support FULL OUTER JOIN, so we need to do this differently
-      final buysQuery = '''
-        SELECT 
-          currency_code,
-          SUM(quantity) as total_quantity,
-          SUM(total) as total_spent,
-          CASE 
-            WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-            ELSE 0 
-          END as avg_rate
-        FROM $tableHistory
-        WHERE operation_type = 'Purchase'
-        AND created_at BETWEEN ? AND ?
-        GROUP BY currency_code
-      ''';
-      
-      final sellsQuery = '''
-        SELECT 
-          currency_code,
-          SUM(quantity) as total_quantity,
-          SUM(total) as total_earned,
-          CASE 
-            WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-            ELSE 0 
-          END as avg_rate
-        FROM $tableHistory
-        WHERE operation_type = 'Sale'
-        AND created_at BETWEEN ? AND ?
-        GROUP BY currency_code
-      ''';
-      
-      final buysResult = await db.rawQuery(buysQuery, [fromDateStr, toDateStr]);
-      final sellsResult = await db.rawQuery(sellsQuery, [fromDateStr, toDateStr]);
-      
-      // Get all currency codes from both results
+
+      // Get all transactions for the date range
+      final querySnapshot =
+          await _firestore
+              .collection(collectionHistory)
+              .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
+              .where('created_at', isLessThanOrEqualTo: toDateStr)
+              .get();
+
+      // Process transactions locally
+      final Map<String, Map<String, dynamic>> purchaseData = {};
+      final Map<String, Map<String, dynamic>> salesData = {};
+
+      // Group transactions by type and currency
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final currencyCode = data['currency_code'] as String;
+        final operationType = data['operation_type'] as String;
+        final quantity = _safeDouble(data['quantity']);
+        final total = _safeDouble(data['total']);
+
+        if (operationType == 'Purchase') {
+          if (!purchaseData.containsKey(currencyCode)) {
+            purchaseData[currencyCode] = {
+              'currency_code': currencyCode,
+              'total_quantity': 0.0,
+              'total_spent': 0.0,
+              'avg_rate': 0.0,
+            };
+          }
+          purchaseData[currencyCode]!['total_quantity'] =
+              _safeDouble(purchaseData[currencyCode]!['total_quantity']) +
+              quantity;
+          purchaseData[currencyCode]!['total_spent'] =
+              _safeDouble(purchaseData[currencyCode]!['total_spent']) + total;
+        } else if (operationType == 'Sale') {
+          if (!salesData.containsKey(currencyCode)) {
+            salesData[currencyCode] = {
+              'currency_code': currencyCode,
+              'total_quantity': 0.0,
+              'total_earned': 0.0,
+              'avg_rate': 0.0,
+            };
+          }
+          salesData[currencyCode]!['total_quantity'] =
+              _safeDouble(salesData[currencyCode]!['total_quantity']) +
+              quantity;
+          salesData[currencyCode]!['total_earned'] =
+              _safeDouble(salesData[currencyCode]!['total_earned']) + total;
+        }
+      }
+
+      // Calculate average rates locally
+      for (var code in purchaseData.keys) {
+        final totalQuantity = _safeDouble(
+          purchaseData[code]!['total_quantity'],
+        );
+        final totalSpent = _safeDouble(purchaseData[code]!['total_spent']);
+        purchaseData[code]!['avg_rate'] =
+            totalQuantity > 0 ? totalSpent / totalQuantity : 0.0;
+      }
+
+      for (var code in salesData.keys) {
+        final totalQuantity = _safeDouble(salesData[code]!['total_quantity']);
+        final totalEarned = _safeDouble(salesData[code]!['total_earned']);
+        salesData[code]!['avg_rate'] =
+            totalQuantity > 0 ? totalEarned / totalQuantity : 0.0;
+      }
+
+      // Get all currency codes
       final Set<String> allCurrencyCodes = {};
-      for (var item in buysResult) {
-        allCurrencyCodes.add(item['currency_code'] as String);
-      }
-      for (var item in sellsResult) {
-        allCurrencyCodes.add(item['currency_code'] as String);
-      }
-      
-      // Combine the results
+      allCurrencyCodes.addAll(purchaseData.keys);
+      allCurrencyCodes.addAll(salesData.keys);
+
+      // Calculate profits locally
       final List<Map<String, dynamic>> profitData = [];
-      
+
       for (var code in allCurrencyCodes) {
-        final buyData = buysResult.firstWhere(
-          (item) => item['currency_code'] == code,
-          orElse: () => {
-            'total_quantity': 0,
-            'total_spent': 0,
-            'avg_rate': 0,
-          },
-        );
-        
-        final sellData = sellsResult.firstWhere(
-          (item) => item['currency_code'] == code,
-          orElse: () => {
-            'total_quantity': 0,
-            'total_earned': 0,
-            'avg_rate': 0,
-          },
-        );
-        
+        final buyData =
+            purchaseData[code] ??
+            {'total_quantity': 0.0, 'total_spent': 0.0, 'avg_rate': 0.0};
+        final sellData =
+            salesData[code] ??
+            {'total_quantity': 0.0, 'total_earned': 0.0, 'avg_rate': 0.0};
+
         final totalQuantitySold = _safeDouble(sellData['total_quantity']);
         final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
-        final totalEarned = _safeDouble(sellData['total_earned']);
-        
-        // Calculate profit only on the amount that was sold
-        final costOfSoldCurrency = totalQuantitySold * avgPurchaseRate;
-        final profit = totalEarned - costOfSoldCurrency;
-        
-        // Only add a profit record if there were actual sales
-        // or if the currency has been both bought and sold
-        final shouldAdd = totalQuantitySold > 0 || (_safeDouble(buyData['total_quantity']) > 0 && _safeDouble(sellData['total_quantity']) > 0);
-        
+        final avgSaleRate = _safeDouble(sellData['avg_rate']);
+
+        // Calculate profit as (average sale - average purchase) * sold quantity
+        final profit = (avgSaleRate - avgPurchaseRate) * totalQuantitySold;
+
+        final shouldAdd =
+            totalQuantitySold > 0 ||
+            (_safeDouble(buyData['total_quantity']) > 0 &&
+                _safeDouble(sellData['total_quantity']) > 0);
+
         if (shouldAdd) {
           profitData.add({
             'currency_code': code,
             'amount': profit,
             'avg_purchase_rate': avgPurchaseRate,
-            'avg_sale_rate': _safeDouble(sellData['avg_rate']),
+            'avg_sale_rate': avgSaleRate,
             'total_purchased': _safeDouble(buyData['total_quantity']),
             'total_sold': totalQuantitySold,
-            'cost_of_sold': costOfSoldCurrency, // Add this for debugging or future use
+            'cost_of_sold': totalQuantitySold * avgPurchaseRate,
           });
         }
       }
-      
-      // Sort by profit and limit
-      profitData.sort((a, b) => 
-        (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt()
+
+      // Sort by profit and limit locally
+      profitData.sort(
+        (a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt(),
       );
-      
+
       if (profitData.length > limit) {
         return profitData.sublist(0, limit);
       }
-      
+
       return profitData;
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
@@ -1178,49 +1421,54 @@ class DatabaseHelper {
     required String currencyCode,
   }) async {
     try {
-      final db = await database;
-      
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-      
-      debugPrint('Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr');
-      
-      final query = '''
-        SELECT 
-          substr(created_at, 1, 10) as date,
-          operation_type,
-          SUM(total) as total_amount,
-          SUM(quantity) as total_quantity,
-          COUNT(*) as transaction_count
-        FROM $tableHistory
-        WHERE created_at BETWEEN ? AND ?
-        AND currency_code = ?
-        GROUP BY substr(created_at, 1, 10), operation_type
-        ORDER BY date
-      ''';
-      
-      final result = await db.rawQuery(
-        query, 
-        [fromDateStr, toDateStr, currencyCode]
+
+      debugPrint(
+        'Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr',
       );
-      
-      debugPrint('Raw daily data: ${result.length} records found for $currencyCode');
-      if (result.isNotEmpty) {
-        debugPrint('Sample raw data: ${result.first}');
-      }
-      
+
+      // Get ALL transactions without complex queries
+      final querySnapshot =
+          await _firestore.collection(collectionHistory).get();
+
+      debugPrint('Total history records: ${querySnapshot.docs.length}');
+
       // Group transactions by date
       final Map<String, Map<String, dynamic>> dailyData = {};
-      
-      // Process all transactions
-      for (var item in result) {
-        final date = item['date'] as String;
-        final operationType = item['operation_type'] as String;
-        final amount = _safeDouble(item['total_amount']);
-        final quantity = _safeDouble(item['total_quantity']);
-        
-        debugPrint('Processing $date - $operationType: Amount=$amount, Quantity=$quantity');
-        
+
+      // Process all transactions and filter by date and currency in code
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final createdAt = data['created_at'] as String;
+
+        // Parse the date string to DateTime for comparison
+        final transactionDate = DateTime.parse(createdAt);
+
+        // Skip if outside the date range
+        if (transactionDate.isBefore(startDate) ||
+            transactionDate.isAfter(endDate)) {
+          continue;
+        }
+
+        // Skip if not the requested currency
+        final docCurrencyCode = data['currency_code'] as String;
+        if (docCurrencyCode != currencyCode) {
+          continue;
+        }
+
+        final date = createdAt.substring(
+          0,
+          10,
+        ); // Extract date part (YYYY-MM-DD)
+        final operationType = data['operation_type'] as String;
+        final amount = _safeDouble(data['total']);
+        final quantity = _safeDouble(data['quantity']);
+
+        debugPrint(
+          'Processing $date - $operationType: Amount=$amount, Quantity=$quantity',
+        );
+
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -1233,77 +1481,97 @@ class DatabaseHelper {
             'deposits': 0.0,
           };
         }
-        
+
         // Add transaction data
         if (operationType == 'Purchase') {
-          dailyData[date]!['purchases'] = (dailyData[date]!['purchases'] as double) + amount;
-          dailyData[date]!['purchase_quantity'] = (dailyData[date]!['purchase_quantity'] as double) + quantity;
+          dailyData[date]!['purchases'] =
+              (dailyData[date]!['purchases'] as double) + amount;
+          dailyData[date]!['purchase_quantity'] =
+              (dailyData[date]!['purchase_quantity'] as double) + quantity;
         } else if (operationType == 'Sale') {
-          dailyData[date]!['sales'] = (dailyData[date]!['sales'] as double) + amount;
-          dailyData[date]!['sale_quantity'] = (dailyData[date]!['sale_quantity'] as double) + quantity;
+          dailyData[date]!['sales'] =
+              (dailyData[date]!['sales'] as double) + amount;
+          dailyData[date]!['sale_quantity'] =
+              (dailyData[date]!['sale_quantity'] as double) + quantity;
         } else if (operationType == 'Deposit') {
-          dailyData[date]!['deposits'] = (dailyData[date]!['deposits'] as double) + amount;
+          dailyData[date]!['deposits'] =
+              (dailyData[date]!['deposits'] as double) + amount;
         }
       }
-      
+
       // Calculate profit for each day based on sold quantity
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         final saleAmount = dayData['sales'] as double;
         final saleQuantity = dayData['sale_quantity'] as double;
-        
-        debugPrint('Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity');
-        
+
+        debugPrint(
+          'Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
+        );
+
         if (saleQuantity > 0) {
-          // Get average purchase rate from the database for this currency up to this date
-          final avgRateQuery = '''
-            SELECT
-              CASE 
-                WHEN SUM(quantity) > 0 THEN SUM(total) / SUM(quantity)
-                ELSE 0 
-              END as avg_rate
-            FROM $tableHistory
-            WHERE operation_type = 'Purchase'
-            AND currency_code = ?
-            AND created_at <= ?
-          ''';
-          
-          final avgRateResult = await db.rawQuery(
-            avgRateQuery, 
-            [currencyCode, '$date 23:59:59.999Z']
-          );
-          
-          final avgPurchaseRate = _safeDouble(avgRateResult.first['avg_rate']);
-          
+          // Get average purchase rate for this currency up to this date
+          // Instead of querying Firestore again, we'll use the data we already have
+          double totalQuantity = 0.0;
+          double totalAmount = 0.0;
+
+          // Find all purchase transactions for this currency up to this date
+          for (var doc in querySnapshot.docs) {
+            final data = doc.data();
+            final docDate = data['created_at'] as String;
+
+            // Skip if after the current date
+            if (docDate.compareTo('$date 23:59:59.999Z') > 0) continue;
+
+            final docCurrencyCode = data['currency_code'] as String;
+            final docOperationType = data['operation_type'] as String;
+
+            // Only count purchase transactions for this currency
+            if (docCurrencyCode == currencyCode &&
+                docOperationType == 'Purchase') {
+              totalQuantity += _safeDouble(data['quantity']);
+              totalAmount += _safeDouble(data['total']);
+            }
+          }
+
+          final avgPurchaseRate =
+              totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
+
           // Calculate cost of sold currency
           final costOfSold = saleQuantity * avgPurchaseRate;
-          
+
           // Calculate profit for this currency on this day (sale amount minus cost of sold)
           final profit = saleAmount - costOfSold;
           dayData['profit'] = profit;
-          
-          debugPrint('  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit');
+
+          debugPrint(
+            '  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit',
+          );
         } else {
           // If nothing was sold, profit is 0 (not negative)
           dayData['profit'] = 0.0;
           debugPrint('  No sales, profit is 0');
         }
-        
+
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
-          debugPrint('  WARNING: Profit field was null or missing, setting to 0.0');
+          debugPrint(
+            '  WARNING: Profit field was null or missing, setting to 0.0',
+          );
           dayData['profit'] = 0.0;
         }
       }
-      
+
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
-      formattedResult.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
-      
+      formattedResult.sort(
+        (a, b) => (a['day'] as String).compareTo(b['day'] as String),
+      );
+
       if (formattedResult.isNotEmpty) {
         debugPrint('First day formatted data: ${formattedResult.first}');
       }
-      
+
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
@@ -1321,17 +1589,17 @@ class DatabaseHelper {
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       final profitData = await getMostProfitableCurrencies(
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       final barChartData = await getDailyData(
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       return {
         'pieChartData': pieChartData,
         'profitData': profitData,
@@ -1357,33 +1625,108 @@ class DatabaseHelper {
     String password,
   ) async {
     try {
-      final db = await database;
-      
-      final result = await db.query(
-        tableUsers,
-        where: 'username = ? AND password = ?',
-        whereArgs: [username, password],
-      );
-      
-      if (result.isNotEmpty) {
-        return UserModel.fromMap(result.first);
+      debugPrint('Attempting login for username: $username');
+
+      // Special case for admin user
+      if (username == 'a' && password == 'a') {
+        debugPrint('Admin credentials detected');
+
+        // First check if admin exists in Firestore
+        final adminDoc =
+            await _firestore.collection(collectionUsers).doc('a').get();
+
+        if (!adminDoc.exists) {
+          debugPrint('Admin user not found in Firestore, creating...');
+          // Create admin user in Firestore first
+          await _firestore.collection(collectionUsers).doc('a').set({
+            'username': 'a',
+            'password': 'a',
+            'role': 'admin',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+          debugPrint('Admin user created in Firestore');
+        }
+
+        // Sign in with Firebase Auth
+        try {
+          await _auth.signInWithEmailAndPassword(
+            email: 'admin@currencychanger.com',
+            password: 'a',
+          );
+          debugPrint('Admin user signed in with Firebase Auth');
+        } catch (e) {
+          if (e is FirebaseException && e.code == 'user-not-found') {
+            // Create the admin user in Firebase Auth
+            await _auth.createUserWithEmailAndPassword(
+              email: 'admin@currencychanger.com',
+              password: 'a',
+            );
+            debugPrint('Admin user created in Firebase Auth');
+          } else {
+            debugPrint('Error signing in admin with Firebase Auth: $e');
+          }
+        }
+
+        // Return admin user model
+        return UserModel(id: 'a', username: 'a', password: 'a', role: 'admin');
       }
-      
+
+      // For non-admin users, check Firestore
+      final querySnapshot =
+          await _firestore
+              .collection(collectionUsers)
+              .where('username', isEqualTo: username)
+              .where('password', isEqualTo: password)
+              .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs.first.data();
+        debugPrint('User found in Firestore');
+
+        // Sign in with Firebase Auth
+        try {
+          await _auth.signInWithEmailAndPassword(
+            email: '${username}@currencychanger.com',
+            password: password,
+          );
+          debugPrint('User signed in with Firebase Auth');
+        } catch (e) {
+          if (e is FirebaseException && e.code == 'user-not-found') {
+            // Create the user in Firebase Auth
+            await _auth.createUserWithEmailAndPassword(
+              email: '${username}@currencychanger.com',
+              password: password,
+            );
+            debugPrint('User created in Firebase Auth');
+          } else {
+            debugPrint('Error signing in with Firebase Auth: $e');
+          }
+        }
+
+        return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
+      }
+
+      debugPrint('Authentication failed - No matching user found');
       return null;
     } catch (e) {
       debugPrint('Error in getUserByCredentials: $e');
-      rethrow;
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+      }
+      return null;
     }
   }
 
   /// Get all users
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final db = await database;
-      
-      final result = await db.query(tableUsers);
-      
-      return result.map((item) => UserModel.fromMap(item)).toList();
+      // Get all users from Firestore
+      final querySnapshot = await _firestore.collection(collectionUsers).get();
+
+      // Convert Firestore documents to UserModel objects
+      return querySnapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
+          .toList();
     } catch (e) {
       debugPrint('Error in getAllUsers: $e');
       return [];
@@ -1391,11 +1734,57 @@ class DatabaseHelper {
   }
 
   /// Create new user
-  Future<int> createUser(UserModel user) async {
+  Future<String> createUser(UserModel user) async {
     try {
-      final db = await database;
-      
-      return await db.insert(tableUsers, user.toMap());
+      debugPrint('Creating new user: ${user.username}');
+
+      // Validate username
+      if (user.username.isEmpty) {
+        throw Exception('Username cannot be empty');
+      }
+
+      // Check if username already exists
+      final exists = await usernameExists(user.username);
+      if (exists) {
+        throw Exception('Username already exists');
+      }
+
+      // Special case for admin user
+      if (user.username == 'a' && user.password == 'a') {
+        debugPrint('Creating admin user');
+
+        // Create admin user in Firestore
+        await _firestore.collection(collectionUsers).doc('a').set({
+          'username': 'a',
+          'password': 'a',
+          'role': 'admin',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        debugPrint('Admin user created successfully');
+        return 'a';
+      }
+
+      // For non-admin users, check if admin exists
+      final adminDoc =
+          await _firestore.collection(collectionUsers).doc('a').get();
+      if (!adminDoc.exists) {
+        throw Exception(
+          'Admin user does not exist. Please create admin user first.',
+        );
+      }
+
+      // Generate a document ID based on username
+      final docId = user.username.toLowerCase().replaceAll(' ', '_');
+
+      // Add the user to Firestore with specific document ID
+      await _firestore.collection(collectionUsers).doc(docId).set({
+        ...user.toMap(),
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('User created successfully with ID: $docId');
+      return docId;
     } catch (e) {
       debugPrint('Error in createUser: $e');
       rethrow;
@@ -1403,187 +1792,341 @@ class DatabaseHelper {
   }
 
   /// Update user
-  Future<int> updateUser(UserModel user) async {
+  Future<bool> updateUser(UserModel user) async {
     try {
-      final db = await database;
-      
-      return await db.update(
-        tableUsers,
-        user.toMap(),
-        where: 'id = ?',
-        whereArgs: [user.id],
-      );
+      // Update the user document in Firestore
+      await _firestore
+          .collection(collectionUsers)
+          .doc(user.id)
+          .update(user.toMap());
+
+      return true;
     } catch (e) {
       debugPrint('Error in updateUser: $e');
-      return 0; // Return 0 to indicate failure
+      return false; // Return false to indicate failure
     }
   }
 
   /// Delete user
-  Future<int> deleteUser(int id) async {
+  Future<bool> deleteUser(String id) async {
     try {
-      final db = await database;
-      
-      return await db.delete(
-        tableUsers,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      // Delete the user document from Firestore
+      await _firestore.collection(collectionUsers).doc(id).delete();
+
+      return true;
     } catch (e) {
       debugPrint('Error in deleteUser: $e');
-      return 0; // Return 0 to indicate failure
+      return false; // Return false to indicate failure
     }
   }
 
   /// Check if a username already exists
   Future<bool> usernameExists(String username) async {
     try {
-      final db = await database;
-      
-      final result = await db.query(
-        tableUsers,
-        where: 'username = ?',
-        whereArgs: [username],
-      );
-      
-      return result.isNotEmpty;
+      // Query Firestore for a user with the given username
+      final querySnapshot =
+          await _firestore
+              .collection(collectionUsers)
+              .where('username', isEqualTo: username)
+              .get();
+
+      return querySnapshot.docs.isNotEmpty;
     } catch (e) {
       debugPrint('Error in usernameExists: $e');
       return false;
     }
   }
 
-  // Add a method to initialize default currencies if needed
-  Future<void> initializeDefaultCurrenciesIfNeeded() async {
+  // Helper method to safely convert values to double
+  double _safeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
+  }
+
+  /// Convert Firestore document to CurrencyModel
+  CurrencyModel _currencyFromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return CurrencyModel.fromMap({...data, 'id': int.tryParse(doc.id) ?? 0});
+  }
+
+  /// Convert Firestore document to HistoryModel
+  HistoryModel _historyFromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return HistoryModel.fromFirestore(data, doc.id);
+  }
+
+  // Convert Firestore document to UserModel
+  UserModel _userFromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return UserModel.fromFirestore(data, doc.id);
+  }
+
+  // Verify admin user exists
+  Future<bool> ensureAdminUserExists() async {
     try {
-      final db = await database;
-      
-      // Check if currencies other than SOM exist
-      final result = await db.query(
-        tableCurrencies,
-        where: 'code != ?',
-        whereArgs: ['SOM'],
-      );
-      
-      if (result.isEmpty) {
-        // Add default currencies
-        final defaultCurrencies = [
-          {
-            'code': 'USD',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 89.0,
-            'default_sell_rate': 90.0,
-          },
-          {
-            'code': 'EUR',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 97.0,
-            'default_sell_rate': 98.0,
-          },
-          {
-            'code': 'RUB',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 0.9,
-            'default_sell_rate': 1.0,
-          },
-        ];
-        
-        for (var currency in defaultCurrencies) {
-          await db.insert(tableCurrencies, currency);
+      debugPrint('Checking if admin user exists...');
+
+      // First check by document ID
+      final adminDoc =
+          await _firestore.collection(collectionUsers).doc('a').get();
+
+      if (adminDoc.exists) {
+        debugPrint('Admin user exists with document ID "a"');
+        return true;
+      }
+
+      debugPrint('Admin user not found with document ID "a", creating...');
+
+      // Create admin user in Firestore first (without Firebase Auth)
+      try {
+        await _firestore.collection(collectionUsers).doc('a').set({
+          'username': 'a',
+          'password': 'a',
+          'role': 'admin',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        debugPrint('Admin user created in Firestore');
+
+        // Now try to create Firebase Auth user
+        try {
+          final userCredential = await _auth.createUserWithEmailAndPassword(
+            email: 'a@currencychanger.com',
+            password: 'a',
+          );
+
+          if (userCredential.user != null) {
+            // Update admin user with Firebase Auth UID
+            await _firestore.collection(collectionUsers).doc('a').update({
+              'uid': userCredential.user!.uid,
+            });
+            debugPrint('Admin user updated with Firebase Auth UID');
+          }
+        } catch (authError) {
+          debugPrint('Error creating Firebase Auth user: $authError');
+          // Continue anyway since we have the Firestore user
+        }
+
+        return true;
+      } catch (firestoreError) {
+        debugPrint('Error creating admin user in Firestore: $firestoreError');
+        if (firestoreError is FirebaseException) {
+          debugPrint('Firebase error code: ${firestoreError.code}');
+          debugPrint('Firebase error message: ${firestoreError.message}');
+        }
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Error in ensureAdminUserExists: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      return false;
+    }
+  }
+
+  // Check if admin user exists and print all users
+  Future<void> checkFirestoreUsers() async {
+    try {
+      debugPrint('Checking Firestore users collection...');
+
+      // Get all users from Firestore
+      final querySnapshot = await _firestore.collection(collectionUsers).get();
+
+      debugPrint('Total users in Firestore: ${querySnapshot.docs.length}');
+
+      if (querySnapshot.docs.isEmpty) {
+        debugPrint('No users found in Firestore. Creating admin user...');
+        // Create admin user
+        await _firestore.collection(collectionUsers).doc('a').set({
+          'username': 'a',
+          'password': 'a',
+          'role': 'admin',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        debugPrint('Admin user created successfully');
+      } else {
+        // Print all users
+        for (var doc in querySnapshot.docs) {
+          final data = doc.data();
+          debugPrint(
+            'User found - ID: ${doc.id}, Username: ${data['username']}, Role: ${data['role']}',
+          );
+        }
+
+        // Check if admin user exists
+        final adminExists = querySnapshot.docs.any(
+          (doc) =>
+              doc.data()['username'] == 'a' && doc.data()['password'] == 'a',
+        );
+
+        if (!adminExists) {
+          debugPrint('Admin user not found. Creating admin user...');
+          // Create admin user
+          await _firestore.collection(collectionUsers).doc('a').set({
+            'username': 'a',
+            'password': 'a',
+            'role': 'admin',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+          debugPrint('Admin user created successfully');
+        } else {
+          debugPrint('Admin user already exists in Firestore');
         }
       }
     } catch (e) {
-      debugPrint('Error in initializeDefaultCurrenciesIfNeeded: $e');
-    }
-  }
-  
-  // Method to backup the database
-  Future<String> backupDatabase() async {
-    try {
-      // Close the database to ensure all changes are written
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-      }
-      
-      // Get the database file path
-      final documentsDirectory = await getApplicationDocumentsDirectory();
-      final dbPath = join(documentsDirectory.path, 'currency_changer.db');
-      
-      // Create a backup file path with timestamp
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final backupDir = join(documentsDirectory.path, 'backups');
-      
-      // Create backups directory if it doesn't exist
-      final backupDirectory = Directory(backupDir);
-      if (!await backupDirectory.exists()) {
-        await backupDirectory.create(recursive: true);
-      }
-      
-      final backupPath = join(backupDir, 'currency_changer_$timestamp.db');
-      
-      // Copy the database file to the backup location
-      final dbFile = File(dbPath);
-      await dbFile.copy(backupPath);
-      
-      // Reopen the database
-      _database = await _initDatabase();
-      
-      return backupPath;
-    } catch (e) {
-      debugPrint('Error in backupDatabase: $e');
-      return '';
-    }
-  }
-  
-  // Method to restore the database from backup
-  Future<bool> restoreDatabase(String backupPath) async {
-    try {
-      // Close the database to ensure all changes are written
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-      }
-      
-      // Get the database file path
-      final documentsDirectory = await getApplicationDocumentsDirectory();
-      final dbPath = join(documentsDirectory.path, 'currency_changer.db');
-      
-      // Copy the backup file to the database location
-      final backupFile = File(backupPath);
-      if (await backupFile.exists()) {
-        await backupFile.copy(dbPath);
-        
-        // Reopen the database
-        _database = await _initDatabase();
-        
-        return true;
-      }
-      
-      return false;
-    } catch (e) {
-      debugPrint('Error in restoreDatabase: $e');
-      return false;
+      debugPrint('Error checking Firestore users: $e');
     }
   }
 
-  // Check if database is accessible
-  Future<bool> checkDatabaseAccess() async {
-    // For local SQLite, we just check if the database exists
-    return await _databaseExists();
+  Future<void> _initializeDefaultData() async {
+    try {
+      debugPrint("Starting default data initialization...");
+
+      // First ensure admin user exists
+      await ensureAdminUserExists();
+
+      // Initialize SOM currency if needed
+      final somDoc =
+          await _firestore.collection(collectionCurrencies).doc('SOM').get();
+      if (!somDoc.exists) {
+        await _firestore.collection(collectionCurrencies).doc('SOM').set({
+          'code': 'SOM',
+          'quantity': 0.0,
+          'updated_at': DateTime.now().toIso8601String(),
+          'default_buy_rate': 1.0,
+          'default_sell_rate': 1.0,
+        });
+        debugPrint("SOM currency initialized");
+      }
+
+      debugPrint("Default data initialization completed");
+    } catch (e) {
+      debugPrint("Error initializing default data: $e");
+      if (e is FirebaseException) {
+        debugPrint("Firebase error code: ${e.code}");
+        debugPrint("Firebase error message: ${e.message}");
+      }
+      rethrow;
+    }
   }
 
-  // Initialize database if needed
-  Future<bool> initializeDatabaseIfNeeded() async {
+  /// Verify and repair SOM currency document
+  Future<void> verifySomCurrency() async {
     try {
-      final db = await database;
-      return true;
+      debugPrint("Verifying SOM currency document...");
+      final somDoc =
+          await _firestore.collection(collectionCurrencies).doc('SOM').get();
+
+      if (!somDoc.exists) {
+        debugPrint("SOM currency document not found, creating it...");
+        await _firestore.collection(collectionCurrencies).doc('SOM').set({
+          'code': 'SOM',
+          'quantity': 0.0,
+          'updated_at': DateTime.now().toIso8601String(),
+          'default_buy_rate': 1.0,
+          'default_sell_rate': 1.0,
+        });
+        debugPrint("SOM currency document created successfully");
+        return;
+      }
+
+      // Verify document has all required fields
+      final data = somDoc.data();
+      if (data == null) {
+        throw Exception('SOM currency document data is null');
+      }
+
+      bool needsUpdate = false;
+      final Map<String, dynamic> updates = {};
+
+      if (!data.containsKey('quantity')) {
+        updates['quantity'] = 0.0;
+        needsUpdate = true;
+      }
+      if (!data.containsKey('updated_at')) {
+        updates['updated_at'] = DateTime.now().toIso8601String();
+        needsUpdate = true;
+      }
+      if (!data.containsKey('default_buy_rate')) {
+        updates['default_buy_rate'] = 1.0;
+        needsUpdate = true;
+      }
+      if (!data.containsKey('default_sell_rate')) {
+        updates['default_sell_rate'] = 1.0;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        debugPrint("Updating SOM currency document with missing fields...");
+        await _firestore
+            .collection(collectionCurrencies)
+            .doc('SOM')
+            .update(updates);
+        debugPrint("SOM currency document updated successfully");
+      } else {
+        debugPrint("SOM currency document is valid");
+      }
     } catch (e) {
-      debugPrint('Error initializing database: $e');
-      return false;
+      debugPrint("Error verifying SOM currency: $e");
+      rethrow;
+    }
+  }
+
+  /// Recalculate SOM balance from transaction history
+  Future<void> recalculateSomBalance() async {
+    try {
+      debugPrint("Recalculating SOM balance from transaction history...");
+
+      // Get all transactions involving SOM
+      final querySnapshot =
+          await _firestore
+              .collection(collectionHistory)
+              .orderBy('created_at')
+              .get();
+
+      double calculatedBalance = 0.0;
+
+      // Process all transactions in chronological order
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final operationType = data['operation_type'] as String;
+        final total = _safeDouble(data['total']);
+
+        switch (operationType) {
+          case 'Purchase':
+            calculatedBalance -= total; // Subtract SOM spent
+            break;
+          case 'Sale':
+            calculatedBalance += total; // Add SOM received
+            break;
+          case 'Deposit':
+            calculatedBalance += total; // Add SOM deposited
+            break;
+        }
+      }
+
+      debugPrint("Calculated SOM balance: $calculatedBalance");
+
+      // Update SOM currency document with calculated balance
+      await _firestore.collection(collectionCurrencies).doc('SOM').update({
+        'quantity': calculatedBalance,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint("SOM balance updated successfully");
+    } catch (e) {
+      debugPrint("Error recalculating SOM balance: $e");
+      rethrow;
     }
   }
 }
@@ -1591,7 +2134,7 @@ class DatabaseHelper {
 // Extension methods for model copying
 extension CurrencyModelCopy on CurrencyModel {
   CurrencyModel copyWith({
-    int? id,
+    String? id,
     String? code,
     double? quantity,
     DateTime? updatedAt,
@@ -1599,34 +2142,12 @@ extension CurrencyModelCopy on CurrencyModel {
     double? defaultSellRate,
   }) {
     return CurrencyModel(
-      id: id ?? this.id,
+      id: id != null ? int.tryParse(id) : this.id,
       code: code ?? this.code,
       quantity: quantity ?? this.quantity,
       updatedAt: updatedAt ?? this.updatedAt,
       defaultBuyRate: defaultBuyRate ?? this.defaultBuyRate,
       defaultSellRate: defaultSellRate ?? this.defaultSellRate,
-    );
-  }
-}
-
-extension HistoryModelCopy on HistoryModel {
-  HistoryModel copyWith({
-    int? id,
-    String? currencyCode,
-    String? operationType,
-    double? rate,
-    double? quantity,
-    double? total,
-    DateTime? createdAt,
-  }) {
-    return HistoryModel(
-      id: id ?? this.id,
-      currencyCode: currencyCode ?? this.currencyCode,
-      operationType: operationType ?? this.operationType,
-      rate: rate ?? this.rate,
-      quantity: quantity ?? this.quantity,
-      total: total ?? this.total,
-      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

@@ -62,6 +62,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   void _updateDateRange() {
     final now = DateTime.now();
+    if (!mounted) return;
     setState(() {
       switch (_selectedTimeRange) {
         case TimeRange.day:
@@ -82,6 +83,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   Future<void> _loadCurrencies() async {
     final currencies = await _dbHelper.getHistoryCurrencyCodes();
+    if (!mounted) return;
     setState(() {
       _availableCurrencies =
           [_getTranslatedText('all_currencies')] +
@@ -272,33 +274,39 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
-        
+
         // Debug the raw data
-        debugPrint("Raw purchase data keys: ${data['purchases'].isNotEmpty ? (data['purchases'][0] as Map).keys.join(', ') : 'Empty'}");
-        debugPrint("Raw sales data keys: ${data['sales'].isNotEmpty ? (data['sales'][0] as Map).keys.join(', ') : 'Empty'}");
-        
+        debugPrint(
+          "Raw purchase data keys: ${data['purchases'].isNotEmpty ? (data['purchases'][0] as Map).keys.join(', ') : 'Empty'}",
+        );
+        debugPrint(
+          "Raw sales data keys: ${data['sales'].isNotEmpty ? (data['sales'][0] as Map).keys.join(', ') : 'Empty'}",
+        );
+
         // Filter out SOM entries and process purchase/sale data
-        data['purchases'] = (data['purchases'] as List)
-            .where((item) => item['currency'] != 'SOM')
-            .toList();
-        
-        data['sales'] = (data['sales'] as List)
-            .where((item) => item['currency'] != 'SOM')
-            .toList();
-            
+        data['purchases'] =
+            (data['purchases'] as List)
+                .where((item) => item['currency'] != 'SOM')
+                .toList();
+
+        data['sales'] =
+            (data['sales'] as List)
+                .where((item) => item['currency'] != 'SOM')
+                .toList();
+
         // Get profit data
         final profitData = await _dbHelper.getMostProfitableCurrencies(
           startDate: _selectedStartDate,
           endDate: _selectedEndDate,
         );
-        
+
         // Convert amount key to profit to maintain consistency
         for (var item in profitData) {
           item['profit'] = item['amount'];
         }
-        
+
         data['profit'] = profitData;
-        
+
         // Debug the processed data
         debugPrint("Processed purchases: ${data['purchases'].length} items");
         debugPrint("Processed sales: ${data['sales'].length} items");
@@ -306,12 +314,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         if (profitData.isNotEmpty) {
           debugPrint("Profit data keys: ${profitData[0].keys.join(', ')}");
         }
-        
+
         return data;
-        
+
       case ChartType.bar:
         List<Map<String, dynamic>> dailyData;
-        
+
         if (_selectedCurrency != null &&
             _selectedCurrency != _getTranslatedText('all_currencies')) {
           // Get data for specific currency
@@ -327,13 +335,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             endDate: _selectedEndDate,
           );
         }
-        
+
         // The daily data is now already processed by the DB helper methods
         if (dailyData.isNotEmpty) {
           final firstDay = dailyData.first;
-          debugPrint("Sample daily data: day=${firstDay['day']}, purchases=${firstDay['purchases']}, sales=${firstDay['sales']}, profit=${firstDay['profit']}");
+          debugPrint(
+            "Sample daily data: day=${firstDay['day']}, purchases=${firstDay['purchases']}, sales=${firstDay['sales']}, profit=${firstDay['profit']}",
+          );
         }
-        
+
         return dailyData;
     }
   }
@@ -478,27 +488,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       double totalSales = 0.0;
       double totalProfit = 0.0;
       int matchingCount = 0;
-      
+
       for (var item in data) {
         final sales = (item['sales'] as num?)?.toDouble() ?? 0.0;
         final profit = (item['profit'] as num?)?.toDouble() ?? 0.0;
         totalSales += sales;
         totalProfit += profit;
-        
+
         // Check if profit seems to be equal or very close to sales
         if ((profit - sales).abs() < 0.001 && sales > 0) {
           matchingCount++;
         }
       }
-      
+
       // If more than 50% of profit values match sales values, data is suspicious
       if (data.isNotEmpty && matchingCount > data.length / 2) {
         isProfitDataSuspicious = true;
-        debugPrint('⚠️ WARNING: Profit data appears to be equal to sales data (suspicious)');
+        debugPrint(
+          '⚠️ WARNING: Profit data appears to be equal to sales data (suspicious)',
+        );
         debugPrint('Total sales: $totalSales, Total profit: $totalProfit');
       }
     }
-    
+
     // Convert data to ensure proper types
     final chartData =
         data.map((item) {
@@ -506,7 +518,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           if (!item.containsKey('profit')) {
             debugPrint('Warning: Item is missing profit field: $item');
           }
-          
+
           // Create a basic map with the day and required fields
           final processedItem = {
             'day': item['day'] as String,
@@ -515,27 +527,32 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             'profit': (item['profit'] as num?)?.toDouble() ?? 0.0,
             'deposits': (item['deposits'] as num?)?.toDouble() ?? 0.0,
           };
-          
+
           // For profit tab, manually calculate correct profit
           if (activeTab == 'profit' && isProfitDataSuspicious) {
             // Since the profit data seems to be incorrect (equal to sales), we need to recalculate it
             final sales = processedItem['sales'] as double;
             final purchases = processedItem['purchases'] as double;
-            
+
             // A more accurate estimate of profit: assume a cost basis of ~90% of sales
             // This is a fallback when we can't get true profit calculations from the database
             final estimatedCostBasis = sales * 0.9;
-            processedItem['profit'] = sales - (purchases > 0 ? purchases : estimatedCostBasis);
-            
-            debugPrint('Corrected profit calculation - Day: ${processedItem['day']}, Sales: $sales, Purchases: $purchases, New Profit: ${processedItem['profit']}');
+            processedItem['profit'] =
+                sales - (purchases > 0 ? purchases : estimatedCostBasis);
+
+            debugPrint(
+              'Corrected profit calculation - Day: ${processedItem['day']}, Sales: $sales, Purchases: $purchases, New Profit: ${processedItem['profit']}',
+            );
           }
-          
+
           return processedItem;
         }).toList();
 
     // Debug profit values to verify data
     for (var entry in chartData) {
-      debugPrint('Bar chart data - Day: ${entry['day']}, Profit: ${entry['profit']}');
+      debugPrint(
+        'Bar chart data - Day: ${entry['day']}, Profit: ${entry['profit']}',
+      );
     }
 
     String title;
@@ -578,13 +595,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     // This is a workaround in case the database helper has an issue with profit calculation
     if (activeTab == 'profit') {
       bool needsRecalculation = false;
-      
+
       // Check if profit values are all zeros while we have sales data
-      if (chartData.every((item) => (item['profit'] as double?) == 0.0) && 
+      if (chartData.every((item) => (item['profit'] as double?) == 0.0) &&
           chartData.any((item) => ((item['sales'] as double?) ?? 0.0) > 0.0)) {
         needsRecalculation = true;
       }
-      
+
       if (needsRecalculation) {
         debugPrint('Recalculating profit values as sales - purchases');
         for (var item in chartData) {
@@ -604,16 +621,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
               Theme.of(context).cardColor,
-              Theme.of(context).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
+              Theme.of(
+                context,
+              ).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -623,7 +640,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         child: Column(
           children: [
             Text(
-              title, 
+              title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).primaryColor,
@@ -645,9 +662,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     xValueMapper: (data, _) => data['day'],
                     yValueMapper: (data, _) => data[valueKey],
                     name: activeTab.capitalize(),
-                    color: isProfit 
-                      ? (total >= 0 ? Colors.green : Colors.red) 
-                      : color,
+                    color:
+                        isProfit
+                            ? (total >= 0 ? Colors.green : Colors.red)
+                            : color,
                     dataLabelSettings: const DataLabelSettings(
                       isVisible: true,
                       labelAlignment: ChartDataLabelAlignment.top,
@@ -667,16 +685,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     gradient: LinearGradient(
-                      colors: isProfit
-                        ? (total >= 0
-                          ? [Colors.green.shade50, Colors.green.shade100]
-                          : [Colors.red.shade50, Colors.red.shade100])
-                        : [Colors.blue.shade50, Colors.blue.shade100],
+                      colors:
+                          isProfit
+                              ? (total >= 0
+                                  ? [
+                                    Colors.green.shade50,
+                                    Colors.green.shade100,
+                                  ]
+                                  : [Colors.red.shade50, Colors.red.shade100])
+                              : [Colors.blue.shade50, Colors.blue.shade100],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -851,7 +876,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   double _calculateTotalProfit(List<Map<String, dynamic>> profitData) {
     return profitData.fold<double>(
       0,
-      (sum, item) => sum + ((item['profit'] as num?)?.toDouble() ?? (item['amount'] as num?)?.toDouble() ?? 0.0),
+      (sum, item) =>
+          sum +
+          ((item['profit'] as num?)?.toDouble() ??
+              (item['amount'] as num?)?.toDouble() ??
+              0.0),
     );
   }
 
@@ -890,6 +919,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     double? total,
     bool showTotal = false,
   }) {
+    debugPrint("\n=== Building Pie Chart: $title ===");
+    debugPrint("Input data length: ${data.length}");
+    debugPrint("Value key: $valueKey, Label key: $labelKey");
+
     if (data.isEmpty) {
       debugPrint("No data to display for $title chart");
       return Center(
@@ -903,19 +936,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     }
 
     // Debug: Show data being passed to the chart
-    debugPrint("Building pie chart with ${data.length} items for $title");
-    debugPrint("First item keys: ${data.first.keys.join(', ')}");
-    debugPrint("Looking for label key: $labelKey, value key: $valueKey");
-    
+    debugPrint("\nData items:");
+    for (var item in data) {
+      debugPrint("Item: ${item[labelKey]} - Value: ${item[valueKey]}");
+    }
+
     // Check if the required keys exist in the data
     final missingLabelKey = data.any((item) => !item.containsKey(labelKey));
     final missingValueKey = data.any((item) => !item.containsKey(valueKey));
-    
+
     if (missingLabelKey || missingValueKey) {
-      debugPrint("WARNING: Some items are missing required keys!");
+      debugPrint("\nWARNING: Some items are missing required keys!");
       if (missingLabelKey) debugPrint("Missing label key: $labelKey");
       if (missingValueKey) debugPrint("Missing value key: $valueKey");
-      
+
       // Show a more informative empty state
       return Center(
         child: Column(
@@ -940,19 +974,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           (sum, item) => sum + (item[valueKey] as double? ?? 0.0),
         );
 
+    debugPrint("\nDisplay total: $displayTotal");
+
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
               Theme.of(context).cardColor,
-              Theme.of(context).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
+              Theme.of(
+                context,
+              ).cardColor.withBlue(Theme.of(context).cardColor.blue + 5),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -962,7 +998,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         child: Column(
           children: [
             Text(
-              title, 
+              title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).primaryColor,
@@ -998,11 +1034,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         Colors.amber,
                         Colors.indigo,
                       ];
-                      
+
                       // Use different shades based on index
                       final colorIndex = index % baseColors.length;
                       final color = baseColors[colorIndex];
-                      
+
                       // Return different shades for a gradient-like effect
                       if (index % 3 == 0) {
                         return color.shade300;
@@ -1033,16 +1069,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     gradient: LinearGradient(
-                      colors: isProfit
-                        ? (displayTotal >= 0
-                          ? [Colors.green.shade50, Colors.green.shade100]
-                          : [Colors.red.shade50, Colors.red.shade100])
-                        : [Colors.blue.shade50, Colors.blue.shade100],
+                      colors:
+                          isProfit
+                              ? (displayTotal >= 0
+                                  ? [
+                                    Colors.green.shade50,
+                                    Colors.green.shade100,
+                                  ]
+                                  : [Colors.red.shade50, Colors.red.shade100])
+                              : [Colors.blue.shade50, Colors.blue.shade100],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

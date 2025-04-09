@@ -216,27 +216,40 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Exchange Rate Field
           Expanded(
             child: TextField(
-              
               controller: _currencyController,
               focusNode: _currencyFocusNode,
               decoration: InputDecoration(
                 labelText: _getTranslatedText('exchange_rate'),
-                labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
+                labelStyle: TextStyle(
+                  fontSize: fontSize - 2,
+                  color: Colors.blue.shade700,
+                ), // Adjusted label with blue color
                 hintText:
                     _operationType == 'Purchase'
                         ? _getTranslatedText('enter_buy_rate')
                         : _getTranslatedText('enter_sell_rate'),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), // Increased border radius
-                  borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+                  borderRadius: BorderRadius.circular(
+                    12,
+                  ), // Increased border radius
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade500,
+                    width: 2.0,
+                  ), // Blue border
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade300,
+                    width: 2.0,
+                  ), // Light blue when not focused
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade700,
+                    width: 2.5,
+                  ), // Darker blue when focused
                 ),
                 filled: true,
                 fillColor: Theme.of(context).inputDecorationTheme.fillColor,
@@ -276,21 +289,35 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               focusNode: _quantityFocusNode,
               decoration: InputDecoration(
                 labelText: _getTranslatedText('quantity'),
-                labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
+                labelStyle: TextStyle(
+                  fontSize: fontSize - 2,
+                  color: Colors.blue.shade700,
+                ), // Adjusted label with blue color
                 hintText: _getTranslatedText('amount_in_currency', {
                   'code': _selectedCurrency,
                 }),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12), // Increased border radius
-                  borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+                  borderRadius: BorderRadius.circular(
+                    12,
+                  ), // Increased border radius
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade500,
+                    width: 2.0,
+                  ), // Blue border
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade300,
+                    width: 2.0,
+                  ), // Light blue when not focused
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
+                  borderSide: BorderSide(
+                    color: Colors.blue.shade700,
+                    width: 2.5,
+                  ), // Darker blue when focused
                 ),
                 filled: true,
                 fillColor: Theme.of(context).inputDecorationTheme.fillColor,
@@ -304,7 +331,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   horizontal: 16, // Increased horizontal padding
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               // Show tablet keyboard when numpad is hidden and we're on a tablet
               readOnly: isTablet && _isNumpadVisible,
               showCursor: true,
@@ -334,7 +363,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           focusNode: _currencyFocusNode,
           decoration: InputDecoration(
             labelText: _getTranslatedText('exchange_rate'),
-            labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
+            labelStyle: TextStyle(
+              fontSize: fontSize - 2,
+              color: Colors.blue.shade700,
+            ), // Adjusted label with blue color
             hintText:
                 _operationType == 'Purchase'
                     ? _getTranslatedText('enter_buy_rate')
@@ -343,15 +375,24 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               borderRadius: BorderRadius.circular(
                 12,
               ), // Increased border radius
-              borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+              borderSide: BorderSide(
+                color: Colors.blue.shade500,
+                width: 2.0,
+              ), // Blue border
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+              borderSide: BorderSide(
+                color: Colors.blue.shade300,
+                width: 2.0,
+              ), // Light blue when not focused
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
+              borderSide: BorderSide(
+                color: Colors.blue.shade700,
+                width: 2.5,
+              ), // Darker blue when focused
             ),
             filled: true,
             fillColor: Theme.of(context).inputDecorationTheme.fillColor,
@@ -386,7 +427,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           focusNode: _quantityFocusNode,
           decoration: InputDecoration(
             labelText: _getTranslatedText('quantity'),
-            labelStyle: TextStyle(fontSize: fontSize - 2, color: Colors.blue.shade700), // Adjusted label with blue color
+            labelStyle: TextStyle(
+              fontSize: fontSize - 2,
+              color: Colors.blue.shade700,
+            ), // Adjusted label with blue color
             hintText: _getTranslatedText('amount_in_currency', {
               'code': _selectedCurrency,
             }),
@@ -394,15 +438,24 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               borderRadius: BorderRadius.circular(
                 12,
               ), // Increased border radius
-              borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0), // Blue border
+              borderSide: BorderSide(
+                color: Colors.blue.shade500,
+                width: 2.0,
+              ), // Blue border
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0), // Light blue when not focused
+              borderSide: BorderSide(
+                color: Colors.blue.shade300,
+                width: 2.0,
+              ), // Light blue when not focused
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5), // Darker blue when focused
+              borderSide: BorderSide(
+                color: Colors.blue.shade700,
+                width: 2.5,
+              ), // Darker blue when focused
             ),
             filled: true,
             fillColor: Theme.of(context).inputDecorationTheme.fillColor,
@@ -585,17 +638,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              gradient: _operationType == 'Purchase'
-                ? LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.blue.shade900],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+              gradient:
+                  _operationType == 'Purchase'
+                      ? LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade900],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                      : null,
               borderRadius: BorderRadius.circular(12),
-              border: _operationType != 'Purchase'
-                ? Border.all(color: Colors.blue.shade300, width: 2)
-                : null,
+              border:
+                  _operationType != 'Purchase'
+                      ? Border.all(color: Colors.blue.shade300, width: 2)
+                      : null,
             ),
             child: ElevatedButton(
               onPressed: () {
@@ -614,11 +669,20 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 });
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _operationType == 'Purchase' ? Colors.transparent : Colors.blue.shade50,
-                foregroundColor: _operationType == 'Purchase' ? Colors.white : Colors.blue.shade700,
+                backgroundColor:
+                    _operationType == 'Purchase'
+                        ? Colors.transparent
+                        : Colors.blue.shade50,
+                foregroundColor:
+                    _operationType == 'Purchase'
+                        ? Colors.white
+                        : Colors.blue.shade700,
                 padding: buttonPadding,
                 elevation: _operationType == 'Purchase' ? 6 : 2,
-                shadowColor: _operationType == 'Purchase' ? Colors.blue.shade300 : Colors.transparent,
+                shadowColor:
+                    _operationType == 'Purchase'
+                        ? Colors.blue.shade300
+                        : Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -638,17 +702,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              gradient: _operationType == 'Sale'
-                ? LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.blue.shade900],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
+              gradient:
+                  _operationType == 'Sale'
+                      ? LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade900],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                      : null,
               borderRadius: BorderRadius.circular(12),
-              border: _operationType != 'Sale'
-                ? Border.all(color: Colors.blue.shade300, width: 2)
-                : null,
+              border:
+                  _operationType != 'Sale'
+                      ? Border.all(color: Colors.blue.shade300, width: 2)
+                      : null,
             ),
             child: ElevatedButton(
               onPressed: () {
@@ -667,11 +733,20 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 });
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _operationType == 'Sale' ? Colors.transparent : Colors.blue.shade50,
-                foregroundColor: _operationType == 'Sale' ? Colors.white : Colors.blue.shade700,
+                backgroundColor:
+                    _operationType == 'Sale'
+                        ? Colors.transparent
+                        : Colors.blue.shade50,
+                foregroundColor:
+                    _operationType == 'Sale'
+                        ? Colors.white
+                        : Colors.blue.shade700,
                 padding: buttonPadding,
                 elevation: _operationType == 'Sale' ? 6 : 2,
-                shadowColor: _operationType == 'Sale' ? Colors.blue.shade300 : Colors.transparent,
+                shadowColor:
+                    _operationType == 'Sale'
+                        ? Colors.blue.shade300
+                        : Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -815,9 +890,17 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         rate: rate,
         quantity: quantity,
         total: _totalSum,
+        createdAt: DateTime.now(),
+        username: currentUser?.username ?? '',
       );
 
-      await _databaseHelper.insertHistory(history);
+      await _databaseHelper.insertHistory(
+        currencyCode: history.currencyCode,
+        operationType: history.operationType,
+        rate: history.rate,
+        quantity: history.quantity,
+        total: history.total,
+      );
 
       // Update currency quantities
       if (_operationType == 'Purchase') {
@@ -1137,8 +1220,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           // Exchange rate and quantity in one row for portrait mode
           _buildCurrencyInputSection(),
 
-          SizedBox(height: spacing * 3), // Increased spacing before total sum card
-
+          SizedBox(
+            height: spacing * 3,
+          ), // Increased spacing before total sum card
           // Total sum display
           _buildTotalSumCard(),
           SizedBox(height: spacing),
@@ -1208,7 +1292,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _buildCurrencyInputSection(),
-                                SizedBox(height: spacing * 3), // Increased spacing before total sum card
+                                SizedBox(
+                                  height: spacing * 3,
+                                ), // Increased spacing before total sum card
                                 _buildTotalSumCard(),
                                 SizedBox(height: spacing),
                                 _buildCurrencySelection(),
@@ -1260,8 +1346,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   children: [
                     // Currency input
                     _buildCurrencyInputSection(),
-                    SizedBox(height: spacing * 3), // Increased spacing before total sum card
-
+                    SizedBox(
+                      height: spacing * 3,
+                    ), // Increased spacing before total sum card
                     // Total sum card
                     _buildTotalSumCard(),
                     SizedBox(height: spacing),
@@ -1316,7 +1403,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         _buildCurrencyInputSection(),
 
         SizedBox(height: 40), // Increased spacing before total sum card
-
         // Total amount card
         _buildTotalSumCard(),
         SizedBox(height: spacing * 2), // Doubled spacing
@@ -1356,7 +1442,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           size: 24, // Increased icon size
         ),
         label: Text(
-          _isNumpadVisible ? _getTranslatedText('hide_numpad') : _getTranslatedText('show_numpad'),
+          _isNumpadVisible
+              ? _getTranslatedText('hide_numpad')
+              : _getTranslatedText('show_numpad'),
           style: TextStyle(fontSize: 16), // Increased font size
         ),
         style: ElevatedButton.styleFrom(
@@ -1500,7 +1588,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.blue.shade500, Colors.blue.shade900],
+                            colors: [
+                              Colors.blue.shade500,
+                              Colors.blue.shade900,
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             stops: [0.0, 1.0],
@@ -1541,7 +1632,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.orange.shade300, Colors.deepOrange.shade500],
+                            colors: [
+                              Colors.orange.shade300,
+                              Colors.deepOrange.shade500,
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             stops: [0.0, 1.0],
@@ -1558,7 +1652,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         ),
                         child: Container(
                           alignment: Alignment.center,
-                          child: const Icon(Icons.backspace, color: Colors.white, size: 20),
+                          child: const Icon(
+                            Icons.backspace,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -1789,7 +1887,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Ink(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.blue.shade500, Colors.blue.shade900],
+                              colors: [
+                                Colors.blue.shade500,
+                                Colors.blue.shade900,
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               stops: [0.0, 1.0],
@@ -1832,7 +1933,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Ink(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.orange.shade300, Colors.deepOrange.shade500],
+                              colors: [
+                                Colors.orange.shade300,
+                                Colors.deepOrange.shade500,
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               stops: [0.0, 1.0],
@@ -1849,7 +1953,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           ),
                           child: Container(
                             alignment: Alignment.center,
-                            child: const Icon(Icons.backspace, color: Colors.white, size: 20),
+                            child: const Icon(
+                              Icons.backspace,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
@@ -1873,7 +1981,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         child: Ink(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.red.shade500, Colors.red.shade800],
+                              colors: [
+                                Colors.red.shade500,
+                                Colors.red.shade800,
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               stops: [0.0, 1.0],
@@ -1892,7 +2003,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             alignment: Alignment.center,
                             child: const Text(
                               'C',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -1943,7 +2057,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     alignment: Alignment.center,
                     child: const Text(
                       'C',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -2598,10 +2715,7 @@ class _TabletCurrencyConverterLayoutState
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white,
-                        Colors.blue.shade50,
-                      ],
+                      colors: [Colors.white, Colors.blue.shade50],
                     ),
                     borderRadius: BorderRadius.circular(
                       30,
@@ -2644,7 +2758,10 @@ class _TabletCurrencyConverterLayoutState
                                 ), // Inner padding
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [Colors.blue.shade100, Colors.blue.shade200],
+                                    colors: [
+                                      Colors.blue.shade100,
+                                      Colors.blue.shade200,
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -2671,10 +2788,7 @@ class _TabletCurrencyConverterLayoutState
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.white,
-                Colors.blue.shade50,
-              ],
+              colors: [Colors.white, Colors.blue.shade50],
             ),
             borderRadius: BorderRadius.only(
               topRight: Radius.circular(16),
@@ -2753,4 +2867,3 @@ class _TabletCurrencyConverterLayoutState
     return text;
   }
 }
-
