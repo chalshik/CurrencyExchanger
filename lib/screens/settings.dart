@@ -972,102 +972,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadCurrencies,
-<<<<<<< HEAD
               child: _buildCurrencyList(),
-=======
-              child:
-                  _currencies.isEmpty
-                      ? const Center(
-                        child: Text(
-                          'No currencies available',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                      )
-                      : ListView.builder(
-                        itemCount: _currencies.length,
-                        itemBuilder: (context, index) {
-                          final currency = _currencies[index];
-                          // Format quantity with 2 decimal places
-                          final formattedQuantity = NumberFormat.currency(
-                            decimalDigits: 2,
-                            symbol: '',
-                          ).format(currency.quantity);
-
-                          // Use different style for SOM currency
-                          final bool isSom = currency.code == 'SOM';
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            color: isSom ? Colors.blue.shade50 : null,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              title: Text(
-                                currency.code ?? '',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: isSom ? Colors.blue.shade800 : null,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  '${_getTranslatedText('quantity')}: $formattedQuantity\n'
-                                  '${_getTranslatedText('last_updated')}: ${DateFormat('dd-MM-yy HH:mm').format(currency.updatedAt)}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (!isSom) ...[
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        color: Colors.blue,
-                                        size: 26,
-                                      ),
-                                      onPressed:
-                                          () =>
-                                              _showEditCurrencyDialog(currency),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                        size: 26,
-                                      ),
-                                      onPressed:
-                                          () => _deleteCurrency(
-                                            currency.id as int?,
-                                            currency.code ?? '',
-                                          ),
-                                    ),
-                                  ] else
-                                    const Icon(
-                                      Icons.payments,
-                                      color: Colors.blue,
-                                      size: 26,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
             ),
           ),
-
           // Add New Currency button
           Padding(
             padding: const EdgeInsets.all(12.0),
@@ -1083,7 +990,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _getTranslatedText('add_new_currency'),
                 style: const TextStyle(fontSize: 16),
               ),
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
             ),
           ),
         ],
@@ -1094,67 +1000,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildCurrencyList() {
     return _currencies.isEmpty
         ? const Center(
-            child: Text(
-              'No currencies available',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
-            ),
-          )
+          child: Text(
+            'No currencies available',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        )
         : ListView.builder(
-            itemCount: _currencies.length,
-            itemBuilder: (context, index) {
-              final currency = _currencies[index];
-              
-              // Use different style for SOM currency
-              final bool isSom = currency.code == 'SOM';
-              
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isSom ? Colors.blue.shade700 : Colors.blue.shade100,
-                      child: Text(
-                        currency.code!.substring(0, 1),
-                        style: TextStyle(
-                          color: isSom ? Colors.white : Colors.blue.shade700,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      currency.code!,
+          itemCount: _currencies.length,
+          itemBuilder: (context, index) {
+            final currency = _currencies[index];
+
+            // Use different style for SOM currency
+            final bool isSom = currency.code == 'SOM';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        isSom ? Colors.blue.shade700 : Colors.blue.shade100,
+                    child: Text(
+                      currency.code!.substring(0, 1),
                       style: TextStyle(
+                        color: isSom ? Colors.white : Colors.blue.shade700,
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: isSom ? Colors.blue.shade700 : Colors.black87,
                       ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Don't show edit/delete buttons for SOM
-                        if (!isSom) ...[
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showEditCurrencyDialog(context, currency),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmDeleteCurrency(currency),
-                          ),
-                        ],
-                      ],
                     ),
                   ),
+                  title: Text(
+                    currency.code!,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: isSom ? Colors.blue.shade700 : Colors.black87,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Don't show edit/delete buttons for SOM
+                      if (!isSom) ...[
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed:
+                              () => _showEditCurrencyDialog(context, currency),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _confirmDeleteCurrency(currency),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              );
-            },
-          );
+              ),
+            );
+          },
+        );
   }
 
   Future<void> _showEditCurrencyDialog(
@@ -1207,7 +1115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 try {
                   final newCode = _newCurrencyCodeController.text.toUpperCase();
-                  
+
                   // Check if new code already exists (unless it's the same code)
                   if (newCode != currency.code) {
                     final existingCurrency = await _dbHelper.getCurrency(
@@ -1227,9 +1135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
 
                   // Update currency with new code only
-                  final updatedCurrency = currency.copyWith(
-                    code: newCode,
-                  );
+                  final updatedCurrency = currency.copyWith(code: newCode);
 
                   await _dbHelper.updateCurrency(updatedCurrency);
                   if (mounted) {
@@ -1999,38 +1905,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       return;
     }
-    
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_getTranslatedText('delete_currency')),
-        content: Text(
-          _getTranslatedText('delete_currency_confirm', {'code': currency.code!}),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(_getTranslatedText('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(
-              _getTranslatedText('delete'),
-              style: const TextStyle(color: Colors.white),
+      builder:
+          (context) => AlertDialog(
+            title: Text(_getTranslatedText('delete_currency')),
+            content: Text(
+              _getTranslatedText('delete_currency_confirm', {
+                'code': currency.code!,
+              }),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(_getTranslatedText('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: Text(
+                  _getTranslatedText('delete'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
-    
+
     // If confirmed, delete the currency
     if (confirmed == true && mounted) {
       try {
-        await _dbHelper.deleteCurrency(currency.id!);
+        await _dbHelper.deleteCurrency(currency.code!);
         _loadCurrencies(); // Refresh the list
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

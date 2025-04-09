@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/currency.dart';
 import '../models/history.dart';
 import '../models/user.dart';
-import '../screens/login_screen.dart'; // Import for currentUser
+import '../screens/login_screen.dart';
 
 class DatabaseHelper {
   // Singleton instance
@@ -18,114 +18,15 @@ class DatabaseHelper {
   // Private constructor
   DatabaseHelper._init();
 
-<<<<<<< Updated upstream
-  // Internal constructor for singleton
-  DatabaseHelper._internal();
-=======
-<<<<<<< HEAD
-  // Initialize the database
-  Future<Database> _initDatabase() async {
-    if (kIsWeb) {
-      // For web platform, use a different approach
-      return await openDatabase(
-        inMemoryDatabasePath,
-        version: _dbVersion,
-        onCreate: _createDb,
-      );
-    } else {
-      // For mobile platforms, use the file system
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'currency_changer.db');
-    
-    return await openDatabase(
-      path,
-      version: _dbVersion,
-      onCreate: _createDb,
-    );
-  }
-  }
-=======
-  // Internal constructor for singleton
-  DatabaseHelper._internal();
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
-
   // Collections
   static const String collectionCurrencies = 'currencies';
   static const String collectionHistory = 'history';
   static const String collectionUsers = 'users';
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-    await db.execute('''
-      CREATE TABLE $tableHistory (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        currency_code TEXT NOT NULL,
-        operation_type TEXT NOT NULL,
-        rate REAL NOT NULL,
-        quantity REAL NOT NULL,
-        total REAL NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableUsers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        role TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    // Initialize SOM currency
-    await db.insert(tableCurrencies, {
-      'code': 'SOM',
-      'quantity': 0.0,
-      'updated_at': DateTime.now().toIso8601String(),
-      'default_buy_rate': 1.0,
-      'default_sell_rate': 1.0,
-    });
-
-    // Create admin user
-    await db.insert(tableUsers, {
-      'username': 'a',
-      'password': 'a',
-      'role': 'admin',
-      'created_at': DateTime.now().toIso8601String(),
-    });
-  }
-
-  // Helper method to check if database exists
-  Future<bool> _databaseExists() async {
-    if (kIsWeb) {
-      return true; // Always return true for web
-    }
-    
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'currency_changer.db');
-    return await File(path).exists();
-  }
-
-  // Helper function to safely convert values to double
-  double _safeDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) {
-      return double.tryParse(value) ?? 0.0;
-=======
->>>>>>> Stashed changes
   Future<void> initialize() async {
     if (!_isInitialized) {
       await Firebase.initializeApp();
       _isInitialized = true;
-<<<<<<< Updated upstream
-=======
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
     }
   }
 
@@ -213,7 +114,6 @@ class DatabaseHelper {
 
   Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
     try {
-<<<<<<< Updated upstream
       // Reference to the currency document by its code
       DocumentReference currencyRef = _firestore
           .collection(collectionCurrencies)
@@ -226,57 +126,15 @@ class DatabaseHelper {
         // Update existing currency
         await currencyRef.update(currency.toMap());
       } else {
-        // Insert new currency
-        await currencyRef.set(currency.toMap());
-=======
-<<<<<<< HEAD
-      final db = await database;
-      
-      // Check if currency exists
-      final List<Map<String, dynamic>> result = await db.query(
-        tableCurrencies,
-        where: 'code = ?',
-        whereArgs: [currency.code],
-      );
-      
-      // Prepare data with default values for all fields except code
-      final Map<String, dynamic> currencyData = {
-        'code': currency.code,
-        'quantity': 0.0,
-        'updated_at': DateTime.now().toIso8601String(),
-        'default_buy_rate': 0.0,
-        'default_sell_rate': 0.0,
-      };
-      
-      if (result.isNotEmpty) {
-        // Update existing currency - just update the code
-        await db.update(
-          tableCurrencies,
-          currencyData,
-          where: 'code = ?',
-          whereArgs: [currency.code],
-        );
-      } else {
-        // Insert new currency
-        final id = await db.insert(tableCurrencies, currencyData);
-        currency = currency.copyWith(id: id);
-=======
-      // Reference to the currency document by its code
-      DocumentReference currencyRef = _firestore
-          .collection(collectionCurrencies)
-          .doc(currency.code);
-
-      // Check if the document exists by fetching it
-      DocumentSnapshot snapshot = await currencyRef.get();
-
-      if (snapshot.exists) {
-        // Update existing currency
-        await currencyRef.update(currency.toMap());
-      } else {
-        // Insert new currency
-        await currencyRef.set(currency.toMap());
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
+        // Insert new currency with default zero values
+        final currencyData = {
+          'code': currency.code,
+          'quantity': 0.0,
+          'updated_at': DateTime.now().toIso8601String(),
+          'default_buy_rate': 0.0,  // Set to zero (will be ignored in UI)
+          'default_sell_rate': 0.0,  // Set to zero (will be ignored in UI)
+        };
+        await currencyRef.set(currencyData);
       }
       
       return currency;
@@ -303,34 +161,22 @@ class DatabaseHelper {
 
   Future<void> insertCurrency(CurrencyModel currency) async {
     try {
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-      final db = await database;
-      
-      // Prepare data with default values for all fields except code
-      final Map<String, dynamic> currencyData = {
-        'code': currency.code,
-        'quantity': 0.0,
-        'updated_at': DateTime.now().toIso8601String(),
-        'default_buy_rate': 0.0,
-        'default_sell_rate': 0.0,
-      };
-      
-      return await db.insert(tableCurrencies, currencyData);
-=======
->>>>>>> Stashed changes
       // Reference to the currency document by its code
       DocumentReference currencyRef = _firestore
           .collection(collectionCurrencies)
           .doc(currency.code);
 
+      // Prepare data with default values for all fields except code
+      final Map<String, dynamic> currencyData = {
+        'code': currency.code,
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+        'default_buy_rate': 0.0,  // Set to zero (will be ignored in UI)
+        'default_sell_rate': 0.0,  // Set to zero (will be ignored in UI)
+      };
+
       // Insert new currency (set data in Firestore)
-      await currencyRef.set(currency.toMap());
-<<<<<<< Updated upstream
-=======
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
+      await currencyRef.set(currencyData);
     } catch (e) {
       debugPrint('Error in insertCurrency: $e');
       rethrow;
@@ -660,8 +506,8 @@ class DatabaseHelper {
               'code': currencyCode,
               'quantity': quantity,
               'updated_at': DateTime.now().toIso8601String(),
-              'default_buy_rate': rate,
-              'default_sell_rate': rate * 1.02, // 2% markup as default
+              'default_buy_rate': 0.0,  // Use 0.0 instead of rate
+              'default_sell_rate': 0.0,  // Use 0.0 instead of markup
             });
           }
         } else if (operationType == 'Sell') {
@@ -1836,21 +1682,6 @@ class DatabaseHelper {
 
         // Return admin user model
         return UserModel(id: 'a', username: 'a', password: 'a', role: 'admin');
-<<<<<<< Updated upstream
-=======
-      }
-<<<<<<< HEAD
-      
-      // If we're on web and couldn't find the user, check hardcoded admin credentials
-      if (kIsWeb && username == 'a' && password == 'a') {
-        return UserModel(
-          id: 1,
-          username: 'a',
-          password: 'a',
-          role: 'admin',
-          createdAt: DateTime.now(),
-        );
->>>>>>> Stashed changes
       }
 
       // For non-admin users, check Firestore
@@ -1892,71 +1723,10 @@ class DatabaseHelper {
       return null;
     } catch (e) {
       debugPrint('Error in getUserByCredentials: $e');
-<<<<<<< Updated upstream
-=======
-      
-      // Fallback for web platform when database operations fail
-      if (kIsWeb && username == 'a' && password == 'a') {
-        return UserModel(
-          id: 1,
-          username: 'a',
-          password: 'a',
-          role: 'admin',
-          createdAt: DateTime.now(),
-        );
-      }
-      
-      rethrow;
-=======
-
-      // For non-admin users, check Firestore
-      final querySnapshot =
-          await _firestore
-              .collection(collectionUsers)
-              .where('username', isEqualTo: username)
-              .where('password', isEqualTo: password)
-              .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final userData = querySnapshot.docs.first.data();
-        debugPrint('User found in Firestore');
-
-        // Sign in with Firebase Auth
-        try {
-          await _auth.signInWithEmailAndPassword(
-            email: '${username}@currencychanger.com',
-            password: password,
-          );
-          debugPrint('User signed in with Firebase Auth');
-        } catch (e) {
-          if (e is FirebaseException && e.code == 'user-not-found') {
-            // Create the user in Firebase Auth
-            await _auth.createUserWithEmailAndPassword(
-              email: '${username}@currencychanger.com',
-              password: password,
-            );
-            debugPrint('User created in Firebase Auth');
-          } else {
-            debugPrint('Error signing in with Firebase Auth: $e');
-          }
-        }
-
-        return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
-      }
-
-      debugPrint('Authentication failed - No matching user found');
-      return null;
-    } catch (e) {
-      debugPrint('Error in getUserByCredentials: $e');
->>>>>>> Stashed changes
       if (e is FirebaseException) {
         debugPrint('Firebase error code: ${e.code}');
       }
       return null;
-<<<<<<< Updated upstream
-=======
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
     }
   }
 
@@ -2116,48 +1886,6 @@ class DatabaseHelper {
   // Verify admin user exists
   Future<bool> ensureAdminUserExists() async {
     try {
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-      final db = await database;
-      
-      // Check if currencies other than SOM exist
-      final result = await db.query(
-        tableCurrencies,
-        where: 'code != ?',
-        whereArgs: ['SOM'],
-      );
-      
-      if (result.isEmpty) {
-        // Add default currencies with empty quantities and rates
-        final defaultCurrencies = [
-          {
-            'code': 'USD',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 0.0,
-            'default_sell_rate': 0.0,
-          },
-          {
-            'code': 'EUR',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 0.0,
-            'default_sell_rate': 0.0,
-          },
-          {
-            'code': 'RUB',
-            'quantity': 0.0,
-            'updated_at': DateTime.now().toIso8601String(),
-            'default_buy_rate': 0.0,
-            'default_sell_rate': 0.0,
-          },
-        ];
-        
-        for (var currency in defaultCurrencies) {
-          await db.insert(tableCurrencies, currency);
-=======
->>>>>>> Stashed changes
       debugPrint('Checking if admin user exists...');
 
       // First check by document ID
@@ -2266,10 +1994,6 @@ class DatabaseHelper {
           debugPrint('Admin user created successfully');
         } else {
           debugPrint('Admin user already exists in Firestore');
-<<<<<<< Updated upstream
-=======
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
         }
       }
     } catch (e) {
@@ -2292,10 +2016,51 @@ class DatabaseHelper {
           'code': 'SOM',
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 1.0,
-          'default_sell_rate': 1.0,
+          'default_buy_rate': 0.0,  // Set to zero instead of 1.0
+          'default_sell_rate': 0.0,  // Set to zero instead of 1.0
         });
         debugPrint("SOM currency initialized");
+      }
+
+      // Check if currencies other than SOM exist
+      final querySnapshot = await _firestore
+          .collection(collectionCurrencies)
+          .where(FieldPath.documentId, isNotEqualTo: 'SOM')
+          .get();
+      
+      if (querySnapshot.docs.isEmpty) {
+        // Add default currencies with empty quantities and rates
+        final defaultCurrencies = [
+          {
+            'code': 'USD',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+          {
+            'code': 'EUR',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+          {
+            'code': 'RUB',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+        ];
+        
+        for (var currency in defaultCurrencies) {
+          await _firestore
+              .collection(collectionCurrencies)
+              .doc(currency['code'] as String)
+              .set(currency);
+        }
+        debugPrint("Default currencies initialized");
       }
 
       debugPrint("Default data initialization completed");
@@ -2322,8 +2087,8 @@ class DatabaseHelper {
           'code': 'SOM',
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 1.0,
-          'default_sell_rate': 1.0,
+          'default_buy_rate': 0.0,  // Set to zero instead of 1.0
+          'default_sell_rate': 0.0,  // Set to zero instead of 1.0
         });
         debugPrint("SOM currency document created successfully");
         return;
@@ -2347,11 +2112,11 @@ class DatabaseHelper {
         needsUpdate = true;
       }
       if (!data.containsKey('default_buy_rate')) {
-        updates['default_buy_rate'] = 1.0;
+        updates['default_buy_rate'] = 0.0;  // Set to zero instead of 1.0
         needsUpdate = true;
       }
       if (!data.containsKey('default_sell_rate')) {
-        updates['default_sell_rate'] = 1.0;
+        updates['default_sell_rate'] = 0.0;  // Set to zero instead of 1.0
         needsUpdate = true;
       }
 
@@ -2416,6 +2181,103 @@ class DatabaseHelper {
     } catch (e) {
       debugPrint("Error recalculating SOM balance: $e");
       rethrow;
+    }
+  }
+
+  // Get currency quantity by code
+  Future<double> getCurrencyQuantity(String code) async {
+    try {
+      // Get the currency document
+      final doc = await _firestore.collection(collectionCurrencies).doc(code).get();
+      
+      // Check if the document exists and has data
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Return the quantity as a double, defaulting to 0.0 if not found
+        return (data['quantity'] as num?)?.toDouble() ?? 0.0;
+      }
+      
+      // Return 0.0 if currency doesn't exist
+      return 0.0;
+    } catch (e) {
+      debugPrint('Error in getCurrencyQuantity: $e');
+      // Return 0.0 on error
+      return 0.0;
+    }
+  }
+
+  // Add history entry
+  Future<bool> addHistoryEntry(HistoryModel historyEntry) async {
+    try {
+      // Create a new document with auto-generated ID
+      DocumentReference historyRef = _firestore.collection(collectionHistory).doc();
+      
+      // Convert history entry to map
+      Map<String, dynamic> historyData = historyEntry.toMap();
+      
+      // Add the entry to Firestore
+      await historyRef.set(historyData);
+      
+      debugPrint('History entry added successfully with ID: ${historyRef.id}');
+      return true;
+    } catch (e) {
+      debugPrint('Error in addHistoryEntry: $e');
+      return false;
+    }
+  }
+
+  // Update currency quantity
+  Future<bool> adjustCurrencyQuantity(String code, double amount, bool isAddition) async {
+    try {
+      // Reference to the currency document
+      DocumentReference currencyRef = _firestore.collection(collectionCurrencies).doc(code);
+      
+      // Get the current document
+      DocumentSnapshot doc = await currencyRef.get();
+      
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Get current quantity, defaulting to 0.0 if not found
+        double currentQuantity = (data['quantity'] as num?)?.toDouble() ?? 0.0;
+        
+        // Calculate new quantity based on operation
+        double newQuantity = isAddition 
+            ? currentQuantity + amount 
+            : currentQuantity - amount;
+        
+        // Ensure quantity doesn't go below zero (except for SOM which can be negative)
+        if (newQuantity < 0 && code != 'SOM') {
+          newQuantity = 0;
+        }
+        
+        // Update the quantity and timestamp
+        await currencyRef.update({
+          'quantity': newQuantity,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+        
+        debugPrint('Currency $code quantity updated to: $newQuantity');
+        return true;
+      } else {
+        // If currency doesn't exist, create it with the given amount (if adding)
+        if (isAddition) {
+          await currencyRef.set({
+            'code': code,
+            'quantity': amount,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          });
+          debugPrint('Currency $code created with quantity: $amount');
+          return true;
+        } else {
+          debugPrint('Cannot subtract from non-existent currency: $code');
+          return false;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in adjustCurrencyQuantity: $e');
+      return false;
     }
   }
 }

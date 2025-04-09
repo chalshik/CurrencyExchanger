@@ -1062,82 +1062,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
           iconColor = Colors.blue.shade700;
         }
 
-<<<<<<< HEAD
-        return _buildExpandableHistoryCard(entry, backgroundColor, operationIcon, iconColor, formattedDate);
-=======
-        // Wrap Card with Dismissible for non-Deposit entries
-        if (entry.operationType != 'Deposit') {
-          return Dismissible(
-            key: Key(entry.id.toString()),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20.0),
-              color: Colors.red,
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            confirmDismiss: (direction) async {
-              return await showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text(_getTranslatedText("delete_transaction")),
-                    content: Text(
-                      _getTranslatedText("delete_transaction_confirm", {
-                        "type": entry.operationType.toLowerCase(),
-                      }),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: Text(_getTranslatedText("cancel")),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: Text(
-                          _getTranslatedText("delete"),
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            onDismissed: (direction) {
-              _dbHelper.deleteHistory(entry);
-              setState(() {
-                _filteredEntries.removeAt(index);
-                _historyEntries.remove(entry);
-                _calculateTotals();
-              });
-            },
-            child: _buildHistoryCard(
-              entry,
-              backgroundColor,
-              operationIcon,
-              iconColor,
-              formattedDate,
-            ),
-          );
-        } else {
-          return _buildHistoryCard(
-            entry,
-            backgroundColor,
-            operationIcon,
-            iconColor,
-            formattedDate,
-          );
-        }
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+        return _buildHistoryCard(
+          entry,
+          backgroundColor,
+          operationIcon,
+          iconColor,
+          formattedDate,
+        );
       },
     );
   }
 
-<<<<<<< HEAD
-  // New expandable history card
-  Widget _buildExpandableHistoryCard(HistoryModel entry, Color backgroundColor, IconData operationIcon, Color iconColor, String formattedDate) {
-=======
   // Helper method to build the history card
   Widget _buildHistoryCard(
     HistoryModel entry,
@@ -1146,10 +1081,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     Color iconColor,
     String formattedDate,
   ) {
-<<<<<<< Updated upstream
-=======
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
->>>>>>> Stashed changes
     // Determine gradient colors based on operation type
     List<Color> gradientColors;
     if (entry.operationType == 'Purchase') {
@@ -1160,50 +1091,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       gradientColors = [Colors.blue.shade50, Colors.blue.shade100];
     }
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-    return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
-      childrenPadding: EdgeInsets.zero,
-      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-      maintainState: true,
-      backgroundColor: Colors.transparent,
-      collapsedBackgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      collapsedShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      title: Card(
-        margin: EdgeInsets.zero,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradientColors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            children: [
-              // Time at the top center
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                alignment: Alignment.center,
-                child: Text(
-                  DateFormat('HH:mm').format(entry.createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-=======
->>>>>>> Stashed changes
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
@@ -1217,220 +1104,118 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: InkWell(
-          onTap:
-              entry.operationType == 'Deposit'
-                  ? null // Disable tap for deposit entries
-                  : () {
-                    _showEditDialog(context, entry);
-                  },
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                // Left side (icon and main content)
-                Expanded(
-                  child: Row(
-                    children: [
-                      // Icon
-                      Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white.withOpacity(0.7),
-                          child: Icon(operationIcon, color: iconColor),
-                        ),
-                      ),
-                      // Main content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  entry.currencyCode,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  '${entry.total.toStringAsFixed(2)} SOM',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: iconColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _getTranslatedText(
-                                    entry.operationType.toLowerCase(),
-                                  ),
-                                  style: TextStyle(
-                                    color: iconColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Text(
-                                  '${_getTranslatedText("amount_label")}: ${entry.quantity.toStringAsFixed(2)}',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}  |  $formattedDate',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
-                  ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: EdgeInsets.zero,
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          maintainState: true,
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Time at the top
+              Text(
+                DateFormat('HH:mm').format(entry.createdAt),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
                 ),
               ),
               
-              // Transaction details in a single row
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Arrow and currency amount
-                    Expanded(
-                      flex: 3,
-                      child: Row(
-                        children: [
-                          Icon(
-                            operationIcon,
-                            color: iconColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+              // Main transaction details
+              Row(
+                children: [
+                  // Operation icon
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Icon(operationIcon, color: iconColor, size: 20),
+                  ),
+                  
+                  // Currency and amount
+                  Expanded(
+                    child: Text(
+                      '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
-                    
-                    // Rate
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'rate: ${entry.rate.toStringAsFixed(1)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                  ),
+                  
+                  // Total in soms
+                  Text(
+                    '${entry.total.toStringAsFixed(2)} SOM',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: iconColor,
+                      fontSize: 16,
                     ),
-                    
-                    // Total in soms
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        '${entry.total.toStringAsFixed(2)} сом',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: iconColor,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+              
+              // Rate and date
+              Text(
+                '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 12),
               ),
             ],
           ),
-        ),
-      ),
-<<<<<<< HEAD
-=======
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon, {
-    double fontSize = 14,
-  }) {
-    return Column(
->>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
-      children: [
-        // Action buttons for edit and delete
-        if (entry.operationType != 'Deposit') // Only show for non-deposit entries
-          Container(
-            margin: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(10),
-                bottomRight: Radius.circular(10),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
+          // Only show children for non-deposit entries
+          children: entry.operationType != 'Deposit' ? [
+            // Action buttons for edit and delete
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              padding: const EdgeInsets.all(12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Edit button
                   ElevatedButton.icon(
                     onPressed: () => _showEditDialog(context, entry),
-                    icon: Icon(Icons.edit, color: Colors.white),
+                    icon: const Icon(Icons.edit, color: Colors.white),
                     label: Text(
                       _getTranslatedText("edit"),
-                      style: TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade600,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                   ),
                   const SizedBox(width: 16),
                   // Delete button
                   ElevatedButton.icon(
                     onPressed: () => _confirmDelete(entry),
-                    icon: Icon(Icons.delete, color: Colors.white),
+                    icon: const Icon(Icons.delete, color: Colors.white),
                     label: Text(
                       _getTranslatedText("delete"),
-                      style: TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade600,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-      ],
+          ] : [],
+        ),
+      ),
     );
   }
 
