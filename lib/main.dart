@@ -7,8 +7,8 @@ import 'screens/currency_converter.dart';
 import 'providers/language_provider.dart';
 import 'providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'db_helper.dart';
-import 'models/user.dart';
 
 // Custom theme extension for additional text styling
 class TextStyleExtension extends ThemeExtension<TextStyleExtension> {
@@ -47,6 +47,7 @@ class TextStyleExtension extends ThemeExtension<TextStyleExtension> {
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   // Determine if running on a tablet
   final size = WidgetsBinding.instance.window.physicalSize;
@@ -164,40 +165,42 @@ class _SplashScreenState extends State<SplashScreen> {
           // Wait a bit to show the splash screen
           await Future.delayed(const Duration(seconds: 2));
           if (!mounted) return;
-          
+
           // Try to auto-login with local SQLite database
           final dbHelper = DatabaseHelper.instance;
           final user = await dbHelper.getUserByCredentials(username, password);
-          
+
           if (user != null) {
             // Set the current user (using the global variable from login_screen.dart)
             currentUser = user;
-            
+
             // Navigate directly to the main app
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const ResponsiveCurrencyConverter()),
+              MaterialPageRoute(
+                builder: (context) => const ResponsiveCurrencyConverter(),
+              ),
             );
             return;
           }
         }
       }
-      
+
       // If auto-login failed or no saved credentials, go to login screen
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return;
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     } catch (e) {
       debugPrint('Error in auto-login: $e');
-      
+
       // If error, default to login screen
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return;
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -236,7 +239,9 @@ class _SplashScreenState extends State<SplashScreen> {
                     // App name
                     Text(
                       "Currency Exchanger",
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.blue.shade700,
                       ),
@@ -245,7 +250,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
               ),
             ),
-            
+
             // "By" and logo at bottom
             Container(
               margin: const EdgeInsets.only(bottom: 32),

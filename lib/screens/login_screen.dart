@@ -7,7 +7,6 @@ import '../widgets/flag_language_selector.dart';
 import '../widgets/theme_toggle_button.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
-import '../providers/theme_provider.dart';
 
 // Global variable to store the currently logged in user
 UserModel? currentUser;
@@ -27,18 +26,48 @@ class _LoginScreenState extends State<LoginScreen> {
   String _errorMessage = '';
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  final dbHelper = DatabaseHelper.instance;
 
   @override
   void initState() {
     super.initState();
+    _initializeDatabase();
     // Check if user credentials are stored
     _checkSavedCredentials();
   }
 
+  Future<void> _initializeDatabase() async {
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+
+      // Initialize the database
+      await dbHelper.initDatabase();
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error initializing database: $e');
+    }
+  }
+
   Future<void> _checkSavedCredentials() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -54,9 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
           _rememberMe = true;
 
           // Try automatic login with saved credentials
-          final dbHelper = DatabaseHelper.instance;
           final user = await dbHelper.getUserByCredentials(username, password);
-          
+
           if (user != null) {
             await _handleSuccessfulLogin(user);
           }
@@ -65,9 +93,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       debugPrint('Error checking saved credentials: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -91,16 +121,27 @@ class _LoginScreenState extends State<LoginScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    try {
-      final dbHelper = DatabaseHelper.instance;
+    debugPrint('Login attempt - Username: $username, Password: $password');
 
-      // Try login with SQLite database
+    try {
+      // Check if database is initialized
+      debugPrint('Checking if database is initialized...');
+      await dbHelper.initDatabase();
+      debugPrint('Database initialization check completed');
+
+      // Try login with database
+      debugPrint('Calling getUserByCredentials...');
       final user = await dbHelper.getUserByCredentials(username, password);
-      
+      debugPrint(
+        'getUserByCredentials result: ${user != null ? 'User found' : 'No user found'}',
+      );
+
       if (user != null) {
+        debugPrint('Login successful, handling successful login...');
         await _handleSuccessfulLogin(user);
       } else {
         // Invalid credentials
+        debugPrint('Login failed - Invalid credentials');
         if (!autoLogin) {
           setState(() {
             _errorMessage = 'Invalid username or password';
@@ -113,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
+      debugPrint('Login error: $e');
       // Only show error message if not auto-login
       if (!autoLogin) {
         setState(() {
@@ -190,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final appName = languageProvider.translate('app_name');
     final appDescription = languageProvider.translate('app_description');
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -278,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildMobileLayout(double logoSize, double titleFontSize) {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final appName = languageProvider.translate('app_name');
-    
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -321,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Extract login form to avoid duplication
   Widget _buildLoginForm(double borderRadius) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    
+
     return Form(
       key: _formKey,
       child: Column(

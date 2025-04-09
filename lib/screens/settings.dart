@@ -618,9 +618,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          _getTranslatedText('user_created'),
-                        ),
+                        content: Text(_getTranslatedText('user_created')),
                       ),
                     );
                   } catch (e) {
@@ -682,7 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await _dbHelper.deleteCurrency(id);
+        await _dbHelper.deleteCurrency(id.toString());
         await _loadCurrencies();
         ScaffoldMessenger.of(
           context,
@@ -723,7 +721,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await _dbHelper.deleteUser(id);
+        await _dbHelper.deleteUser(id.toString());
         await _loadUsers();
         ScaffoldMessenger.of(
           context,
@@ -1206,7 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       onPressed:
                                           () => _deleteCurrency(
-                                            currency.id,
+                                            currency.id as int?,
                                             currency.code ?? '',
                                           ),
                                     ),
@@ -1347,7 +1345,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   size: 26,
                                 ),
                                 onPressed:
-                                    () => _deleteUser(user.id, user.username),
+                                    () => _deleteUser(
+                                      user.id as int?,
+                                      user.username,
+                                    ),
                               ),
                             ),
                           );
@@ -1686,8 +1687,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (fileName.contains('history')) {
         // Get history data
         final historyData = await _dbHelper.getFilteredHistoryByDate(
-          fromDate: _startDate!,
-          toDate: _endDate!,
+          startDate: _startDate!,
+          endDate: _endDate!,
         );
 
         // Create PDF content for history
@@ -1843,8 +1844,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Get history data
     final historyData = await _dbHelper.getFilteredHistoryByDate(
-      fromDate: _startDate!,
-      toDate: _endDate!,
+      startDate: _startDate!,
+      endDate: _endDate!,
     );
 
     // Add data rows
