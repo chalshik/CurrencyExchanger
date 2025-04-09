@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/currency_converter.dart';
+import 'screens/currency_exchanger.dart';
 import 'providers/language_provider.dart';
 import 'providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,27 +49,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Determine if running on a tablet
-  final size = WidgetsBinding.instance.window.physicalSize;
-  final devicePixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
-  final width = size.width / devicePixelRatio;
-  final isTablet = width >= 600;
-
-  // Only force portrait on phones, allow both orientations on tablets
-  if (!isTablet) {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-  } else {
-    // Allow all orientations on tablets
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
+  // Force portrait mode for all devices
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(
     MultiProvider(

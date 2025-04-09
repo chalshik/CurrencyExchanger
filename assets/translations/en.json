@@ -24,9 +24,8 @@
   "cancel": "Cancel",
   "reset_warning": "WARNING: This will delete all currencies, transaction history, and users except the admin. This action cannot be undone!",
   "reset_success": "All data has been reset",
-  "add_new_currency": "Add New Currency",
+  "add_newx_currency": "Add New Currency",
   "add": "Add",
-  "add_som": "Add SOM",
   "add_new_user": "Add New User",
   "user": "User",
   "admin": "Admin",
@@ -214,6 +213,7 @@
   "sell_foreign_currency": "Sell Foreign Currency",
   "foreign_currency_value_breakdown": "Foreign Currency Value Breakdown",
   "currency_converter": "Currency Converter",
-  "transaction_updated": "Transaction updated successfully"
-  
+  "transaction_updated": "Transaction updated successfully",
+  "add_currency": "Add Currency",
+  "no_recent_transactions": "No recent transactions"
 } 

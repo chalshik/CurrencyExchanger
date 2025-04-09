@@ -67,7 +67,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     super.initState();
     _initializeData();
 
-    // Set default values to start with
+    // Set empty values to start with
     _currencyController.text = '';
     _quantityController.text = '';
 
@@ -121,17 +121,12 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         _currencies = currencies;
         _isLoading = false;
 
-        // Update selected currency if needed
+        // Update selected currency if needed, but don't auto-fill rate
         if (_selectedCurrency.isEmpty && currencies.isNotEmpty) {
           for (var currency in currencies) {
             if (currency.code != 'SOM') {
               _selectedCurrency = currency.code!;
-              // Set the default exchange rate based on operation type
-              _currencyController.text =
-                  _operationType == 'Purchase'
-                      ? currency.defaultBuyRate.toString()
-                      : currency.defaultSellRate.toString();
-              _calculateTotal();
+              // Don't auto-fill rate values
               break;
             }
           }
@@ -203,14 +198,12 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   Widget _buildCurrencyInputSection() {
     final screenSize = MediaQuery.of(context).size;
-    final isPortrait = screenSize.height > screenSize.width;
     final isTablet = MediaQuery.of(context).size.width > 600;
     final isSmallScreen = screenSize.width < 360;
     final fontSize = isSmallScreen ? 16.0 : 18.0; // Increased font size
     final iconSize = isSmallScreen ? 24.0 : 28.0; // Increased icon size
 
-    // For portrait mode, put fields side by side
-    if (isPortrait) {
+    // Always use portrait layout
       return Row(
         children: [
           // Exchange Rate Field
@@ -266,8 +259,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              // Show tablet keyboard when numpad is hidden and we're on a tablet
-              readOnly: isTablet && _isNumpadVisible,
+            readOnly: _isNumpadVisible || (isTablet && _isNumpadVisible), // Disable manual input when numpad is visible
               showCursor: true,
               // Always calculate total when text changes
               onChanged: (_) => _calculateTotal(),
@@ -331,11 +323,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   horizontal: 16, // Increased horizontal padding
                 ),
               ),
+<<<<<<< Updated upstream:lib/screens/currency_converter.dart
+=======
+<<<<<<< HEAD:lib/screens/currency_exchanger.dart
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            readOnly: _isNumpadVisible || (isTablet && _isNumpadVisible), // Disable manual input when numpad is visible
+=======
+>>>>>>> Stashed changes:lib/screens/currency_exchanger.dart
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               // Show tablet keyboard when numpad is hidden and we're on a tablet
               readOnly: isTablet && _isNumpadVisible,
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02:lib/screens/currency_converter.dart
               showCursor: true,
               // Always calculate total when text changes
               onChanged: (_) => _calculateTotal(),
@@ -348,6 +348,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 });
               },
             ),
+<<<<<<< HEAD:lib/screens/currency_exchanger.dart
+=======
           ),
         ],
       );
@@ -482,6 +484,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               _isRateFieldActive = false;
             });
           },
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02:lib/screens/currency_converter.dart
         ),
       ],
     );
@@ -526,13 +529,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildCurrencySelection() {
-    // Display available currencies for selection
-    final availableCurrencies =
-        _currencies.where((currency) => currency.code != 'SOM').toList();
+    // Include all currencies, including SOM
+    final allCurrencies = _currencies;
 
     // Set text size based on screen size
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
+    final fontSize = isSmallScreen ? 16.0 : 18.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,13 +545,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: Colors.blue.shade700,
             fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 16 : 18, // Increased font size
+            fontSize: fontSize,
           ),
         ),
         const SizedBox(height: 8),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : availableCurrencies.isEmpty
+            : allCurrencies.isEmpty
             ? Center(
               child: Column(
                 children: [
@@ -556,14 +559,14 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     _getTranslatedText('no_currencies_available'),
                     style: TextStyle(
                       color: Colors.grey.shade600,
-                      fontSize: 16, // Increased font size
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _getTranslatedText('add_currencies_settings'),
                     style: TextStyle(
-                      fontSize: 14, // Increased font size
+                      fontSize: 14,
                       fontStyle: FontStyle.italic,
                       color: Colors.grey.shade500,
                     ),
@@ -571,53 +574,51 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 ],
               ),
             )
-            : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children:
-                    availableCurrencies.map((currency) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          right: 12,
-                        ), // Increased spacing
-                        child: ChoiceChip(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ), // Increased padding
-                          label: Text(
-                            currency.code ?? '',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 16 : 18,
-                            ), // Increased font size
-                          ),
-                          selected: _selectedCurrency == currency.code,
-                          onSelected: (selected) {
-                            if (currency.code != null) {
-                              setState(() {
-                                _selectedCurrency = currency.code!;
-                                // Set the default exchange rate based on operation type
-                                _currencyController.text =
-                                    _operationType == 'Purchase'
-                                        ? currency.defaultBuyRate.toString()
-                                        : currency.defaultSellRate.toString();
-                                _calculateTotal();
-                              });
-                            }
-                          },
-                          backgroundColor: Colors.blue.shade50,
-                          selectedColor: Colors.blue.shade700,
-                          labelStyle: TextStyle(
-                            color:
-                                _selectedCurrency == currency.code
-                                    ? Colors.white
-                                    : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+            : DropdownButtonFormField<String>(
+              value: _selectedCurrency.isNotEmpty ? _selectedCurrency : null,
+              isExpanded: true,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5),
+                ),
+                filled: true,
+                fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
+              items: allCurrencies.map((currency) {
+                return DropdownMenuItem<String>(
+                  value: currency.code,
+                  child: Text(
+                    currency.code ?? '',
+                    style: TextStyle(fontSize: fontSize),
+                  ),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _selectedCurrency = newValue;
+                    // Clear the exchange rate field for all currencies including SOM
+                    _currencyController.text = '';
+                    _calculateTotal();
+                  });
+                }
+              },
+              hint: _selectedCurrency.isEmpty
+                  ? Text(
+                      _getTranslatedText('select_currency'),
+                      style: TextStyle(color: Colors.grey.shade600),
+                    )
+                  : null,
             ),
       ],
     );
@@ -627,11 +628,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Get screen width to adjust button size
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
-    final buttonPadding =
-        isSmallScreen
-            ? const EdgeInsets.symmetric(vertical: 16) // Increased padding
-            : const EdgeInsets.symmetric(vertical: 20); // Increased padding
-    final buttonTextSize = isSmallScreen ? 16.0 : 18.0; // Increased font size
+    final buttonPadding = isSmallScreen ? const EdgeInsets.symmetric(vertical: 16) : const EdgeInsets.symmetric(vertical: 20);
+    final buttonTextSize = isSmallScreen ? 16.0 : 18.0;
 
     return Row(
       children: [
@@ -656,16 +654,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               onPressed: () {
                 setState(() {
                   _operationType = 'Purchase';
-                  // Update exchange rate based on selected currency
-                  if (_selectedCurrency.isNotEmpty) {
-                    final selectedCurrency = _currencies.firstWhere(
-                      (c) => c.code == _selectedCurrency,
-                      orElse: () => CurrencyModel(code: ''),
-                    );
-                    _currencyController.text =
-                        selectedCurrency.defaultBuyRate.toString();
-                    _calculateTotal();
-                  }
+                  // Do not auto-fill exchange rate
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -698,7 +687,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
           ),
         ),
-        const SizedBox(width: 16), // Increased spacing
+        const SizedBox(width: 16),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
@@ -720,16 +709,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               onPressed: () {
                 setState(() {
                   _operationType = 'Sale';
-                  // Update exchange rate based on selected currency
-                  if (_selectedCurrency.isNotEmpty) {
-                    final selectedCurrency = _currencies.firstWhere(
-                      (c) => c.code == _selectedCurrency,
-                      orElse: () => CurrencyModel(code: ''),
-                    );
-                    _currencyController.text =
-                        selectedCurrency.defaultSellRate.toString();
-                    _calculateTotal();
-                  }
+                  // Do not auto-fill exchange rate
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -770,17 +750,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     // Get screen width to adjust sizing
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
-    final isLandscape = screenSize.width > screenSize.height;
+    // Remove landscape check
+    // final isLandscape = screenSize.width > screenSize.height;
 
-    // Larger sizes for landscape mode
-    final fontSize =
-        isLandscape
-            ? 20.0
-            : (isSmallScreen ? 16.0 : 18.0); // Increased font size
-    final verticalPadding =
-        isLandscape ? 22.0 : (isSmallScreen ? 18.0 : 20.0); // Increased padding
-    final buttonHeight =
-        isLandscape ? 70.0 : (isSmallScreen ? 60.0 : 65.0); // Increased height
+    // Standard sizes for portrait mode
+    final fontSize = isSmallScreen ? 16.0 : 18.0; // Increased font size
+    final verticalPadding = isSmallScreen ? 18.0 : 20.0; // Increased padding
+    final buttonHeight = isSmallScreen ? 60.0 : 65.0; // Increased height
 
     return Container(
       height: buttonHeight,
@@ -827,7 +803,80 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   Future<void> _finishOperation() async {
     try {
-      // Validate inputs
+      // Special handling for SOM
+      if (_selectedCurrency == 'SOM') {
+        // For SOM operations, we only need quantity (amount), not rate
+        if (_quantityController.text.isEmpty) {
+          _showBriefNotification(
+            _getTranslatedText('enter_valid_amount'),
+            Colors.red,
+          );
+          return;
+        }
+        
+        final amount = double.tryParse(_quantityController.text);
+        if (amount == null || amount <= 0) {
+          _showBriefNotification(
+            _getTranslatedText('enter_valid_amount'),
+            Colors.red,
+          );
+          return;
+        }
+        
+        // Get the SOM currency
+        final somCurrency = await _databaseHelper.getCurrency('SOM');
+        if (somCurrency == null) {
+          _showBriefNotification(_getTranslatedText('error'), Colors.red);
+          return;
+        }
+        
+        // Update SOM balance
+        double newSomQuantity = somCurrency.quantity;
+        if (_operationType == 'Purchase') {
+          // Add to SOM when buying
+          newSomQuantity += amount;
+        } else {
+          // Subtract from SOM when selling
+          if (somCurrency.quantity < amount) {
+            _showBriefNotification(
+              _getTranslatedText('not_enough_som'),
+              Colors.red,
+            );
+            return;
+          }
+          newSomQuantity -= amount;
+        }
+        
+        // Update SOM quantity
+        await _databaseHelper.updateCurrencyQuantity('SOM', newSomQuantity);
+        
+        // Store the transaction in history
+        final history = HistoryModel(
+          currencyCode: 'SOM',
+          operationType: _operationType,
+          rate: 1, // Use 1 as default rate for SOM
+          quantity: amount,
+          total: amount, // Total equals amount for SOM
+        );
+        
+        await _databaseHelper.insertHistory(history);
+        
+        _showBriefNotification(
+          _getTranslatedText('transaction_complete'),
+          Colors.green,
+        );
+
+        setState(() {
+          _quantityController.text = '';
+          _currencyController.text = '';
+        });
+
+        // Refresh data
+        await _initializeData();
+        return;
+      }
+
+      // For non-SOM currencies, perform regular validation
       if (_selectedCurrency.isEmpty ||
           _currencyController.text.isEmpty ||
           _quantityController.text.isEmpty) {
@@ -841,7 +890,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       final rate = double.tryParse(_currencyController.text);
       final quantity = double.tryParse(_quantityController.text);
 
-      if (rate == null || quantity == null || rate <= 0 || quantity <= 0) {
+      if (rate == null || quantity == null || rate < 0 || quantity <= 0) {
         _showBriefNotification(
           _getTranslatedText('enter_valid_numbers'),
           Colors.red,
@@ -933,7 +982,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
       setState(() {
         _quantityController.text = '';
-        // Keep rate and currency selections
+        _currencyController.text = '';
       });
 
       // Refresh data
@@ -947,191 +996,126 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildRecentHistory() {
-    // Adjust font size based on screen size
+    return _buildCompactTransactionHistory();
+  }
+
+  Widget _buildCompactTransactionHistory() {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
-    final headerFontSize = isSmallScreen ? 14.0 : 16.0;
-    final contentFontSize = isSmallScreen ? 12.0 : 14.0;
+    final iconSize = isSmallScreen ? 24.0 : 28.0; // Increased icon size
+    final fontSize = isSmallScreen ? 14.0 : 16.0; // Increased main font size
+    final timeSize = isSmallScreen ? 10.0 : 12.0; // Keeping time size small
+    final padding = isSmallScreen ? 12.0 : 16.0;
+    final borderRadius = isSmallScreen ? 12.0 : 16.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               _getTranslatedText('recent_transactions'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HistoryScreen(),
-                  ),
-                );
-              },
-              child: Text(
-                _getTranslatedText('view_all'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: contentFontSize,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            ),
-          ],
+          style: TextStyle(
+            fontSize: fontSize + 2,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade700,
+          ),
         ),
         const SizedBox(height: 8),
-        _recentHistory.isEmpty
-            ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  _getTranslatedText('no_data'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: contentFontSize,
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
+        if (_recentHistory.isNotEmpty)
+          ..._recentHistory.map((transaction) {
+            final isPurchase = transaction.operationType == 'Purchase';
+            final gradientColors = isPurchase
+                ? [Colors.red.shade50, Colors.red.shade100]
+                : [Colors.green.shade50, Colors.green.shade100];
+
+            return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.all(padding),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(borderRadius),
+                gradient: LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            )
-            : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _recentHistory.length > 5 ? 5 : _recentHistory.length,
-              itemBuilder: (context, index) {
-                final history = _recentHistory[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  elevation: 0,
-                  color: Theme.of(context).cardTheme.color,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(
-                      color:
-                          Theme.of(context).dividerTheme.color ??
-                          Colors.transparent,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
+                  // Time at the top center with smaller font
                             Text(
-                              DateFormat(
-                                'dd-MM-yy HH:mm',
-                              ).format(history.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(fontSize: contentFontSize - 1),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    history.operationType == 'Purchase'
-                                        ? Colors.green.withOpacity(0.2)
-                                        : Colors.orange.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                history.operationType == 'Purchase'
-                                    ? _getTranslatedText('purchase')
-                                    : _getTranslatedText('sale'),
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.bodySmall?.copyWith(
-                                  fontSize: contentFontSize - 2,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      history.operationType == 'Purchase'
-                                          ? Colors.green
-                                          : Colors.orange,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
+                    DateFormat('HH:mm').format(transaction.createdAt),
+                    style: TextStyle(
+                      fontSize: timeSize,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  // Transaction details
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      // Left section: Arrow icon and Currency amount
+                      Expanded(
+                        flex: 3,
+                        child: Row(
                               children: [
-                                Text(
-                                  _getTranslatedText('rate'),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontSize: contentFontSize - 2),
-                                ),
-                                Text(
-                                  history.rate.toStringAsFixed(2),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    fontSize: contentFontSize,
+                            Icon(
+                              isPurchase ? Icons.arrow_downward : Icons.arrow_upward,
+                              color: isPurchase ? Colors.red.shade700 : Colors.green.shade700,
+                              size: iconSize,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${transaction.quantity.toStringAsFixed(2)} ${transaction.currencyCode}',
+                                style: TextStyle(
+                                  fontSize: fontSize,
                                     fontWeight: FontWeight.bold,
+                                ),
                                   ),
                                 ),
                               ],
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _getTranslatedText('amount_currency', {
-                                    'code': history.currencyCode,
-                                  }),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontSize: contentFontSize - 2),
-                                ),
-                                Text(
-                                  history.quantity.toStringAsFixed(2),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    fontSize: contentFontSize,
+                      ),
+                      // Center section: Rate
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'rate: ${transaction.rate.toStringAsFixed(1)}',
+                          style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  _getTranslatedText('total_som'),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontSize: contentFontSize - 2),
-                                ),
-                                Text(
-                                  history.total.toStringAsFixed(2),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    fontSize: contentFontSize,
+                            fontSize: fontSize,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      // Right section: Total in SOM
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '${transaction.total.toStringAsFixed(2)} сом',
+                          style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade700,
+                            fontSize: fontSize,
                                   ),
+                          textAlign: TextAlign.right,
                                 ),
-                              ],
                             ),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                );
-              },
+              ),
+            );
+          }).toList()
+        else
+          Center(
+            child: Text(
+              _getTranslatedText('no_recent_transactions'),
+              style: TextStyle(
+                fontSize: fontSize,
+                color: Colors.grey.shade600,
+              ),
+            ),
             ),
       ],
     );
@@ -1189,30 +1173,22 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     double standardFontSize,
     bool isTablet,
   ) {
-    final screenSize = MediaQuery.of(context).size;
-    final isPortrait = screenSize.height > screenSize.width;
-
-    // For tablet in portrait orientation:
-    if (isPortrait) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+        // 1) Current Date with Numpad Toggle
           Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  _operationType == 'Purchase'
-                      ? _getTranslatedText('buy_foreign_currency')
-                      : _getTranslatedText('sell_foreign_currency'),
+            Text(
+              DateFormat('dd/MM/yy').format(DateTime.now()),
                   style: TextStyle(
                     fontSize: headerFontSize,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade800,
                   ),
                 ),
-              ),
-              // Toggle numpad button for tablet portrait mode
-              _buildNumpadToggleButton(),
+            _buildNumpadToggleButton(), // Numpad toggle button
             ],
           ),
           SizedBox(height: spacing),
@@ -1231,51 +1207,15 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           _buildCurrencySelection(),
           SizedBox(height: spacing),
 
-          // Position numpad after currency selector
-          if (isTablet && _isNumpadVisible) _buildPortraitNumpad(),
-          SizedBox(height: spacing),
-
-          // Operation type and finish button
-          Text(
-            _getTranslatedText("operation_type"),
-            style: TextStyle(
-              fontSize: standardFontSize,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue.shade800,
-            ),
-          ),
-          SizedBox(height: 4),
+        // 3) Purchase and Sell Button Options (moved below currency combobox)
           _buildOperationTypeButtons(),
           SizedBox(height: spacing),
-          _buildFinishButton(),
-        ],
-      );
-    }
 
-    // Landscape tablet layout with positioned finish button
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            _operationType == 'Purchase'
-                ? _getTranslatedText('buy_foreign_currency')
-                : _getTranslatedText('sell_foreign_currency'),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Colors.blue.shade800,
-              fontWeight: FontWeight.bold,
-              fontSize: headerFontSize,
-            ),
-            textAlign: TextAlign.center,
-          ),
+        // 4) Amount
+        _buildAmountInput(),
           SizedBox(height: spacing),
-          // Main content area
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isLandscape =
-                  MediaQuery.of(context).size.width >
-                  MediaQuery.of(context).size.height;
 
+<<<<<<< Updated upstream:lib/screens/currency_converter.dart
               // Use row in landscape, column in portrait for tablets
               if (isLandscape) {
                 return Stack(
@@ -1379,9 +1319,24 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 );
               }
             },
+=======
+        // 5) Exchange Rate
+        _buildExchangeRateInput(),
+
+        // Positioned finish button at bottom right
+        Positioned(
+          right: 0,
+          bottom: 50, // Position it even higher (50px from bottom)
+          child: Container(
+            width: 250, // Maintain width
+            padding: const EdgeInsets.symmetric(
+              vertical: 2,
+            ), // Add padding to fix overlap
+            child: _buildFinishButton(),
+>>>>>>> Stashed changes:lib/screens/currency_exchanger.dart
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1392,9 +1347,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     double headerFontSize,
     double standardFontSize,
   ) {
-    final isPortrait =
-        MediaQuery.of(context).size.height > MediaQuery.of(context).size.width;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1410,19 +1362,27 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         _buildCurrencySelection(),
         SizedBox(height: 40), // Larger spacing
         // Operation type buttons (Buy/Sell)
-        Text(
-          _getTranslatedText("operation_type"),
-          style: TextStyle(
-            fontSize: standardFontSize + 2, // Increased font size
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade800,
-          ),
-        ),
-        SizedBox(height: 12), // Increased spacing
         _buildOperationTypeButtons(),
-        SizedBox(height: 40), // Larger spacing
-        // Submit button
+        SizedBox(height: spacing),
+
+        // 4) Amount
+        _buildAmountInput(),
+        SizedBox(height: spacing),
+
+        // 5) Exchange Rate
+        _buildExchangeRateInput(),
+        SizedBox(height: spacing),
+
+        // 6) Total (Amount x Rate)
+        _buildTotalSumCard(),
+        SizedBox(height: spacing),
+
+        // 7) Finish Button
         _buildFinishButton(),
+        SizedBox(height: spacing),
+        
+        // 8) Recent Transaction History Section
+        _buildCompactTransactionHistory(),
       ],
     );
   }
@@ -1753,19 +1713,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   // Numpad widget for tablets
   Widget _buildNumpad() {
-    final activeColor =
-        _isRateFieldActive ? Colors.blue.shade100 : Colors.green.shade100;
-    final activeBorder =
-        _isRateFieldActive ? Colors.blue.shade700 : Colors.green.shade700;
-
-    // Calculate optimal button size based on available width
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLandscape =
-        MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
-    final buttonSize =
-        isLandscape
-            ? 50.0
-            : (screenWidth > 600 ? 60.0 : 50.0); // Restore original sizes
+    // Remove landscape check
+    // final isLandscape = screenWidth > MediaQuery.of(context).size.height;
+    final buttonSize = screenWidth > 600 ? 60.0 : 50.0;
 
     return Container(
       key: const ValueKey('numpad'),
@@ -1804,18 +1755,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       : _quantityController.text),
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 18, // Restored
+                fontSize: 18,
               ),
               textAlign: TextAlign.right,
             ),
           ),
           const SizedBox(height: 6),
 
-          // Layout with numpad and side buttons for landscape mode
+          // Numpad grid
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Numpad grid using Row and Column for more direct control
+              // Numpad grid
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1863,13 +1814,12 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 ),
               ),
 
-              // Side buttons for landscape mode
-              if (isLandscape) ...[
+              // Side buttons - removed landscape condition
                 const SizedBox(width: 8),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Toggle button
+                  // Switch button
                     SizedBox(
                       width: 60,
                       height: buttonSize * 1.3,
@@ -2014,10 +1964,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     ),
                   ],
                 ),
-              ],
             ],
           ),
-
           // Clear button at bottom (only for portrait mode or if not using side buttons)
           if (!isLandscape) ...[
             const SizedBox(height: 8),
@@ -2264,26 +2212,92 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     super.dispose();
   }
 
-  // Numpad button for tablet landscape view
-  Widget _buildNumpadButton(String value, {bool isSpecial = false}) {
-    return ElevatedButton(
-      onPressed: () => _handleNumpadInput(value),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSpecial ? Colors.orange.shade100 : Colors.white,
-        foregroundColor: isSpecial ? Colors.orange.shade900 : Colors.black,
-        elevation: 2,
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: Colors.grey.shade300),
+  // Helper methods for amount and exchange rate inputs
+  Widget _buildAmountInput() {
+    final isTablet = MediaQuery.of(context).size.width > 600;
+    
+    return TextField(
+      controller: _quantityController,
+      focusNode: _quantityFocusNode,
+      decoration: InputDecoration(
+        labelText: _getTranslatedText('quantity'),
+        labelStyle: TextStyle(fontSize: 18, color: Colors.blue.shade700),
+        hintText: _getTranslatedText('amount_in_currency', {
+          'code': _selectedCurrency,
+        }),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5),
+        ),
+        filled: true,
+        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+        prefixIcon: Icon(
+          Icons.numbers,
+          color: Colors.blue.shade700,
+          size: 24,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
         ),
       ),
-      child: Center(
-        child: Text(
-          value,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      readOnly: _isNumpadVisible,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (_) => _calculateTotal(),
+    );
+  }
+
+  Widget _buildExchangeRateInput() {
+    final isTablet = MediaQuery.of(context).size.width > 600;
+    final isSomSelected = _selectedCurrency == 'SOM';
+    
+    return TextField(
+      controller: _currencyController,
+      focusNode: _currencyFocusNode,
+      decoration: InputDecoration(
+        labelText: _getTranslatedText('exchange_rate'),
+        labelStyle: TextStyle(fontSize: 18, color: Colors.blue.shade700),
+        hintText: _operationType == 'Purchase'
+            ? _getTranslatedText('enter_buy_rate')
+            : _getTranslatedText('enter_sell_rate'),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade500, width: 2.0),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade300, width: 2.0),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue.shade700, width: 2.5),
+        ),
+        filled: true,
+        fillColor: isSomSelected 
+            ? Colors.grey.shade200  // Grayed out when SOM is selected
+            : Theme.of(context).inputDecorationTheme.fillColor,
+        prefixIcon: Icon(
+          Icons.attach_money,
+          color: isSomSelected ? Colors.grey.shade600 : Colors.blue.shade700,
+          size: 24,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
         ),
       ),
+      readOnly: _isNumpadVisible || isSomSelected, // Disable editing when SOM is selected
+      enabled: !isSomSelected, // Disable field when SOM is selected
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (_) => _calculateTotal(),
     );
   }
 }
@@ -2479,20 +2493,6 @@ class _MobileCurrencyConverterLayoutState
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.blue.shade50,
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade500, Colors.blue.shade800],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: Text(_getTranslatedText('currency_exchange')),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -2531,7 +2531,9 @@ class _MobileCurrencyConverterLayoutState
               elevation: 0,
               selectedItemColor: Colors.blue.shade700,
               unselectedItemColor:
-                  Colors.grey.shade400, // Lighter grey for better contrast
+                  Colors
+                      .grey
+                      .shade400, // Lighter grey for better contrast
               showSelectedLabels: false,
               showUnselectedLabels: false,
               type: BottomNavigationBarType.fixed,
@@ -2539,9 +2541,6 @@ class _MobileCurrencyConverterLayoutState
               onTap: _onItemTapped,
               iconSize: 32, // Increased icon size
               items: _navigationItems,
-              landscapeLayout:
-                  BottomNavigationBarLandscapeLayout
-                      .spread, // Better distribution in landscape
               mouseCursor: SystemMouseCursors.click, // Better cursor for web
               unselectedFontSize: 0,
               selectedFontSize: 0,
@@ -2681,31 +2680,16 @@ class _TabletCurrencyConverterLayoutState
     }
 
     final screenSize = MediaQuery.of(context).size;
-    final isLandscape = screenSize.width > screenSize.height;
+    // Remove landscape check
+    // final isLandscape = screenSize.width > screenSize.height;
 
     return Scaffold(
       backgroundColor: Colors.blue.shade50,
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade500, Colors.blue.shade800],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: Text(_getTranslatedText('currency_exchange')),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: SafeArea(
-        child: isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
+        child: _buildPortraitLayout(),
       ),
       bottomNavigationBar:
-          isLandscape
-              ? null
-              : Padding(
+          Padding(
                 padding: const EdgeInsets.only(bottom: 12), // Increased padding
                 child: Container(
                   margin: const EdgeInsets.symmetric(
@@ -2780,6 +2764,7 @@ class _TabletCurrencyConverterLayoutState
     );
   }
 
+<<<<<<< Updated upstream:lib/screens/currency_converter.dart
   Widget _buildLandscapeLayout() {
     return Row(
       children: [
@@ -2842,6 +2827,8 @@ class _TabletCurrencyConverterLayoutState
     );
   }
 
+=======
+>>>>>>> Stashed changes:lib/screens/currency_exchanger.dart
   Widget _buildPortraitLayout() {
     return Padding(
       padding: const EdgeInsets.symmetric(

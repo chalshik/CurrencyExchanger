@@ -248,9 +248,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showAddCurrencyDialog(BuildContext context) async {
     _newCurrencyCodeController.clear();
-    _quantityController.text = "0"; // Set default value to 0
-    _defaultBuyRateController.text = "0.0";
-    _defaultSellRateController.text = "0.0";
 
     return showDialog(
       context: context,
@@ -278,55 +275,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 maxLength: 3,
                 textCapitalization: TextCapitalization.characters,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _quantityController,
-                decoration: InputDecoration(
-                  labelText: _getTranslatedText('initial_quantity'),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _defaultBuyRateController,
-                decoration: InputDecoration(
-                  labelText: _getTranslatedText('default_buy_rate'),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _defaultSellRateController,
-                decoration: InputDecoration(
-                  labelText: _getTranslatedText('default_sell_rate'),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-              ),
             ],
           ),
           actions: [
@@ -339,20 +287,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (_newCurrencyCodeController.text.isNotEmpty &&
-                    _quantityController.text.isNotEmpty &&
-                    _defaultBuyRateController.text.isNotEmpty &&
-                    _defaultSellRateController.text.isNotEmpty) {
+                if (_newCurrencyCodeController.text.isNotEmpty) {
                   try {
                     final newCurrency = CurrencyModel(
                       code: _newCurrencyCodeController.text.toUpperCase(),
-                      quantity: double.parse(_quantityController.text),
-                      defaultBuyRate: double.parse(
-                        _defaultBuyRateController.text,
-                      ),
-                      defaultSellRate: double.parse(
-                        _defaultSellRateController.text,
-                      ),
                     );
 
                     await _dbHelper.insertCurrency(newCurrency);
@@ -386,96 +324,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         );
       },
-    );
-  }
-
-  Future<void> _showAddSomDialog() async {
-    final formKey = GlobalKey<FormState>();
-    final amountController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(
-              _getTranslatedText('add_som'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            content: Form(
-              key: formKey,
-              child: TextFormField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: _getTranslatedText('som_amount'),
-                  prefixIcon: const Icon(Icons.attach_money, size: 24),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return _getTranslatedText('enter_amount');
-                  }
-                  if (double.tryParse(value) == null) {
-                    return _getTranslatedText('enter_valid_number');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  _getTranslatedText('cancel'),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final amount = double.parse(amountController.text);
-                    try {
-                      await _dbHelper.addToSomBalance(amount);
-                      Navigator.pop(context);
-                      _showSuccessNotification(
-                        _getTranslatedText('som_added_success', {
-                          'amount': amount.toString(),
-                        }),
-                      );
-                      // Refresh currencies to show updated SOM balance
-                      _loadCurrencies();
-                    } catch (e) {
-                      Navigator.pop(context);
-                      _showErrorNotification(
-                        _getTranslatedText('som_add_error', {
-                          'error': e.toString(),
-                        }),
-                      );
-                    }
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _getTranslatedText('add'),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-            ],
-          ),
     );
   }
 
@@ -1097,39 +945,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          // Add SOM button
+          // Add currency button
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _showAddSomDialog,
-                icon: const Icon(Icons.add, size: 24),
-                label: Text(
-                  _getTranslatedText('add_som'),
-                  style: const TextStyle(fontSize: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () => _showAddCurrencyDialog(context),
+              icon: const Icon(Icons.add),
+              label: Text(_getTranslatedText('add_currency')),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade100,
-                  foregroundColor: Colors.blue.shade800,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                minimumSize: const Size(double.infinity, 48),
               ),
             ),
           ),
-
-          const SizedBox(height: 12),
 
           // Currency list
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadCurrencies,
+<<<<<<< HEAD
+              child: _buildCurrencyList(),
+=======
               child:
                   _currencies.isEmpty
                       ? const Center(
@@ -1238,10 +1083,187 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _getTranslatedText('add_new_currency'),
                 style: const TextStyle(fontSize: 16),
               ),
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCurrencyList() {
+    return _currencies.isEmpty
+        ? const Center(
+            child: Text(
+              'No currencies available',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+          )
+        : ListView.builder(
+            itemCount: _currencies.length,
+            itemBuilder: (context, index) {
+              final currency = _currencies[index];
+              
+              // Use different style for SOM currency
+              final bool isSom = currency.code == 'SOM';
+              
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isSom ? Colors.blue.shade700 : Colors.blue.shade100,
+                      child: Text(
+                        currency.code!.substring(0, 1),
+                        style: TextStyle(
+                          color: isSom ? Colors.white : Colors.blue.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      currency.code!,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isSom ? Colors.blue.shade700 : Colors.black87,
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Don't show edit/delete buttons for SOM
+                        if (!isSom) ...[
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _showEditCurrencyDialog(context, currency),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmDeleteCurrency(currency),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+  }
+
+  Future<void> _showEditCurrencyDialog(
+    BuildContext context,
+    CurrencyModel currency,
+  ) async {
+    // Don't allow editing SOM
+    if (currency.code == 'SOM') return;
+
+    // Initialize text controllers with current values
+    _newCurrencyCodeController.text = currency.code!;
+
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            _getTranslatedText('edit_currency'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _newCurrencyCodeController,
+                decoration: InputDecoration(
+                  labelText: _getTranslatedText('currency_code'),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                ),
+                maxLength: 3,
+                textCapitalization: TextCapitalization.characters,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                _getTranslatedText('cancel'),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final newCode = _newCurrencyCodeController.text.toUpperCase();
+                  
+                  // Check if new code already exists (unless it's the same code)
+                  if (newCode != currency.code) {
+                    final existingCurrency = await _dbHelper.getCurrency(
+                      newCode,
+                    );
+                    if (existingCurrency != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            _getTranslatedText('currency_exists_error'),
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                  }
+
+                  // Update currency with new code only
+                  final updatedCurrency = currency.copyWith(
+                    code: newCode,
+                  );
+
+                  await _dbHelper.updateCurrency(updatedCurrency);
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _loadCurrencies(); // Refresh the list
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${_getTranslatedText('error')}: ${e.toString()}',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                _getTranslatedText('save'),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1966,193 +1988,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showEditCurrencyDialog(CurrencyModel currency) async {
-    final TextEditingController codeController = TextEditingController(
-      text: currency.code,
-    );
-    final TextEditingController quantityController = TextEditingController(
-      text: currency.quantity.toString(),
-    );
-    final TextEditingController defaultBuyRateController =
-        TextEditingController(text: currency.defaultBuyRate.toString());
-    final TextEditingController defaultSellRateController =
-        TextEditingController(text: currency.defaultSellRate.toString());
-
-    return showDialog(
+  Future<void> _confirmDeleteCurrency(CurrencyModel currency) async {
+    // Check if it's SOM (cannot delete SOM)
+    if (currency.code == 'SOM') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText('cannot_delete_som')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(
-              _getTranslatedText('edit_currency', {
-                'code': currency.code ?? '',
-              }),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: codeController,
-                    decoration: InputDecoration(
-                      labelText: _getTranslatedText('currency_code'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                    maxLength: 3,
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: quantityController,
-                    decoration: InputDecoration(
-                      labelText: _getTranslatedText('quantity'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: defaultBuyRateController,
-                    decoration: InputDecoration(
-                      labelText: _getTranslatedText('default_buy_rate'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: defaultSellRateController,
-                    decoration: InputDecoration(
-                      labelText: _getTranslatedText('default_sell_rate'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  _getTranslatedText('cancel'),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  try {
-                    final newCode = codeController.text.toUpperCase();
-                    final newQuantity = double.parse(quantityController.text);
-                    final newBuyRate = double.parse(
-                      defaultBuyRateController.text,
-                    );
-                    final newSellRate = double.parse(
-                      defaultSellRateController.text,
-                    );
-
-                    if (newQuantity < 0 ||
-                        newBuyRate <= 0 ||
-                        newSellRate <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            _getTranslatedText('invalid_values_error'),
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-
-                    // Check if the new code already exists (if it's different from current code)
-                    if (newCode != currency.code) {
-                      final existingCurrency = await _dbHelper.getCurrency(
-                        newCode,
-                      );
-                      if (existingCurrency != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _getTranslatedText('currency_exists_error'),
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                    }
-
-                    // Update currency with new values
-                    final updatedCurrency = currency.copyWith(
-                      code: newCode,
-                      quantity: newQuantity,
-                      defaultBuyRate: newBuyRate,
-                      defaultSellRate: newSellRate,
-                    );
-
-                    await _dbHelper.updateCurrency(updatedCurrency);
-                    if (mounted) {
-                      Navigator.pop(context);
-                      _loadCurrencies(); // Refresh the list
-                    }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          _getTranslatedText('invalid_number_error'),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _getTranslatedText('save'),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text(_getTranslatedText('delete_currency')),
+        content: Text(
+          _getTranslatedText('delete_currency_confirm', {'code': currency.code!}),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(_getTranslatedText('cancel')),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(
+              _getTranslatedText('delete'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
+    
+    // If confirmed, delete the currency
+    if (confirmed == true && mounted) {
+      try {
+        await _dbHelper.deleteCurrency(currency.id!);
+        _loadCurrencies(); // Refresh the list
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _getTranslatedText('currency_deleted', {'code': currency.code!}),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_getTranslatedText('error')}: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

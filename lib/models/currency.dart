@@ -77,6 +77,6 @@ class CurrencyModel {
 
   @override
   String toString() {
-    return 'CurrencyModel(id: $id, code: $code, quantity: $quantity, updatedAt: $updatedAt, defaultBuyRate: $defaultBuyRate, defaultSellRate: $defaultSellRate)';
+    return 'CurrencyModel(id: $id, code: $code)';
   }
 }

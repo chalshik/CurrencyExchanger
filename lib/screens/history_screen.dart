@@ -17,7 +17,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<HistoryModel> _historyEntries = [];
   List<HistoryModel> _filteredEntries = [];
   bool _isLoading = true;
-  int _netBalance = 0;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
@@ -142,7 +141,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _historyEntries = entries;
         _filteredEntries = List.from(entries);
         _isLoading = false;
-        _calculateTotals();
       });
       _filterEntries();
     } catch (e) {
@@ -151,20 +149,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  void _calculateTotals() {
-    int balance = 0;
-    for (var entry in _historyEntries) {
-      if (entry.operationType == 'Purchase') {
-        balance -= entry.total.toInt();
-      } else if (entry.operationType == 'Sale') {
-        balance += entry.total.toInt();
-      } else if (entry.operationType == 'Deposit') {
-        balance += entry.total.toInt();
-      }
-    }
-    _netBalance = balance;
   }
 
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
@@ -656,7 +640,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       body: Column(
         children: [
-          _buildSummaryCard(),
           Expanded(
             child:
                 _isLoading
@@ -1079,6 +1062,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           iconColor = Colors.blue.shade700;
         }
 
+<<<<<<< HEAD
+        return _buildExpandableHistoryCard(entry, backgroundColor, operationIcon, iconColor, formattedDate);
+=======
         // Wrap Card with Dismissible for non-Deposit entries
         if (entry.operationType != 'Deposit') {
           return Dismissible(
@@ -1143,10 +1129,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
             formattedDate,
           );
         }
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
       },
     );
   }
 
+<<<<<<< HEAD
+  // New expandable history card
+  Widget _buildExpandableHistoryCard(HistoryModel entry, Color backgroundColor, IconData operationIcon, Color iconColor, String formattedDate) {
+=======
   // Helper method to build the history card
   Widget _buildHistoryCard(
     HistoryModel entry,
@@ -1155,6 +1146,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     Color iconColor,
     String formattedDate,
   ) {
+<<<<<<< Updated upstream
+=======
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
     // Determine gradient colors based on operation type
     List<Color> gradientColors;
     if (entry.operationType == 'Purchase') {
@@ -1165,6 +1160,50 @@ class _HistoryScreenState extends State<HistoryScreen> {
       gradientColors = [Colors.blue.shade50, Colors.blue.shade100];
     }
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      maintainState: true,
+      backgroundColor: Colors.transparent,
+      collapsedBackgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      collapsedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      title: Card(
+        margin: EdgeInsets.zero,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              // Time at the top center
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                alignment: Alignment.center,
+                child: Text(
+                  DateFormat('HH:mm').format(entry.createdAt),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+=======
+>>>>>>> Stashed changes
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
@@ -1257,94 +1296,73 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                     ],
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
                   ),
                 ),
-                // Empty SizedBox instead of lock icon or spacer
-                const SizedBox(width: 0),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade600, Colors.blue.shade800],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade200.withOpacity(0.5),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _getTranslatedText("net_som_balance"),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
-                ),
               ),
-              Text(
-                '${_netBalance.toString()} SOM',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  letterSpacing: 0.5,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
+              
+              // Transaction details in a single row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Arrow and currency amount
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          Icon(
+                            operationIcon,
+                            color: iconColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Rate
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'rate: ${entry.rate.toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    
+                    // Total in soms
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        '${entry.total.toStringAsFixed(2)} сом',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: iconColor,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          Divider(color: Colors.white.withOpacity(0.3), height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem(
-                _getTranslatedText("transactions"),
-                _filteredEntries.length.toString(),
-                Icons.swap_horiz,
-              ),
-              _buildStatItem(
-                _getTranslatedText("currencies"),
-                _currencyCodes.length.toString(),
-                Icons.monetization_on,
-              ),
-              _buildStatItem(
-                _getTranslatedText("date_range"),
-                DateFormat('dd/MM/yy').format(_fromDate) +
-                    ' - ' +
-                    DateFormat('dd/MM/yy').format(_toDate),
-                Icons.date_range,
-                fontSize: 11,
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
+<<<<<<< HEAD
+=======
     );
   }
 
@@ -1355,22 +1373,63 @@ class _HistoryScreenState extends State<HistoryScreen> {
     double fontSize = 14,
   }) {
     return Column(
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
       children: [
-        Icon(icon, color: Colors.white, size: 18),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: fontSize,
+        // Action buttons for edit and delete
+        if (entry.operationType != 'Deposit') // Only show for non-deposit entries
+          Container(
+            margin: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Edit button
+                  ElevatedButton.icon(
+                    onPressed: () => _showEditDialog(context, entry),
+                    icon: Icon(Icons.edit, color: Colors.white),
+                    label: Text(
+                      _getTranslatedText("edit"),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Delete button
+                  ElevatedButton.icon(
+                    onPressed: () => _confirmDelete(entry),
+                    icon: Icon(Icons.delete, color: Colors.white),
+                    label: Text(
+                      _getTranslatedText("delete"),
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
       ],
     );
   }

@@ -18,18 +18,114 @@ class DatabaseHelper {
   // Private constructor
   DatabaseHelper._init();
 
+<<<<<<< Updated upstream
   // Internal constructor for singleton
   DatabaseHelper._internal();
+=======
+<<<<<<< HEAD
+  // Initialize the database
+  Future<Database> _initDatabase() async {
+    if (kIsWeb) {
+      // For web platform, use a different approach
+      return await openDatabase(
+        inMemoryDatabasePath,
+        version: _dbVersion,
+        onCreate: _createDb,
+      );
+    } else {
+      // For mobile platforms, use the file system
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    final path = join(documentsDirectory.path, 'currency_changer.db');
+    
+    return await openDatabase(
+      path,
+      version: _dbVersion,
+      onCreate: _createDb,
+    );
+  }
+  }
+=======
+  // Internal constructor for singleton
+  DatabaseHelper._internal();
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
 
   // Collections
   static const String collectionCurrencies = 'currencies';
   static const String collectionHistory = 'history';
   static const String collectionUsers = 'users';
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    await db.execute('''
+      CREATE TABLE $tableHistory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        currency_code TEXT NOT NULL,
+        operation_type TEXT NOT NULL,
+        rate REAL NOT NULL,
+        quantity REAL NOT NULL,
+        total REAL NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE $tableUsers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Initialize SOM currency
+    await db.insert(tableCurrencies, {
+      'code': 'SOM',
+      'quantity': 0.0,
+      'updated_at': DateTime.now().toIso8601String(),
+      'default_buy_rate': 1.0,
+      'default_sell_rate': 1.0,
+    });
+
+    // Create admin user
+    await db.insert(tableUsers, {
+      'username': 'a',
+      'password': 'a',
+      'role': 'admin',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Helper method to check if database exists
+  Future<bool> _databaseExists() async {
+    if (kIsWeb) {
+      return true; // Always return true for web
+    }
+    
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    final path = join(documentsDirectory.path, 'currency_changer.db');
+    return await File(path).exists();
+  }
+
+  // Helper function to safely convert values to double
+  double _safeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+=======
+>>>>>>> Stashed changes
   Future<void> initialize() async {
     if (!_isInitialized) {
       await Firebase.initializeApp();
       _isInitialized = true;
+<<<<<<< Updated upstream
+=======
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
     }
   }
 
@@ -117,6 +213,7 @@ class DatabaseHelper {
 
   Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
     try {
+<<<<<<< Updated upstream
       // Reference to the currency document by its code
       DocumentReference currencyRef = _firestore
           .collection(collectionCurrencies)
@@ -131,8 +228,57 @@ class DatabaseHelper {
       } else {
         // Insert new currency
         await currencyRef.set(currency.toMap());
-      }
+=======
+<<<<<<< HEAD
+      final db = await database;
+      
+      // Check if currency exists
+      final List<Map<String, dynamic>> result = await db.query(
+        tableCurrencies,
+        where: 'code = ?',
+        whereArgs: [currency.code],
+      );
+      
+      // Prepare data with default values for all fields except code
+      final Map<String, dynamic> currencyData = {
+        'code': currency.code,
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+        'default_buy_rate': 0.0,
+        'default_sell_rate': 0.0,
+      };
+      
+      if (result.isNotEmpty) {
+        // Update existing currency - just update the code
+        await db.update(
+          tableCurrencies,
+          currencyData,
+          where: 'code = ?',
+          whereArgs: [currency.code],
+        );
+      } else {
+        // Insert new currency
+        final id = await db.insert(tableCurrencies, currencyData);
+        currency = currency.copyWith(id: id);
+=======
+      // Reference to the currency document by its code
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currency.code);
 
+      // Check if the document exists by fetching it
+      DocumentSnapshot snapshot = await currencyRef.get();
+
+      if (snapshot.exists) {
+        // Update existing currency
+        await currencyRef.update(currency.toMap());
+      } else {
+        // Insert new currency
+        await currencyRef.set(currency.toMap());
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
+      }
+      
       return currency;
     } catch (e) {
       debugPrint('Error in createOrUpdateCurrency: $e');
@@ -157,6 +303,23 @@ class DatabaseHelper {
 
   Future<void> insertCurrency(CurrencyModel currency) async {
     try {
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+      final db = await database;
+      
+      // Prepare data with default values for all fields except code
+      final Map<String, dynamic> currencyData = {
+        'code': currency.code,
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+        'default_buy_rate': 0.0,
+        'default_sell_rate': 0.0,
+      };
+      
+      return await db.insert(tableCurrencies, currencyData);
+=======
+>>>>>>> Stashed changes
       // Reference to the currency document by its code
       DocumentReference currencyRef = _firestore
           .collection(collectionCurrencies)
@@ -164,6 +327,10 @@ class DatabaseHelper {
 
       // Insert new currency (set data in Firestore)
       await currencyRef.set(currency.toMap());
+<<<<<<< Updated upstream
+=======
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
     } catch (e) {
       debugPrint('Error in insertCurrency: $e');
       rethrow;
@@ -244,7 +411,7 @@ class DatabaseHelper {
 
           // Update SOM quantity atomically
           transaction.update(currencyRef, {
-            'quantity': newQuantity,
+          'quantity': newQuantity,
             'lastUpdated': FieldValue.serverTimestamp(),
           });
         } else {
@@ -307,7 +474,7 @@ class DatabaseHelper {
       if (somDoc.exists) {
         somBalance = somDoc.data()?['quantity'] ?? 0.0;
       }
-
+      
       // Get other currencies
       final otherCurrencies = <String, dynamic>{};
       final currenciesSnapshot =
@@ -348,7 +515,7 @@ class DatabaseHelper {
       if (!somSnapshot.exists) {
         throw Exception('SOM currency not found');
       }
-
+      
       final somData = somSnapshot.data() as Map<String, dynamic>;
 
       // Calculate new balance
@@ -356,8 +523,8 @@ class DatabaseHelper {
 
       // Update SOM balance
       await somRef.update({
-        'quantity': newBalance,
-        'updated_at': DateTime.now().toIso8601String(),
+          'quantity': newBalance,
+          'updated_at': DateTime.now().toIso8601String(),
       });
 
       // Record deposit in history
@@ -455,8 +622,8 @@ class DatabaseHelper {
         // Get current SOM document
         DocumentSnapshot somSnapshot = await transaction.get(somRef);
         if (!somSnapshot.exists) {
-          throw Exception('SOM currency not found');
-        }
+            throw Exception('SOM currency not found');
+          }
         final somData = somSnapshot.data() as Map<String, dynamic>;
 
         // Calculate the total SOM required
@@ -467,11 +634,11 @@ class DatabaseHelper {
           if (somData['quantity'] < totalSom) {
             throw Exception('Insufficient SOM balance for purchase');
           }
-
+          
           // Update SOM quantity (decrease)
           transaction.update(somRef, {
             'quantity': somData['quantity'] - totalSom,
-            'updated_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
           });
 
           // Get current foreign currency document
@@ -485,7 +652,7 @@ class DatabaseHelper {
             // Update foreign currency quantity (increase)
             transaction.update(currencyRef, {
               'quantity': currencyData['quantity'] + quantity,
-              'updated_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
             });
           } else {
             // Create new foreign currency if not found
@@ -505,22 +672,22 @@ class DatabaseHelper {
           if (!currencySnapshot.exists) {
             throw Exception('Currency not found: $currencyCode');
           }
-
+          
           final currencyData = currencySnapshot.data() as Map<String, dynamic>;
           if (currencyData['quantity'] < quantity) {
             throw Exception('Insufficient $currencyCode balance for sale');
           }
-
+          
           // Update foreign currency quantity (decrease)
           transaction.update(currencyRef, {
             'quantity': currencyData['quantity'] - quantity,
-            'updated_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
           });
-
+          
           // Update SOM quantity (increase)
           transaction.update(somRef, {
             'quantity': somData['quantity'] + totalSom,
-            'updated_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
           });
         }
 
@@ -740,11 +907,11 @@ class DatabaseHelper {
       debugPrint('Updating history entry:');
       debugPrint('Old entry: ${oldHistory.toString()}');
       debugPrint('New entry: ${newHistory.toString()}');
-
+      
       // Convert to maps for detailed comparison
       final oldMap = oldHistory.toMap();
       final newMap = newHistory.toMap();
-
+      
       // Print what changed
       final changes = <String>[];
       newMap.forEach((key, value) {
@@ -752,19 +919,19 @@ class DatabaseHelper {
           changes.add('$key: ${oldMap[key]} -> $value');
         }
       });
-
+      
       debugPrint('Changes: ${changes.join(', ')}');
       debugPrint('Using ID for update: ${newHistory.id}');
-
+      
       // Update the document in Firestore
       await _firestore
           .collection(collectionHistory)
           .doc(newHistory.id)
           .update(newMap);
-
+      
       // Debug the result
       debugPrint('Update successful');
-
+      
       return true;
     } catch (e) {
       debugPrint('Error in updateHistory: $e');
@@ -925,7 +1092,7 @@ class DatabaseHelper {
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-
+      
       // Get profitable currencies data
       final profitData = await getMostProfitableCurrencies(
         startDate: fromDate,
@@ -995,10 +1162,10 @@ class DatabaseHelper {
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-
+      
       final fromDateStr = fromDate.toIso8601String();
       final toDateStr = toDate.toIso8601String();
-
+      
       debugPrint('Fetching data from $fromDateStr to $toDateStr');
 
       // Get all transactions within the date range
@@ -1081,7 +1248,7 @@ class DatabaseHelper {
       if (sales.isNotEmpty) {
         debugPrint('Sample sales data: ${sales.first}');
       }
-
+      
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
@@ -1098,16 +1265,16 @@ class DatabaseHelper {
       final toDateStr = endDate.toIso8601String();
 
       debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
-
+      
       // Get ALL transactions without complex queries
       final querySnapshot =
           await _firestore.collection(collectionHistory).get();
 
       debugPrint('Total history records: ${querySnapshot.docs.length}');
-
+      
       // Group transactions by date first
       final Map<String, Map<String, dynamic>> dailyData = {};
-
+      
       // Process all transactions and filter by date in code
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
@@ -1133,7 +1300,7 @@ class DatabaseHelper {
 
         // Skip if currency code is SOM
         if (currencyCode == 'SOM') continue;
-
+        
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -1145,7 +1312,7 @@ class DatabaseHelper {
             'currencies': <String, Map<String, dynamic>>{},
           };
         }
-
+        
         // Initialize currency entry for this day
         if (!(dailyData[date]!['currencies'] as Map).containsKey(
           currencyCode,
@@ -1160,12 +1327,12 @@ class DatabaseHelper {
             'count_sale': 0,
           };
         }
-
+        
         // Add transaction data
         final currencyData =
             (dailyData[date]!['currencies'] as Map)[currencyCode]
                 as Map<String, dynamic>;
-
+        
         if (operationType == 'Purchase') {
           dailyData[date]!['purchases'] =
               (dailyData[date]!['purchases'] as double) + total;
@@ -1188,14 +1355,14 @@ class DatabaseHelper {
               (dailyData[date]!['deposits'] as double) + total;
         }
       }
-
+      
       // Now calculate profit based on selling cost only for sold currencies
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         double dailyProfit = 0.0;
-
+        
         debugPrint('Calculating profit for date: $date');
-
+        
         // For each currency, calculate profit on the sold amount
         for (var currencyCode in (dayData['currencies'] as Map).keys) {
           final currencyData =
@@ -1203,11 +1370,11 @@ class DatabaseHelper {
                   as Map<String, dynamic>;
           final saleAmount = currencyData['sale_amount'] as double;
           final saleQuantity = currencyData['sale_quantity'] as double;
-
+          
           debugPrint(
             '  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
           );
-
+          
           if (saleQuantity > 0) {
             // Get average purchase rate for this currency up to this date
             // Instead of querying Firestore again, we'll use the data we already have
@@ -1235,26 +1402,26 @@ class DatabaseHelper {
 
             final avgPurchaseRate =
                 totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-
+            
             // Calculate cost of sold currency
             final costOfSold = saleQuantity * avgPurchaseRate;
-
+            
             // Calculate profit for this currency on this day
             final currencyProfit = saleAmount - costOfSold;
-
+            
             debugPrint(
               '    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit',
             );
-
+            
             // Add to daily profit
             dailyProfit += currencyProfit;
           }
         }
-
+        
         // Update daily profit
         dayData['profit'] = dailyProfit;
         debugPrint('  Total daily profit for $date: $dailyProfit');
-
+        
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
           debugPrint(
@@ -1263,17 +1430,17 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
         }
       }
-
+      
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
       formattedResult.sort(
         (a, b) => (a['day'] as String).compareTo(b['day'] as String),
       );
-
+      
       if (formattedResult.isNotEmpty) {
         debugPrint('First day data: ${formattedResult.first}');
       }
-
+      
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
@@ -1289,7 +1456,7 @@ class DatabaseHelper {
     try {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-
+      
       // Get all transactions for the date range
       final querySnapshot =
           await _firestore
@@ -1365,7 +1532,7 @@ class DatabaseHelper {
 
       // Calculate profits locally
       final List<Map<String, dynamic>> profitData = [];
-
+      
       for (var code in allCurrencyCodes) {
         final buyData =
             purchaseData[code] ??
@@ -1373,7 +1540,7 @@ class DatabaseHelper {
         final sellData =
             salesData[code] ??
             {'total_quantity': 0.0, 'total_earned': 0.0, 'avg_rate': 0.0};
-
+        
         final totalQuantitySold = _safeDouble(sellData['total_quantity']);
         final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
         final avgSaleRate = _safeDouble(sellData['avg_rate']);
@@ -1385,7 +1552,7 @@ class DatabaseHelper {
             totalQuantitySold > 0 ||
             (_safeDouble(buyData['total_quantity']) > 0 &&
                 _safeDouble(sellData['total_quantity']) > 0);
-
+        
         if (shouldAdd) {
           profitData.add({
             'currency_code': code,
@@ -1398,16 +1565,16 @@ class DatabaseHelper {
           });
         }
       }
-
+      
       // Sort by profit and limit locally
       profitData.sort(
         (a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt(),
       );
-
+      
       if (profitData.length > limit) {
         return profitData.sublist(0, limit);
       }
-
+      
       return profitData;
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
@@ -1423,7 +1590,7 @@ class DatabaseHelper {
     try {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-
+      
       debugPrint(
         'Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr',
       );
@@ -1433,10 +1600,10 @@ class DatabaseHelper {
           await _firestore.collection(collectionHistory).get();
 
       debugPrint('Total history records: ${querySnapshot.docs.length}');
-
+      
       // Group transactions by date
       final Map<String, Map<String, dynamic>> dailyData = {};
-
+      
       // Process all transactions and filter by date and currency in code
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
@@ -1468,7 +1635,7 @@ class DatabaseHelper {
         debugPrint(
           'Processing $date - $operationType: Amount=$amount, Quantity=$quantity',
         );
-
+        
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -1481,7 +1648,7 @@ class DatabaseHelper {
             'deposits': 0.0,
           };
         }
-
+        
         // Add transaction data
         if (operationType == 'Purchase') {
           dailyData[date]!['purchases'] =
@@ -1498,17 +1665,17 @@ class DatabaseHelper {
               (dailyData[date]!['deposits'] as double) + amount;
         }
       }
-
+      
       // Calculate profit for each day based on sold quantity
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         final saleAmount = dayData['sales'] as double;
         final saleQuantity = dayData['sale_quantity'] as double;
-
+        
         debugPrint(
           'Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
         );
-
+        
         if (saleQuantity > 0) {
           // Get average purchase rate for this currency up to this date
           // Instead of querying Firestore again, we'll use the data we already have
@@ -1536,14 +1703,14 @@ class DatabaseHelper {
 
           final avgPurchaseRate =
               totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-
+          
           // Calculate cost of sold currency
           final costOfSold = saleQuantity * avgPurchaseRate;
-
+          
           // Calculate profit for this currency on this day (sale amount minus cost of sold)
           final profit = saleAmount - costOfSold;
           dayData['profit'] = profit;
-
+          
           debugPrint(
             '  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit',
           );
@@ -1552,7 +1719,7 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
           debugPrint('  No sales, profit is 0');
         }
-
+        
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
           debugPrint(
@@ -1561,17 +1728,17 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
         }
       }
-
+      
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
       formattedResult.sort(
         (a, b) => (a['day'] as String).compareTo(b['day'] as String),
       );
-
+      
       if (formattedResult.isNotEmpty) {
         debugPrint('First day formatted data: ${formattedResult.first}');
       }
-
+      
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
@@ -1589,17 +1756,17 @@ class DatabaseHelper {
         startDate: startDate,
         endDate: endDate,
       );
-
+      
       final profitData = await getMostProfitableCurrencies(
         startDate: startDate,
         endDate: endDate,
       );
-
+      
       final barChartData = await getDailyData(
         startDate: startDate,
         endDate: endDate,
       );
-
+      
       return {
         'pieChartData': pieChartData,
         'profitData': profitData,
@@ -1669,6 +1836,21 @@ class DatabaseHelper {
 
         // Return admin user model
         return UserModel(id: 'a', username: 'a', password: 'a', role: 'admin');
+<<<<<<< Updated upstream
+=======
+      }
+<<<<<<< HEAD
+      
+      // If we're on web and couldn't find the user, check hardcoded admin credentials
+      if (kIsWeb && username == 'a' && password == 'a') {
+        return UserModel(
+          id: 1,
+          username: 'a',
+          password: 'a',
+          role: 'admin',
+          createdAt: DateTime.now(),
+        );
+>>>>>>> Stashed changes
       }
 
       // For non-admin users, check Firestore
@@ -1710,10 +1892,71 @@ class DatabaseHelper {
       return null;
     } catch (e) {
       debugPrint('Error in getUserByCredentials: $e');
+<<<<<<< Updated upstream
+=======
+      
+      // Fallback for web platform when database operations fail
+      if (kIsWeb && username == 'a' && password == 'a') {
+        return UserModel(
+          id: 1,
+          username: 'a',
+          password: 'a',
+          role: 'admin',
+          createdAt: DateTime.now(),
+        );
+      }
+      
+      rethrow;
+=======
+
+      // For non-admin users, check Firestore
+      final querySnapshot =
+          await _firestore
+              .collection(collectionUsers)
+              .where('username', isEqualTo: username)
+              .where('password', isEqualTo: password)
+              .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs.first.data();
+        debugPrint('User found in Firestore');
+
+        // Sign in with Firebase Auth
+        try {
+          await _auth.signInWithEmailAndPassword(
+            email: '${username}@currencychanger.com',
+            password: password,
+          );
+          debugPrint('User signed in with Firebase Auth');
+        } catch (e) {
+          if (e is FirebaseException && e.code == 'user-not-found') {
+            // Create the user in Firebase Auth
+            await _auth.createUserWithEmailAndPassword(
+              email: '${username}@currencychanger.com',
+              password: password,
+            );
+            debugPrint('User created in Firebase Auth');
+          } else {
+            debugPrint('Error signing in with Firebase Auth: $e');
+          }
+        }
+
+        return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
+      }
+
+      debugPrint('Authentication failed - No matching user found');
+      return null;
+    } catch (e) {
+      debugPrint('Error in getUserByCredentials: $e');
+>>>>>>> Stashed changes
       if (e is FirebaseException) {
         debugPrint('Firebase error code: ${e.code}');
       }
       return null;
+<<<<<<< Updated upstream
+=======
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
     }
   }
 
@@ -1873,6 +2116,48 @@ class DatabaseHelper {
   // Verify admin user exists
   Future<bool> ensureAdminUserExists() async {
     try {
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+      final db = await database;
+      
+      // Check if currencies other than SOM exist
+      final result = await db.query(
+        tableCurrencies,
+        where: 'code != ?',
+        whereArgs: ['SOM'],
+      );
+      
+      if (result.isEmpty) {
+        // Add default currencies with empty quantities and rates
+        final defaultCurrencies = [
+          {
+            'code': 'USD',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+          {
+            'code': 'EUR',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+          {
+            'code': 'RUB',
+            'quantity': 0.0,
+            'updated_at': DateTime.now().toIso8601String(),
+            'default_buy_rate': 0.0,
+            'default_sell_rate': 0.0,
+          },
+        ];
+        
+        for (var currency in defaultCurrencies) {
+          await db.insert(tableCurrencies, currency);
+=======
+>>>>>>> Stashed changes
       debugPrint('Checking if admin user exists...');
 
       // First check by document ID
@@ -1981,6 +2266,10 @@ class DatabaseHelper {
           debugPrint('Admin user created successfully');
         } else {
           debugPrint('Admin user already exists in Firestore');
+<<<<<<< Updated upstream
+=======
+>>>>>>> 213a96f2a4caea528302597653a4d99b7df66c02
+>>>>>>> Stashed changes
         }
       }
     } catch (e) {
