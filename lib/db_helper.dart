@@ -974,22 +974,40 @@ class DatabaseHelper {
           totalProfit += profit;
         }
 
+        // Calculate totals correctly
+        final avgPurchaseRate = _safeDouble(profitEntry['avg_purchase_rate']);
+        final avgSaleRate = _safeDouble(profitEntry['avg_sale_rate']);
+        final totalPurchased = _safeDouble(profitEntry['total_purchased']);
+        final totalSold = _safeDouble(profitEntry['total_sold']);
+
+        // Calculate proper total amounts
+        final totalPurchaseAmount = avgPurchaseRate * totalPurchased;
+        final totalSaleAmount = avgSaleRate * totalSold;
+
         currencyStats.add({
           'currency': currency.code,
-          'avg_purchase_rate': _safeDouble(profitEntry['avg_purchase_rate']),
-          'total_purchased': _safeDouble(profitEntry['total_purchased']),
-          'total_purchase_amount':
-              _safeDouble(profitEntry['avg_purchase_rate']) *
-              _safeDouble(profitEntry['total_purchased']),
-          'avg_sale_rate': _safeDouble(profitEntry['avg_sale_rate']),
-          'total_sold': _safeDouble(profitEntry['total_sold']),
-          'total_sale_amount':
-              _safeDouble(profitEntry['avg_sale_rate']) *
-              _safeDouble(profitEntry['total_sold']),
+          'avg_purchase_rate': avgPurchaseRate,
+          'total_purchased': totalPurchased,
+          'total_purchase_amount': totalPurchaseAmount,
+          'avg_sale_rate': avgSaleRate,
+          'total_sold': totalSold,
+          'total_sale_amount': totalSaleAmount,
           'current_quantity': currency.quantity,
           'profit': profit,
           'cost_of_sold': _safeDouble(profitEntry['cost_of_sold']),
         });
+
+        // Debug statistics
+        debugPrint(
+          'Stats - ${currency.code}: ' +
+              'avgPurchase=$avgPurchaseRate, ' +
+              'avgSale=$avgSaleRate, ' +
+              'totalPurchased=$totalPurchased, ' +
+              'totalSold=$totalSold, ' +
+              'purchaseAmount=$totalPurchaseAmount, ' +
+              'saleAmount=$totalSaleAmount, ' +
+              'profit=$profit',
+        );
       }
 
       return {'currency_stats': currencyStats, 'total_profit': totalProfit};
@@ -1305,11 +1323,7 @@ class DatabaseHelper {
 
       // Get all transactions for the date range
       final querySnapshot =
-          await _firestore
-              .collection(collectionHistory)
-              .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
-              .where('created_at', isLessThanOrEqualTo: toDateStr)
-              .get();
+          await _firestore.collection(collectionHistory).get();
 
       // Process transactions locally
       final Map<String, Map<String, dynamic>> purchaseData = {};
@@ -1318,10 +1332,22 @@ class DatabaseHelper {
       // Group transactions by type and currency
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
+
+        // Check if the transaction is within our date range
+        final createdAt = data['created_at'] as String;
+        if (createdAt.compareTo(fromDateStr) < 0 ||
+            createdAt.compareTo(toDateStr) > 0) {
+          continue; // Skip transactions outside date range
+        }
+
         final currencyCode = data['currency_code'] as String;
         final operationType = data['operation_type'] as String;
         final quantity = _safeDouble(data['quantity']);
+        final rate = _safeDouble(data['rate']);
         final total = _safeDouble(data['total']);
+
+        // Skip SOM currency for profit calculations
+        if (currencyCode == 'SOM') continue;
 
         if (operationType == 'Purchase') {
           if (!purchaseData.containsKey(currencyCode)) {
@@ -1354,7 +1380,7 @@ class DatabaseHelper {
         }
       }
 
-      // Calculate average rates locally
+      // Calculate average rates properly: total amount ÷ total quantity
       for (var code in purchaseData.keys) {
         final totalQuantity = _safeDouble(
           purchaseData[code]!['total_quantity'],
@@ -1362,6 +1388,11 @@ class DatabaseHelper {
         final totalSpent = _safeDouble(purchaseData[code]!['total_spent']);
         purchaseData[code]!['avg_rate'] =
             totalQuantity > 0 ? totalSpent / totalQuantity : 0.0;
+
+        // Debug purchases
+        debugPrint(
+          'Purchase - $code: totalSpent=$totalSpent, totalQuantity=$totalQuantity, avgRate=${purchaseData[code]!['avg_rate']}',
+        );
       }
 
       for (var code in salesData.keys) {
@@ -1369,6 +1400,11 @@ class DatabaseHelper {
         final totalEarned = _safeDouble(salesData[code]!['total_earned']);
         salesData[code]!['avg_rate'] =
             totalQuantity > 0 ? totalEarned / totalQuantity : 0.0;
+
+        // Debug sales
+        debugPrint(
+          'Sale - $code: totalEarned=$totalEarned, totalQuantity=$totalQuantity, avgRate=${salesData[code]!['avg_rate']}',
+        );
       }
 
       // Get all currency codes
@@ -1387,6 +1423,7 @@ class DatabaseHelper {
             salesData[code] ??
             {'total_quantity': 0.0, 'total_earned': 0.0, 'avg_rate': 0.0};
 
+        final totalQuantityPurchased = _safeDouble(buyData['total_quantity']);
         final totalQuantitySold = _safeDouble(sellData['total_quantity']);
         final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
         final avgSaleRate = _safeDouble(sellData['avg_rate']);
@@ -1394,10 +1431,13 @@ class DatabaseHelper {
         // Calculate profit as (average sale - average purchase) * sold quantity
         final profit = (avgSaleRate - avgPurchaseRate) * totalQuantitySold;
 
+        // Debug profit
+        debugPrint(
+          'Profit - $code: avgSaleRate=$avgSaleRate, avgPurchaseRate=$avgPurchaseRate, soldQty=$totalQuantitySold, profit=$profit',
+        );
+
         final shouldAdd =
-            totalQuantitySold > 0 ||
-            (_safeDouble(buyData['total_quantity']) > 0 &&
-                _safeDouble(sellData['total_quantity']) > 0);
+            true; // Include all currencies for statistics, even if no sales or purchases
 
         if (shouldAdd) {
           profitData.add({
@@ -1405,7 +1445,7 @@ class DatabaseHelper {
             'amount': profit,
             'avg_purchase_rate': avgPurchaseRate,
             'avg_sale_rate': avgSaleRate,
-            'total_purchased': _safeDouble(buyData['total_quantity']),
+            'total_purchased': totalQuantityPurchased,
             'total_sold': totalQuantitySold,
             'cost_of_sold': totalQuantitySold * avgPurchaseRate,
           });
