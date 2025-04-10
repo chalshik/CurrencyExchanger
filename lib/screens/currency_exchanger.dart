@@ -151,16 +151,26 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   void _calculateTotal() {
-    // Convert empty fields to 0
-    double currencyValue =
-        _currencyController.text.isEmpty
-            ? 0.0
-            : double.tryParse(_currencyController.text) ?? 0.0;
+    // Check if SOM is selected (rate is always 1.0 for SOM)
+    if (_selectedCurrency == 'SOM') {
+      double quantity = _quantityController.text.isEmpty 
+          ? 0.0 
+          : double.tryParse(_quantityController.text) ?? 0.0;
+          
+      setState(() {
+        _totalSum = quantity; // For SOM, total equals quantity (rate is 1.0)
+      });
+      return;
+    }
+    
+    // For other currencies, calculate normally
+    double currencyValue = _currencyController.text.isEmpty
+        ? 0.0
+        : double.tryParse(_currencyController.text) ?? 0.0;
 
-    double quantity =
-        _quantityController.text.isEmpty
-            ? 0.0
-            : double.tryParse(_quantityController.text) ?? 0.0;
+    double quantity = _quantityController.text.isEmpty
+        ? 0.0
+        : double.tryParse(_quantityController.text) ?? 0.0;
 
     setState(() {
       _totalSum = currencyValue * quantity;
@@ -353,21 +363,45 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     }
 
     // Get current date
-    final currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final currentDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
+    // Check if device is tablet based on screen width
+    final isTablet = MediaQuery.of(context).size.width > 600;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date display at the top
+          // Date display at the top with numpad toggle on the right (only for tablet)
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              currentDate,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Row(
+              children: [
+                // Left spacer that expands to push the date to the center
+                Expanded(child: Container()),
+                
+                // Centered date
+                Container(
+                  alignment: Alignment.center,
+                  child: Text(
+                    currentDate,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
+                // Right side with either the button or an expanded spacer
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (isTablet) _buildNumpadToggleButton(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -380,11 +414,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           const SizedBox(height: 16),
           
           // Amount input
-          _buildAmountInput(),
+          _buildAmountInput(isTablet),
           const SizedBox(height: 16),
           
           // Exchange rate input
-          _buildExchangeRateInput(),
+          _buildExchangeRateInput(isTablet),
           const SizedBox(height: 16),
           
           // Total sum display
@@ -393,6 +427,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           
           // Finish button
           _buildFinishButton(),
+          
+          // Numpad (only for tablet)
+          if (isTablet && _isNumpadVisible) ...[
+            const SizedBox(height: 16),
+            _buildNumpad(),
+          ],
+          
           const SizedBox(height: 24),
           
           // Recent transaction history
@@ -402,93 +443,87 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
   
-  // Method to build exchange rate input
-  Widget _buildExchangeRateInput() {
+  Widget _buildTotalDisplay() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _getTranslatedText('exchange_rate'),
+          _getTranslatedText('total'),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _currencyController,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: _selectedCurrency == 'SOM' ? Colors.grey.shade100 : Colors.white,
-            hintText: '0.00',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.shade200.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           ),
-          style: const TextStyle(fontSize: 16),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          readOnly: _isNumpadVisible || _selectedCurrency == 'SOM',
-          enabled: _selectedCurrency != 'SOM',
-          onTap: () {
-            if (!_isNumpadVisible && _selectedCurrency != 'SOM') {
-              setState(() {
-                _isNumpadVisible = true;
-                _isRateFieldActive = true;
-              });
-            }
-          },
-          onChanged: (value) {
-            setState(() {
-              _calculateTotal();
-            });
-          },
+          child: Text(
+            '${_totalSum.toStringAsFixed(2)} SOM',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade700,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTotalSumCard() {
-    // Get screen width to adjust sizing
-    final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 360;
-    final valueSize = isSmallScreen ? 28.0 : 32.0; // Increased font size
-
-    return Card(
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
-          width: 1.5,
+  Widget _buildFinishButton() {
+    return Container(
+      height: 54,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade400, Colors.green.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade300.withOpacity(0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.blue.shade100],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: ElevatedButton(
+        onPressed: _validateAndSubmit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
-        padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
-        child: Center(
-          child: Text(
-            '${_totalSum.toStringAsFixed(2)} SOM',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
-            ),
+        child: Text(
+          _getTranslatedText('finish'),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
         ),
       ),
@@ -498,7 +533,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   Widget _buildCurrencySelection() {
     // Include all currencies including SOM in the dropdown
     final allCurrencies = _currencies.map((c) => c.code).where((code) => code != null).cast<String>().toList();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -512,30 +547,37 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.grey.shade300),
             color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: DropdownButton<String>(
             value: _selectedCurrency.isNotEmpty ? _selectedCurrency : null,
             hint: Text(_getTranslatedText('select_currency')),
             isExpanded: true,
             underline: Container(),
+            icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
             items: allCurrencies.map((String currency) {
               return DropdownMenuItem<String>(
                 value: currency,
-                child: Text(currency),
+                child: Text(
+                  currency,
+                  style: const TextStyle(fontSize: 16),
+                ),
               );
             }).toList(),
             onChanged: (String? newValue) {
               if (newValue != null) {
                 setState(() {
                   _selectedCurrency = newValue;
-                  // Clear the rate if SOM is selected
-                  if (_selectedCurrency == 'SOM') {
-                    _currencyController.text = '1.0';
-                  }
                   _calculateTotal();
                 });
               }
@@ -561,50 +603,106 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _operationType = 'Purchase';
-                    _calculateTotal();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _operationType == 'Purchase'
-                      ? Colors.blue
-                      : Colors.grey.shade200,
-                  foregroundColor: _operationType == 'Purchase'
-                      ? Colors.white
-                      : Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: _operationType == 'Purchase'
+                    ? LinearGradient(
+                        colors: [Colors.blue.shade400, Colors.blue.shade600],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _operationType == 'Purchase'
+                    ? [
+                        BoxShadow(
+                          color: Colors.blue.shade200.withOpacity(0.5),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _operationType = 'Purchase';
+                      _calculateTotal();
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _operationType == 'Purchase'
+                        ? Colors.transparent
+                        : Colors.grey.shade200,
+                    foregroundColor: _operationType == 'Purchase'
+                        ? Colors.white
+                        : Colors.black87,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    _getTranslatedText('purchase'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                child: Text(_getTranslatedText('purchase')),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _operationType = 'Sale';
-                    _calculateTotal();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _operationType == 'Sale'
-                      ? Colors.blue
-                      : Colors.grey.shade200,
-                  foregroundColor: _operationType == 'Sale'
-                      ? Colors.white
-                      : Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: _operationType == 'Sale'
+                    ? LinearGradient(
+                        colors: [Colors.blue.shade400, Colors.blue.shade600],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _operationType == 'Sale'
+                    ? [
+                        BoxShadow(
+                          color: Colors.blue.shade200.withOpacity(0.5),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _operationType = 'Sale';
+                      _calculateTotal();
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _operationType == 'Sale'
+                        ? Colors.transparent
+                        : Colors.grey.shade200,
+                    foregroundColor: _operationType == 'Sale'
+                        ? Colors.white
+                        : Colors.black87,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    _getTranslatedText('sale'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                child: Text(_getTranslatedText('sale')),
               ),
             ),
           ],
@@ -613,25 +711,275 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     );
   }
 
-  Widget _buildFinishButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _validateAndSubmit,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 3,
-        ),
-        child: Text(
-          _getTranslatedText('finish'),
+  Widget _buildAmountInput(bool isTablet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _getTranslatedText('amount'),
           style: const TextStyle(
-            fontSize: 16,
             fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _quantityController,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            hintText: '0.00',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            prefixIcon: Icon(
+              Icons.numbers,
+              color: Colors.blue.shade600,
+            ),
+          ),
+          style: const TextStyle(fontSize: 16),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          readOnly: isTablet && _isNumpadVisible,
+          onTap: () {
+            if (isTablet && !_isNumpadVisible) {
+              setState(() {
+                _isNumpadVisible = true;
+                _isRateFieldActive = false;
+              });
+            }
+          },
+          onChanged: (value) {
+            setState(() {
+              _calculateTotal();
+            });
+          },
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildExchangeRateInput(bool isTablet) {
+    // Check if SOM is selected to hide the rate input
+    final isSomSelected = _selectedCurrency == 'SOM';
+    
+    if (isSomSelected) {
+      // When SOM is selected, we don't need the exchange rate field
+      return const SizedBox.shrink();
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _getTranslatedText('exchange_rate'),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _currencyController,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            hintText: '0.00',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            prefixIcon: Icon(
+              Icons.attach_money,
+              color: Colors.blue.shade600,
+            ),
+          ),
+          style: const TextStyle(fontSize: 16),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          readOnly: isTablet && _isNumpadVisible,
+          onTap: () {
+            if (isTablet && !_isNumpadVisible) {
+              setState(() {
+                _isNumpadVisible = true;
+                _isRateFieldActive = true;
+              });
+            }
+          },
+          onChanged: (value) {
+            setState(() {
+              _calculateTotal();
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNumpadToggleButton() {
+    return ElevatedButton.icon(
+      onPressed: () {
+        setState(() {
+          _isNumpadVisible = !_isNumpadVisible;
+        });
+      },
+      icon: Icon(
+        _isNumpadVisible ? Icons.keyboard_hide : Icons.keyboard,
+        size: 20,
+      ),
+      label: Text(
+        _isNumpadVisible ? _getTranslatedText('hide_numpad') : _getTranslatedText('show_numpad'),
+        style: const TextStyle(fontSize: 14),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue.shade50,
+        foregroundColor: Colors.blue.shade700,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.blue.shade200),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumpad() {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            border: Border.all(color: Colors.grey.shade300),
+            gradient: LinearGradient(
+              colors: [Colors.white, Colors.grey.shade50],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Numpad grid
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNumpadButton('7'),
+                  _buildNumpadButton('8'),
+                  _buildNumpadButton('9'),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNumpadButton('4'),
+                  _buildNumpadButton('5'),
+                  _buildNumpadButton('6'),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNumpadButton('1'),
+                  _buildNumpadButton('2'),
+                  _buildNumpadButton('3'),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNumpadButton('.'),
+                  _buildNumpadButton('0'),
+                  _buildNumpadButton('00'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Numpad button widget
+  Widget _buildNumpadButton(String value, {bool isSpecial = false}) {
+    return Container(
+      width: 70,
+      height: 55,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        gradient: isSpecial 
+          ? LinearGradient(
+              colors: [Colors.red.shade100, Colors.red.shade200],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
+          : LinearGradient(
+              colors: [Colors.white, Colors.grey.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300.withOpacity(0.5),
+            blurRadius: 3,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: isSpecial ? Colors.red.shade300 : Colors.grey.shade300,
+          width: 1,
+        ),
+      ),
+      child: ElevatedButton(
+        onPressed: () => _handleNumpadInput(value),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: isSpecial ? Colors.red.shade800 : Colors.black87,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: isSpecial ? Colors.red.shade800 : Colors.black87,
+            ),
           ),
         ),
       ),
@@ -643,8 +991,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           color: Colors.grey.shade100,
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Center(
           child: Text(
@@ -673,9 +1022,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         ),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade300),
             color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: ListView.separated(
             shrinkWrap: true,
@@ -691,148 +1047,120 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               
               final isPurchase = transaction.operationType == 'Purchase';
               
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                child: Row(
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isPurchase 
+                      ? [Colors.green.shade50, Colors.white]
+                      : [Colors.orange.shade50, Colors.white],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Time
-                    Text(
-                      formattedTime,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    
-                    // Operation icon
-                    Icon(
-                      isPurchase ? Icons.arrow_downward : Icons.arrow_upward,
-                      color: isPurchase ? Colors.green : Colors.red,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    
-                    // Amount and currency
-                    Expanded(
-                      child: Text(
-                        '${transaction.quantity.toStringAsFixed(2)} ${transaction.currencyCode}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                    // Time on top with operation indicator
+                    Row(
+                      children: [
+                        Text(
+                          formattedTime,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: isPurchase ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isPurchase ? Icons.arrow_downward : Icons.arrow_upward,
+                            color: isPurchase ? Colors.green : Colors.orange,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isPurchase ? _getTranslatedText('purchase') : _getTranslatedText('sale'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isPurchase ? Colors.green.shade700 : Colors.orange.shade700,
+                          ),
+                        ),
+                      ],
                     ),
                     
-                    // Rate
-                    Text(
-                      'rate: ${transaction.rate.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
                     
-                    // Total
-                    Text(
-                      '${transaction.total.toStringAsFixed(2)} сом',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Main transaction details
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Amount and currency
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${transaction.quantity.toStringAsFixed(2)} ${transaction.currencyCode}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        
+                        // Rate centered
+                        Expanded(
+                          flex: 1,
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Text(
+                                  _getTranslatedText('rate'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  transaction.rate.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        
+                        // Total
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${transaction.total.toStringAsFixed(2)} SOM',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade700,
+                            ),
+                            textAlign: TextAlign.end,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               );
             },
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTotalDisplay() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _getTranslatedText('total'),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-            color: Colors.grey.shade50,
-          ),
-          child: Text(
-            '${_totalSum.toStringAsFixed(2)} SOM',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAmountInput() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _getTranslatedText('amount'),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _quantityController,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            hintText: '0.00',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          ),
-          style: const TextStyle(fontSize: 16),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          readOnly: _isNumpadVisible,
-          onTap: () {
-            if (!_isNumpadVisible) {
-              setState(() {
-                _isNumpadVisible = true;
-                _isRateFieldActive = false;
-              });
-            }
-          },
-          onChanged: (value) {
-            setState(() {
-              _calculateTotal();
-            });
-          },
         ),
       ],
     );
@@ -855,16 +1183,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       return;
     }
     
-    // Validate rate input
-    final rate = _currencyController.text.isEmpty 
-        ? 0.0 
-        : double.tryParse(_currencyController.text);
-    
-    if (rate == null || (rate <= 0 && _selectedCurrency != 'SOM')) {
-      _showBriefNotification(_getTranslatedText('invalid_rate'), Colors.red);
-      return;
-    }
-    
     // Validate quantity input
     final quantity = _quantityController.text.isEmpty 
         ? 0.0 
@@ -874,9 +1192,90 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       _showBriefNotification(_getTranslatedText('invalid_quantity'), Colors.red);
       return;
     }
+
+    // Special validation for SOM
+    if (_selectedCurrency == 'SOM') {
+      // For 'Sale' operation, check if we have enough SOM
+      if (_operationType == 'Sale') {
+        final somBalance = await _databaseHelper.getCurrencyQuantity('SOM');
+        if (quantity > somBalance) {
+          _showBriefNotification(
+            _getTranslatedText('insufficient_balance', {'code': 'SOM'}),
+            Colors.red,
+          );
+          return;
+        }
+      }
+      
+      try {
+        // Create history entry for SOM with rate=1.0
+        final historyEntry = HistoryModel(
+          currencyCode: 'SOM',
+          quantity: quantity,
+          rate: 1.0, // Fixed rate for SOM
+          total: quantity, // Total equals quantity for SOM
+          operationType: _operationType,
+          username: currentUser?.username ?? 'unknown',
+        );
+        
+        // Add to database
+        await _databaseHelper.addHistoryEntry(historyEntry);
+        
+        // Update SOM quantity
+        if (_operationType == 'Purchase') {
+          // For purchase, we add to SOM balance
+          await _databaseHelper.adjustCurrencyQuantity(
+            'SOM', 
+            quantity, 
+            true // Increment
+          );
+        } else {
+          // For sale, we deduct from SOM balance
+          await _databaseHelper.adjustCurrencyQuantity(
+            'SOM', 
+            quantity, 
+            false // Decrement
+          );
+        }
+        
+        // Show success message
+        _showBriefNotification(
+          _getTranslatedText('transaction_successful'),
+          Colors.green,
+        );
+        
+        // Reset form
+        setState(() {
+          _quantityController.text = '';
+          _totalSum = 0.0;
+        });
+        
+        // Reload data
+        await _initializeData();
+        
+        return; // Exit early, we're done with SOM transaction
+      } catch (e) {
+        debugPrint('Error processing SOM transaction: $e');
+        _showBriefNotification(
+          _getTranslatedText('transaction_failed'),
+          Colors.red,
+        );
+        return;
+      }
+    }
+    
+    // Validate rate input for non-SOM currencies
+    final rate = _currencyController.text.isEmpty 
+        ? 0.0 
+        : double.tryParse(_currencyController.text);
+    
+    if (rate == null || rate <= 0) {
+      _showBriefNotification(_getTranslatedText('invalid_rate'), Colors.red);
+      return;
+    }
     
     // Check if we have enough balance for a sale operation
-    if (_operationType == 'Sale' && _selectedCurrency != 'SOM') {
+    if (_operationType == 'Sale') {
       final currencyBalance = await _databaseHelper.getCurrencyQuantity(_selectedCurrency);
       if (quantity > currencyBalance) {
         _showBriefNotification(
@@ -887,13 +1286,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       }
     }
     
-    // All validations passed, proceed with transaction
+    // All validations passed, proceed with transaction for non-SOM currencies
     try {
       // Create history entry
       final historyEntry = HistoryModel(
         currencyCode: _selectedCurrency,
         quantity: quantity,
-        rate: _selectedCurrency == 'SOM' ? 1.0 : rate!,
+        rate: rate!,
         total: _totalSum,
         operationType: _operationType,
         username: currentUser?.username ?? 'unknown',
@@ -912,13 +1311,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         );
         
         // Deduct from SOM
-        if (_selectedCurrency != 'SOM') {
-          await _databaseHelper.adjustCurrencyQuantity(
-            'SOM', 
-            _totalSum, 
-            false
-          );
-        }
+        await _databaseHelper.adjustCurrencyQuantity(
+          'SOM', 
+          _totalSum, 
+          false
+        );
       } else {
         // For sale, we deduct from the currency and add to SOM
         await _databaseHelper.adjustCurrencyQuantity(
@@ -928,13 +1325,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         );
         
         // Add to SOM
-        if (_selectedCurrency != 'SOM') {
-          await _databaseHelper.adjustCurrencyQuantity(
-            'SOM', 
-            _totalSum, 
-            true
-          );
-        }
+        await _databaseHelper.adjustCurrencyQuantity(
+          'SOM', 
+          _totalSum, 
+          true
+        );
       }
       
       // Show success message
@@ -960,6 +1355,126 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         Colors.red,
       );
     }
+  }
+
+  // Handle numpad input
+  void _handleNumpadInput(String value) {
+    final controller =
+        _isRateFieldActive ? _currencyController : _quantityController;
+    final currentText = controller.text;
+
+    // Ensure controller has a valid selection
+    if (controller.selection.baseOffset < 0) {
+      controller.selection = TextSelection.collapsed(
+        offset: currentText.length,
+      );
+    }
+
+    final currentSelection = controller.selection;
+    final selectionStart =
+        currentSelection.start < 0 ? 0 : currentSelection.start;
+    final selectionEnd = currentSelection.end < 0 ? 0 : currentSelection.end;
+
+    if (value == '⌫') {
+      // Handle backspace
+      if (currentText.isEmpty) return;
+
+      if (selectionStart == selectionEnd && selectionStart == 0) return;
+
+      String newText;
+      if (selectionStart == selectionEnd) {
+        // Delete character before cursor
+        final deletePos = selectionStart - 1;
+        newText =
+            currentText.substring(0, deletePos) +
+            currentText.substring(selectionEnd);
+        controller.text = newText;
+        controller.selection = TextSelection.collapsed(offset: deletePos);
+      } else {
+        // Delete selected text
+        newText =
+            currentText.substring(0, selectionStart) +
+            currentText.substring(selectionEnd);
+        controller.text = newText;
+        controller.selection = TextSelection.collapsed(offset: selectionStart);
+      }
+    } else if (value == '.') {
+      // Only add decimal point if there isn't one already
+      if (!currentText.contains('.')) {
+        String newText;
+        if (selectionStart != selectionEnd) {
+          // Replace selected text
+          newText =
+              currentText.substring(0, selectionStart) +
+              (currentText.isEmpty ? '0.' : '.') +
+              currentText.substring(selectionEnd);
+        } else {
+          // Insert at cursor
+          newText =
+              currentText.isEmpty
+                  ? '0.'
+                  : currentText.substring(0, selectionStart) +
+                      '.' +
+                      currentText.substring(selectionEnd);
+        }
+        controller.text = newText;
+
+        // Calculate new cursor position
+        final newPosition = selectionStart + (currentText.isEmpty ? 2 : 1);
+        controller.selection = TextSelection.collapsed(offset: newPosition);
+      }
+    } else if (value == '00') {
+      // Handle double zero input - only add if there's already a non-zero number
+      if (currentText.isNotEmpty && currentText != '0') {
+        String newText;
+        if (selectionStart != selectionEnd) {
+          // Replace selected text
+          newText =
+              currentText.substring(0, selectionStart) +
+              '00' +
+              currentText.substring(selectionEnd);
+        } else {
+          // Insert at cursor
+          newText =
+              currentText.substring(0, selectionStart) +
+              '00' +
+              currentText.substring(selectionEnd);
+        }
+
+        controller.text = newText;
+        controller.selection = TextSelection.collapsed(
+          offset: selectionStart + 2,
+        );
+      } else if (currentText.isEmpty) {
+        // Just insert a single 0 if the field is empty
+        controller.text = '0';
+        controller.selection = TextSelection.collapsed(offset: 1);
+      }
+    } else {
+      // Handle number input
+      String newText;
+      if (selectionStart != selectionEnd) {
+        // Replace selected text
+        newText =
+            currentText.substring(0, selectionStart) +
+            value +
+            currentText.substring(selectionEnd);
+      } else {
+        // Insert at cursor
+        newText =
+            currentText.substring(0, selectionStart) +
+            value +
+            currentText.substring(selectionEnd);
+      }
+
+      controller.text = newText;
+      controller.selection = TextSelection.collapsed(
+        offset: selectionStart + 1,
+      );
+    }
+
+    // Recalculate total
+    _calculateTotal();
   }
 }
 
