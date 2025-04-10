@@ -704,42 +704,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 Divider(height: 1, color: Colors.grey.shade200),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20.0,
-                    vertical: 8.0,
-                  ),
-                  title: Text(
-                    _getTranslatedText('export_data'),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                if (isAdmin) ...[
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 8.0,
                     ),
+                    title: Text(
+                      _getTranslatedText('export_data'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    leading: Icon(
+                      Icons.file_download,
+                      color: Theme.of(context).primaryColor,
+                      size: 28,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 20),
+                    onTap: () {
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      setState(() {
+                        _startDate = today;
+                        _endDate = now;
+                        _startDateController.text = DateFormat(
+                          'dd-MM-yyyy',
+                        ).format(today);
+                        _endDateController.text = DateFormat(
+                          'dd-MM-yyyy',
+                        ).format(now);
+                        _showExportSection = true;
+                        _showCurrencyManagement = false;
+                        _showUserManagement = false;
+                      });
+                    },
                   ),
-                  leading: Icon(
-                    Icons.file_download,
-                    color: Theme.of(context).primaryColor,
-                    size: 28,
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 20),
-                  onTap: () {
-                    final now = DateTime.now();
-                    final today = DateTime(now.year, now.month, now.day);
-                    setState(() {
-                      _startDate = today;
-                      _endDate = now;
-                      _startDateController.text = DateFormat(
-                        'dd-MM-yyyy',
-                      ).format(today);
-                      _endDateController.text = DateFormat(
-                        'dd-MM-yyyy',
-                      ).format(now);
-                      _showExportSection = true;
-                      _showCurrencyManagement = false;
-                      _showUserManagement = false;
-                    });
-                  },
-                ),
+                ],
                 if (isAdmin) ...[
                   Divider(height: 1, color: Colors.grey.shade200),
                   ListTile(
@@ -843,7 +845,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "v1.0.0",
+                  "v2.0.0",
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(
                       context,
@@ -975,30 +977,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: _buildCurrencyList(),
             ),
           ),
-          // Add New Currency button
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: ElevatedButton(
-              onPressed: () => _showAddCurrencyDialog(context),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(
-                _getTranslatedText('add_new_currency'),
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildCurrencyList() {
-    return _currencies.isEmpty
+    // Filter out SOM currency
+    final displayableCurrencies =
+        _currencies.where((c) => c.code != 'SOM').toList();
+
+    return displayableCurrencies.isEmpty
         ? const Center(
           child: Text(
             'No currencies available',
@@ -1006,12 +995,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         )
         : ListView.builder(
-          itemCount: _currencies.length,
+          itemCount: displayableCurrencies.length,
           itemBuilder: (context, index) {
-            final currency = _currencies[index];
-
-            // Use different style for SOM currency
-            final bool isSom = currency.code == 'SOM';
+            final currency = displayableCurrencies[index];
 
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1023,39 +1009,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor:
-                        isSom ? Colors.blue.shade700 : Colors.blue.shade100,
+                    backgroundColor: Colors.blue.shade100,
                     child: Text(
                       currency.code!.substring(0, 1),
                       style: TextStyle(
-                        color: isSom ? Colors.white : Colors.blue.shade700,
+                        color: Colors.blue.shade700,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   title: Text(
                     currency.code!,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: isSom ? Colors.blue.shade700 : Colors.black87,
+                      color: Colors.black87,
                     ),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Don't show edit/delete buttons for SOM
-                      if (!isSom) ...[
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed:
-                              () => _showEditCurrencyDialog(context, currency),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _confirmDeleteCurrency(currency),
-                        ),
-                      ],
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed:
+                            () => _showEditCurrencyDialog(context, currency),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDeleteCurrency(currency),
+                      ),
                     ],
                   ),
                 ),

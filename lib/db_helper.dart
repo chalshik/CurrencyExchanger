@@ -131,12 +131,12 @@ class DatabaseHelper {
           'code': currency.code,
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 0.0,  // Set to zero (will be ignored in UI)
-          'default_sell_rate': 0.0,  // Set to zero (will be ignored in UI)
+          'default_buy_rate': 0.0, // Set to zero (will be ignored in UI)
+          'default_sell_rate': 0.0, // Set to zero (will be ignored in UI)
         };
         await currencyRef.set(currencyData);
       }
-      
+
       return currency;
     } catch (e) {
       debugPrint('Error in createOrUpdateCurrency: $e');
@@ -171,8 +171,8 @@ class DatabaseHelper {
         'code': currency.code,
         'quantity': 0.0,
         'updated_at': DateTime.now().toIso8601String(),
-        'default_buy_rate': 0.0,  // Set to zero (will be ignored in UI)
-        'default_sell_rate': 0.0,  // Set to zero (will be ignored in UI)
+        'default_buy_rate': 0.0, // Set to zero (will be ignored in UI)
+        'default_sell_rate': 0.0, // Set to zero (will be ignored in UI)
       };
 
       // Insert new currency (set data in Firestore)
@@ -257,7 +257,7 @@ class DatabaseHelper {
 
           // Update SOM quantity atomically
           transaction.update(currencyRef, {
-          'quantity': newQuantity,
+            'quantity': newQuantity,
             'lastUpdated': FieldValue.serverTimestamp(),
           });
         } else {
@@ -320,7 +320,7 @@ class DatabaseHelper {
       if (somDoc.exists) {
         somBalance = somDoc.data()?['quantity'] ?? 0.0;
       }
-      
+
       // Get other currencies
       final otherCurrencies = <String, dynamic>{};
       final currenciesSnapshot =
@@ -361,7 +361,7 @@ class DatabaseHelper {
       if (!somSnapshot.exists) {
         throw Exception('SOM currency not found');
       }
-      
+
       final somData = somSnapshot.data() as Map<String, dynamic>;
 
       // Calculate new balance
@@ -369,8 +369,8 @@ class DatabaseHelper {
 
       // Update SOM balance
       await somRef.update({
-          'quantity': newBalance,
-          'updated_at': DateTime.now().toIso8601String(),
+        'quantity': newBalance,
+        'updated_at': DateTime.now().toIso8601String(),
       });
 
       // Record deposit in history
@@ -468,8 +468,8 @@ class DatabaseHelper {
         // Get current SOM document
         DocumentSnapshot somSnapshot = await transaction.get(somRef);
         if (!somSnapshot.exists) {
-            throw Exception('SOM currency not found');
-          }
+          throw Exception('SOM currency not found');
+        }
         final somData = somSnapshot.data() as Map<String, dynamic>;
 
         // Calculate the total SOM required
@@ -480,11 +480,11 @@ class DatabaseHelper {
           if (somData['quantity'] < totalSom) {
             throw Exception('Insufficient SOM balance for purchase');
           }
-          
+
           // Update SOM quantity (decrease)
           transaction.update(somRef, {
             'quantity': somData['quantity'] - totalSom,
-              'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           });
 
           // Get current foreign currency document
@@ -498,7 +498,7 @@ class DatabaseHelper {
             // Update foreign currency quantity (increase)
             transaction.update(currencyRef, {
               'quantity': currencyData['quantity'] + quantity,
-                'updated_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
             });
           } else {
             // Create new foreign currency if not found
@@ -506,8 +506,8 @@ class DatabaseHelper {
               'code': currencyCode,
               'quantity': quantity,
               'updated_at': DateTime.now().toIso8601String(),
-              'default_buy_rate': 0.0,  // Use 0.0 instead of rate
-              'default_sell_rate': 0.0,  // Use 0.0 instead of markup
+              'default_buy_rate': 0.0, // Use 0.0 instead of rate
+              'default_sell_rate': 0.0, // Use 0.0 instead of markup
             });
           }
         } else if (operationType == 'Sell') {
@@ -518,22 +518,22 @@ class DatabaseHelper {
           if (!currencySnapshot.exists) {
             throw Exception('Currency not found: $currencyCode');
           }
-          
+
           final currencyData = currencySnapshot.data() as Map<String, dynamic>;
           if (currencyData['quantity'] < quantity) {
             throw Exception('Insufficient $currencyCode balance for sale');
           }
-          
+
           // Update foreign currency quantity (decrease)
           transaction.update(currencyRef, {
             'quantity': currencyData['quantity'] - quantity,
-              'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           });
-          
+
           // Update SOM quantity (increase)
           transaction.update(somRef, {
             'quantity': somData['quantity'] + totalSom,
-                'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           });
         }
 
@@ -753,11 +753,11 @@ class DatabaseHelper {
       debugPrint('Updating history entry:');
       debugPrint('Old entry: ${oldHistory.toString()}');
       debugPrint('New entry: ${newHistory.toString()}');
-      
+
       // Convert to maps for detailed comparison
       final oldMap = oldHistory.toMap();
       final newMap = newHistory.toMap();
-      
+
       // Print what changed
       final changes = <String>[];
       newMap.forEach((key, value) {
@@ -765,19 +765,19 @@ class DatabaseHelper {
           changes.add('$key: ${oldMap[key]} -> $value');
         }
       });
-      
+
       debugPrint('Changes: ${changes.join(', ')}');
       debugPrint('Using ID for update: ${newHistory.id}');
-      
+
       // Update the document in Firestore
       await _firestore
           .collection(collectionHistory)
           .doc(newHistory.id)
           .update(newMap);
-      
+
       // Debug the result
       debugPrint('Update successful');
-      
+
       return true;
     } catch (e) {
       debugPrint('Error in updateHistory: $e');
@@ -938,7 +938,7 @@ class DatabaseHelper {
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-      
+
       // Get profitable currencies data
       final profitData = await getMostProfitableCurrencies(
         startDate: fromDate,
@@ -1008,10 +1008,10 @@ class DatabaseHelper {
       // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-      
+
       final fromDateStr = fromDate.toIso8601String();
       final toDateStr = toDate.toIso8601String();
-      
+
       debugPrint('Fetching data from $fromDateStr to $toDateStr');
 
       // Get all transactions within the date range
@@ -1094,7 +1094,7 @@ class DatabaseHelper {
       if (sales.isNotEmpty) {
         debugPrint('Sample sales data: ${sales.first}');
       }
-      
+
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
@@ -1111,16 +1111,16 @@ class DatabaseHelper {
       final toDateStr = endDate.toIso8601String();
 
       debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
-      
+
       // Get ALL transactions without complex queries
       final querySnapshot =
           await _firestore.collection(collectionHistory).get();
 
       debugPrint('Total history records: ${querySnapshot.docs.length}');
-      
+
       // Group transactions by date first
       final Map<String, Map<String, dynamic>> dailyData = {};
-      
+
       // Process all transactions and filter by date in code
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
@@ -1146,7 +1146,7 @@ class DatabaseHelper {
 
         // Skip if currency code is SOM
         if (currencyCode == 'SOM') continue;
-        
+
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -1158,7 +1158,7 @@ class DatabaseHelper {
             'currencies': <String, Map<String, dynamic>>{},
           };
         }
-        
+
         // Initialize currency entry for this day
         if (!(dailyData[date]!['currencies'] as Map).containsKey(
           currencyCode,
@@ -1173,12 +1173,12 @@ class DatabaseHelper {
             'count_sale': 0,
           };
         }
-        
+
         // Add transaction data
         final currencyData =
             (dailyData[date]!['currencies'] as Map)[currencyCode]
                 as Map<String, dynamic>;
-        
+
         if (operationType == 'Purchase') {
           dailyData[date]!['purchases'] =
               (dailyData[date]!['purchases'] as double) + total;
@@ -1201,14 +1201,14 @@ class DatabaseHelper {
               (dailyData[date]!['deposits'] as double) + total;
         }
       }
-      
+
       // Now calculate profit based on selling cost only for sold currencies
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         double dailyProfit = 0.0;
-        
+
         debugPrint('Calculating profit for date: $date');
-        
+
         // For each currency, calculate profit on the sold amount
         for (var currencyCode in (dayData['currencies'] as Map).keys) {
           final currencyData =
@@ -1216,11 +1216,11 @@ class DatabaseHelper {
                   as Map<String, dynamic>;
           final saleAmount = currencyData['sale_amount'] as double;
           final saleQuantity = currencyData['sale_quantity'] as double;
-          
+
           debugPrint(
             '  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
           );
-          
+
           if (saleQuantity > 0) {
             // Get average purchase rate for this currency up to this date
             // Instead of querying Firestore again, we'll use the data we already have
@@ -1248,26 +1248,26 @@ class DatabaseHelper {
 
             final avgPurchaseRate =
                 totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-            
+
             // Calculate cost of sold currency
             final costOfSold = saleQuantity * avgPurchaseRate;
-            
+
             // Calculate profit for this currency on this day
             final currencyProfit = saleAmount - costOfSold;
-            
+
             debugPrint(
               '    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit',
             );
-            
+
             // Add to daily profit
             dailyProfit += currencyProfit;
           }
         }
-        
+
         // Update daily profit
         dayData['profit'] = dailyProfit;
         debugPrint('  Total daily profit for $date: $dailyProfit');
-        
+
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
           debugPrint(
@@ -1276,17 +1276,17 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
         }
       }
-      
+
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
       formattedResult.sort(
         (a, b) => (a['day'] as String).compareTo(b['day'] as String),
       );
-      
+
       if (formattedResult.isNotEmpty) {
         debugPrint('First day data: ${formattedResult.first}');
       }
-      
+
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
@@ -1302,7 +1302,7 @@ class DatabaseHelper {
     try {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-      
+
       // Get all transactions for the date range
       final querySnapshot =
           await _firestore
@@ -1378,7 +1378,7 @@ class DatabaseHelper {
 
       // Calculate profits locally
       final List<Map<String, dynamic>> profitData = [];
-      
+
       for (var code in allCurrencyCodes) {
         final buyData =
             purchaseData[code] ??
@@ -1386,7 +1386,7 @@ class DatabaseHelper {
         final sellData =
             salesData[code] ??
             {'total_quantity': 0.0, 'total_earned': 0.0, 'avg_rate': 0.0};
-        
+
         final totalQuantitySold = _safeDouble(sellData['total_quantity']);
         final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
         final avgSaleRate = _safeDouble(sellData['avg_rate']);
@@ -1398,7 +1398,7 @@ class DatabaseHelper {
             totalQuantitySold > 0 ||
             (_safeDouble(buyData['total_quantity']) > 0 &&
                 _safeDouble(sellData['total_quantity']) > 0);
-        
+
         if (shouldAdd) {
           profitData.add({
             'currency_code': code,
@@ -1411,16 +1411,16 @@ class DatabaseHelper {
           });
         }
       }
-      
+
       // Sort by profit and limit locally
       profitData.sort(
         (a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt(),
       );
-      
+
       if (profitData.length > limit) {
         return profitData.sublist(0, limit);
       }
-      
+
       return profitData;
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
@@ -1436,7 +1436,7 @@ class DatabaseHelper {
     try {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
-      
+
       debugPrint(
         'Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr',
       );
@@ -1446,10 +1446,10 @@ class DatabaseHelper {
           await _firestore.collection(collectionHistory).get();
 
       debugPrint('Total history records: ${querySnapshot.docs.length}');
-      
+
       // Group transactions by date
       final Map<String, Map<String, dynamic>> dailyData = {};
-      
+
       // Process all transactions and filter by date and currency in code
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
@@ -1481,7 +1481,7 @@ class DatabaseHelper {
         debugPrint(
           'Processing $date - $operationType: Amount=$amount, Quantity=$quantity',
         );
-        
+
         // Initialize daily data entry
         if (!dailyData.containsKey(date)) {
           dailyData[date] = {
@@ -1494,7 +1494,7 @@ class DatabaseHelper {
             'deposits': 0.0,
           };
         }
-        
+
         // Add transaction data
         if (operationType == 'Purchase') {
           dailyData[date]!['purchases'] =
@@ -1511,17 +1511,17 @@ class DatabaseHelper {
               (dailyData[date]!['deposits'] as double) + amount;
         }
       }
-      
+
       // Calculate profit for each day based on sold quantity
       for (var date in dailyData.keys) {
         final dayData = dailyData[date]!;
         final saleAmount = dayData['sales'] as double;
         final saleQuantity = dayData['sale_quantity'] as double;
-        
+
         debugPrint(
           'Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
         );
-        
+
         if (saleQuantity > 0) {
           // Get average purchase rate for this currency up to this date
           // Instead of querying Firestore again, we'll use the data we already have
@@ -1549,14 +1549,14 @@ class DatabaseHelper {
 
           final avgPurchaseRate =
               totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-          
+
           // Calculate cost of sold currency
           final costOfSold = saleQuantity * avgPurchaseRate;
-          
+
           // Calculate profit for this currency on this day (sale amount minus cost of sold)
           final profit = saleAmount - costOfSold;
           dayData['profit'] = profit;
-          
+
           debugPrint(
             '  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit',
           );
@@ -1565,7 +1565,7 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
           debugPrint('  No sales, profit is 0');
         }
-        
+
         // Extra validation to ensure profit field is properly set
         if (!dayData.containsKey('profit') || dayData['profit'] == null) {
           debugPrint(
@@ -1574,17 +1574,17 @@ class DatabaseHelper {
           dayData['profit'] = 0.0;
         }
       }
-      
+
       // Convert to list and sort by date
       final formattedResult = dailyData.values.toList();
       formattedResult.sort(
         (a, b) => (a['day'] as String).compareTo(b['day'] as String),
       );
-      
+
       if (formattedResult.isNotEmpty) {
         debugPrint('First day formatted data: ${formattedResult.first}');
       }
-      
+
       return formattedResult;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
@@ -1602,17 +1602,17 @@ class DatabaseHelper {
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       final profitData = await getMostProfitableCurrencies(
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       final barChartData = await getDailyData(
         startDate: startDate,
         endDate: endDate,
       );
-      
+
       return {
         'pieChartData': pieChartData,
         'profitData': profitData,
@@ -2016,18 +2016,19 @@ class DatabaseHelper {
           'code': 'SOM',
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 0.0,  // Set to zero instead of 1.0
-          'default_sell_rate': 0.0,  // Set to zero instead of 1.0
+          'default_buy_rate': 0.0, // Set to zero instead of 1.0
+          'default_sell_rate': 0.0, // Set to zero instead of 1.0
         });
         debugPrint("SOM currency initialized");
       }
 
       // Check if currencies other than SOM exist
-      final querySnapshot = await _firestore
-          .collection(collectionCurrencies)
-          .where(FieldPath.documentId, isNotEqualTo: 'SOM')
-          .get();
-      
+      final querySnapshot =
+          await _firestore
+              .collection(collectionCurrencies)
+              .where(FieldPath.documentId, isNotEqualTo: 'SOM')
+              .get();
+
       if (querySnapshot.docs.isEmpty) {
         // Add default currencies with empty quantities and rates
         final defaultCurrencies = [
@@ -2053,7 +2054,7 @@ class DatabaseHelper {
             'default_sell_rate': 0.0,
           },
         ];
-        
+
         for (var currency in defaultCurrencies) {
           await _firestore
               .collection(collectionCurrencies)
@@ -2087,8 +2088,8 @@ class DatabaseHelper {
           'code': 'SOM',
           'quantity': 0.0,
           'updated_at': DateTime.now().toIso8601String(),
-          'default_buy_rate': 0.0,  // Set to zero instead of 1.0
-          'default_sell_rate': 0.0,  // Set to zero instead of 1.0
+          'default_buy_rate': 0.0, // Set to zero instead of 1.0
+          'default_sell_rate': 0.0, // Set to zero instead of 1.0
         });
         debugPrint("SOM currency document created successfully");
         return;
@@ -2112,11 +2113,11 @@ class DatabaseHelper {
         needsUpdate = true;
       }
       if (!data.containsKey('default_buy_rate')) {
-        updates['default_buy_rate'] = 0.0;  // Set to zero instead of 1.0
+        updates['default_buy_rate'] = 0.0; // Set to zero instead of 1.0
         needsUpdate = true;
       }
       if (!data.containsKey('default_sell_rate')) {
-        updates['default_sell_rate'] = 0.0;  // Set to zero instead of 1.0
+        updates['default_sell_rate'] = 0.0; // Set to zero instead of 1.0
         needsUpdate = true;
       }
 
@@ -2188,15 +2189,16 @@ class DatabaseHelper {
   Future<double> getCurrencyQuantity(String code) async {
     try {
       // Get the currency document
-      final doc = await _firestore.collection(collectionCurrencies).doc(code).get();
-      
+      final doc =
+          await _firestore.collection(collectionCurrencies).doc(code).get();
+
       // Check if the document exists and has data
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
         // Return the quantity as a double, defaulting to 0.0 if not found
         return (data['quantity'] as num?)?.toDouble() ?? 0.0;
       }
-      
+
       // Return 0.0 if currency doesn't exist
       return 0.0;
     } catch (e) {
@@ -2210,14 +2212,15 @@ class DatabaseHelper {
   Future<bool> addHistoryEntry(HistoryModel historyEntry) async {
     try {
       // Create a new document with auto-generated ID
-      DocumentReference historyRef = _firestore.collection(collectionHistory).doc();
-      
+      DocumentReference historyRef =
+          _firestore.collection(collectionHistory).doc();
+
       // Convert history entry to map
       Map<String, dynamic> historyData = historyEntry.toMap();
-      
+
       // Add the entry to Firestore
       await historyRef.set(historyData);
-      
+
       debugPrint('History entry added successfully with ID: ${historyRef.id}');
       return true;
     } catch (e) {
@@ -2227,35 +2230,40 @@ class DatabaseHelper {
   }
 
   // Update currency quantity
-  Future<bool> adjustCurrencyQuantity(String code, double amount, bool isAddition) async {
+  Future<bool> adjustCurrencyQuantity(
+    String code,
+    double amount,
+    bool isAddition,
+  ) async {
     try {
       // Reference to the currency document
-      DocumentReference currencyRef = _firestore.collection(collectionCurrencies).doc(code);
-      
+      DocumentReference currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(code);
+
       // Get the current document
       DocumentSnapshot doc = await currencyRef.get();
-      
+
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
         // Get current quantity, defaulting to 0.0 if not found
         double currentQuantity = (data['quantity'] as num?)?.toDouble() ?? 0.0;
-        
+
         // Calculate new quantity based on operation
-        double newQuantity = isAddition 
-            ? currentQuantity + amount 
-            : currentQuantity - amount;
-        
+        double newQuantity =
+            isAddition ? currentQuantity + amount : currentQuantity - amount;
+
         // Ensure quantity doesn't go below zero (except for SOM which can be negative)
         if (newQuantity < 0 && code != 'SOM') {
           newQuantity = 0;
         }
-        
+
         // Update the quantity and timestamp
         await currencyRef.update({
           'quantity': newQuantity,
           'updated_at': DateTime.now().toIso8601String(),
         });
-        
+
         debugPrint('Currency $code quantity updated to: $newQuantity');
         return true;
       } else {
