@@ -65,10 +65,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final currencies = await _dbHelper.getHistoryCurrencyCodes();
       final operations = await _dbHelper.getHistoryOperationTypes();
 
+      // Ensure both Purchase and Sale are in the operations list
+      Set<String> operationSet = Set.from(operations);
+      operationSet.add('Purchase');
+      operationSet.add('Sale');
+
+      // Convert back to sorted list
+      List<String> completeOperations = operationSet.toList()..sort();
+
       if (mounted) {
         setState(() {
           _currencyCodes = currencies;
-          _operationTypes = operations;
+          _operationTypes = completeOperations;
         });
       }
     } catch (e) {
@@ -341,18 +349,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           decoration: InputDecoration(
                             labelText: _getTranslatedText("type"),
                           ),
-                          items:
-                              _operationTypes
-                                  .where((type) => type != 'Deposit')
-                                  .map((type) {
-                                    return DropdownMenuItem<String>(
-                                      value: type,
-                                      child: Text(
-                                        _getTranslatedText(type.toLowerCase()),
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: 'Purchase',
+                              child: Text(_getTranslatedText('purchase')),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'Sale',
+                              child: Text(_getTranslatedText('sale')),
+                            ),
+                          ],
                           onChanged: (value) {
                             setState(() {
                               _editOperationType = value;
@@ -765,7 +771,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     );
                   }).toList(),
                 ],
-                onChanged: (String? value) {
+                onChanged: (value) {
                   setState(() {
                     _selectedOperationType = value;
                   });
@@ -1120,15 +1126,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Time at the top
-              Text(
-                DateFormat('HH:mm').format(entry.createdAt),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
+              // Time at the top centered
+              Center(
+                child: Text(
+                  DateFormat('HH:mm').format(entry.createdAt),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                 ),
               ),
-              
+
+              const SizedBox(height: 8),
+
               // Main transaction details
               Row(
                 children: [
@@ -1137,83 +1144,118 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     margin: const EdgeInsets.only(right: 12),
                     child: Icon(operationIcon, color: iconColor, size: 20),
                   ),
-                  
+
                   // Currency and amount
                   Expanded(
+                    flex: 3,
                     child: Text(
                       '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
                   ),
-                  
+
+                  // Rate in the center
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getTranslatedText("rate"),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          Text(
+                            entry.rate.toStringAsFixed(2),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   // Total in soms
-                  Text(
-                    '${entry.total.toStringAsFixed(2)} SOM',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: iconColor,
-                      fontSize: 16,
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${entry.total.toStringAsFixed(2)} SOM',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: iconColor,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.end,
                     ),
                   ),
                 ],
-              ),
-              
-              // Rate and date
-              Text(
-                '${_getTranslatedText("rate")}: ${entry.rate.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 12),
               ),
             ],
           ),
           // Only show children for non-deposit entries
-          children: entry.operationType != 'Deposit' ? [
-            // Action buttons for edit and delete
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
-                ),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Edit button
-                  ElevatedButton.icon(
-                    onPressed: () => _showEditDialog(context, entry),
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    label: Text(
-                      _getTranslatedText("edit"),
-                      style: const TextStyle(color: Colors.white),
+          children:
+              entry.operationType != 'Deposit'
+                  ? [
+                    // Action buttons for edit and delete
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Edit button
+                          ElevatedButton.icon(
+                            onPressed: () => _showEditDialog(context, entry),
+                            icon: const Icon(Icons.edit, color: Colors.white),
+                            label: Text(
+                              _getTranslatedText("edit"),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade600,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Delete button
+                          ElevatedButton.icon(
+                            onPressed: () => _confirmDelete(entry),
+                            icon: const Icon(Icons.delete, color: Colors.white),
+                            label: Text(
+                              _getTranslatedText("delete"),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Delete button
-                  ElevatedButton.icon(
-                    onPressed: () => _confirmDelete(entry),
-                    icon: const Icon(Icons.delete, color: Colors.white),
-                    label: Text(
-                      _getTranslatedText("delete"),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] : [],
+                  ]
+                  : [],
         ),
       ),
     );
@@ -1400,7 +1442,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           isExpanded: true,
                           items: [
                             DropdownMenuItem<String>(
-                              value: null,
+                              value: '',
                               child: Text(_getTranslatedText("all_types")),
                             ),
                             ..._operationTypes.map((String type) {

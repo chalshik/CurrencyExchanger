@@ -45,6 +45,7 @@
   "pdf": "PDF",
   "export_history": "Export History",
   "export_statistics": "Export Statistics",
+  "edit": "Edit",
   "transaction_history_report": "Transaction History Report",
   "edit_currency": "Edit {code}",
   "invalid_values": "Invalid values: Quantity cannot be negative, rates must be greater than 0",

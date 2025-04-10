@@ -19,9 +19,9 @@ class LanguageProvider extends ChangeNotifier {
     final String? languageCode = prefs.getString(_languageKey);
     if (languageCode != null) {
       _currentLocale = Locale(languageCode);
-      await _loadTranslations();
-      notifyListeners();
     }
+    await _loadTranslations();
+    notifyListeners();
   }
 
   Future<void> setLanguage(String languageCode) async {
@@ -49,4 +49,10 @@ class LanguageProvider extends ChangeNotifier {
   String translate(String key) {
     return _translations[key] ?? key;
   }
-} 
+
+  // Method to preload translations at app startup
+  Future<void> initializeTranslations() async {
+    await _loadTranslations();
+    notifyListeners();
+  }
+}

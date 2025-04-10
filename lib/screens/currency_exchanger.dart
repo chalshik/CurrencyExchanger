@@ -1127,10 +1127,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Time on top with operation indicator
-                    Row(
-                      children: [
-                        Text(
+                    // Time centered at the top but offset slightly to match rate position
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 50,
+                      ), // Align with rate position
+                      child: Center(
+                        child: Text(
                           formattedTime,
                           style: TextStyle(
                             fontSize: 12,
@@ -1138,9 +1141,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Currency amount, rate, and total with icon on the left
+                    Row(
+                      children: [
+                        // Arrow icon on the left
                         Container(
                           padding: const EdgeInsets.all(4),
+                          margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             color:
                                 isPurchase
@@ -1156,29 +1168,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             size: 14,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isPurchase
-                              ? _getTranslatedText('purchase')
-                              : _getTranslatedText('sale'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                isPurchase
-                                    ? Colors.green.shade700
-                                    : Colors.orange.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 8),
-
-                    // Main transaction details
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
                         // Amount and currency
                         Expanded(
                           flex: 2,
@@ -1323,7 +1313,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
         // Show success message
         _showBriefNotification(
-          _getTranslatedText('transaction_successful'),
+          _getTranslatedText('transaction_complete'),
           Colors.green,
         );
 
