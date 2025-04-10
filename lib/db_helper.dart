@@ -769,11 +769,157 @@ class DatabaseHelper {
       debugPrint('Changes: ${changes.join(', ')}');
       debugPrint('Using ID for update: ${newHistory.id}');
 
-      // Update the document in Firestore
-      await _firestore
-          .collection(collectionHistory)
-          .doc(newHistory.id)
-          .update(newMap);
+      // Check if we need to update currency balances
+      bool needsBalanceUpdate =
+          newHistory.operationType != oldHistory.operationType ||
+          newHistory.currencyCode != oldHistory.currencyCode ||
+          newHistory.quantity != oldHistory.quantity ||
+          newHistory.total != oldHistory.total;
+
+      if (needsBalanceUpdate) {
+        // Get references to the affected currency documents
+        final oldCurrencyRef = _firestore
+            .collection(collectionCurrencies)
+            .doc(oldHistory.currencyCode);
+        final newCurrencyRef = _firestore
+            .collection(collectionCurrencies)
+            .doc(newHistory.currencyCode);
+        final somRef = _firestore.collection(collectionCurrencies).doc('SOM');
+
+        // Fetch all required documents BEFORE starting the transaction
+        final oldCurrencyDoc = await oldCurrencyRef.get();
+        final newCurrencyDoc = await newCurrencyRef.get();
+        final somDoc = await somRef.get();
+
+        if (!oldCurrencyDoc.exists ||
+            !newCurrencyDoc.exists ||
+            !somDoc.exists) {
+          throw Exception('Required currency documents not found');
+        }
+
+        // Extract data from documents
+        final oldCurrencyData = oldCurrencyDoc.data() as Map<String, dynamic>;
+        final newCurrencyData = newCurrencyDoc.data() as Map<String, dynamic>;
+        final somData = somDoc.data() as Map<String, dynamic>;
+
+        // Get current quantities
+        double oldCurrencyQuantity = oldCurrencyData['quantity'] ?? 0.0;
+        double newCurrencyQuantity = newCurrencyData['quantity'] ?? 0.0;
+        double somQuantity = somData['quantity'] ?? 0.0;
+
+        // Calculate adjustments based on old history entry (reverse its effect)
+        switch (oldHistory.operationType) {
+          case 'Purchase':
+            oldCurrencyQuantity -=
+                oldHistory.quantity; // Remove the purchased currency
+            somQuantity += oldHistory.total; // Add back the SOM that was spent
+            break;
+          case 'Sale':
+            oldCurrencyQuantity +=
+                oldHistory.quantity; // Add back the sold currency
+            somQuantity -= oldHistory.total; // Remove the SOM that was received
+            break;
+          case 'Deposit':
+            if (oldHistory.currencyCode == 'SOM') {
+              somQuantity -= oldHistory.quantity; // Remove the deposited SOM
+            }
+            break;
+        }
+
+        // Calculate adjustments based on new history entry (apply its effect)
+        // Only apply if different from old currency (for same currency, effects combine)
+        if (newHistory.currencyCode != oldHistory.currencyCode) {
+          switch (newHistory.operationType) {
+            case 'Purchase':
+              newCurrencyQuantity +=
+                  newHistory.quantity; // Add the purchased currency
+              somQuantity -= newHistory.total; // Remove the SOM spent
+              break;
+            case 'Sale':
+              newCurrencyQuantity -=
+                  newHistory.quantity; // Remove the sold currency
+              somQuantity += newHistory.total; // Add the SOM received
+              break;
+            case 'Deposit':
+              if (newHistory.currencyCode == 'SOM') {
+                somQuantity += newHistory.quantity; // Add the deposited SOM
+              }
+              break;
+          }
+        } else {
+          // Same currency, need to apply combined effect
+          switch (newHistory.operationType) {
+            case 'Purchase':
+              oldCurrencyQuantity +=
+                  newHistory.quantity; // Add the purchased currency
+              somQuantity -= newHistory.total; // Remove the SOM spent
+              break;
+            case 'Sale':
+              oldCurrencyQuantity -=
+                  newHistory.quantity; // Remove the sold currency
+              somQuantity += newHistory.total; // Add the SOM received
+              break;
+            case 'Deposit':
+              if (newHistory.currencyCode == 'SOM') {
+                somQuantity += newHistory.quantity; // Add the deposited SOM
+              }
+              break;
+          }
+        }
+
+        // Ensure quantities don't go negative
+        oldCurrencyQuantity = oldCurrencyQuantity < 0 ? 0 : oldCurrencyQuantity;
+        newCurrencyQuantity = newCurrencyQuantity < 0 ? 0 : newCurrencyQuantity;
+        somQuantity = somQuantity < 0 ? 0 : somQuantity;
+
+        // Now start the transaction with all reads complete
+        await _firestore.runTransaction((transaction) async {
+          // Update the history document first
+          transaction.update(
+            _firestore.collection(collectionHistory).doc(newHistory.id),
+            newHistory.toMap(),
+          );
+
+          // Update the old currency (if not SOM and if different from new currency)
+          if (oldHistory.currencyCode != 'SOM' &&
+              oldHistory.currencyCode != newHistory.currencyCode) {
+            transaction.update(oldCurrencyRef, {
+              'quantity': oldCurrencyQuantity,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+
+          // Update the new currency (if not SOM and if different from old currency)
+          if (newHistory.currencyCode != 'SOM' &&
+              oldHistory.currencyCode != newHistory.currencyCode) {
+            transaction.update(newCurrencyRef, {
+              'quantity': newCurrencyQuantity,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+
+          // If both are the same currency but not SOM, update it once
+          if (oldHistory.currencyCode == newHistory.currencyCode &&
+              oldHistory.currencyCode != 'SOM') {
+            transaction.update(oldCurrencyRef, {
+              'quantity': oldCurrencyQuantity,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+
+          // Always update SOM
+          transaction.update(somRef, {
+            'quantity': somQuantity,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        });
+      } else {
+        // Just update the history entry without adjusting currency balances
+        await _firestore
+            .collection(collectionHistory)
+            .doc(newHistory.id)
+            .update(newHistory.toMap());
+      }
 
       // Debug the result
       debugPrint('Update successful');
@@ -788,15 +934,121 @@ class DatabaseHelper {
   /// Delete history
   Future<bool> deleteHistory(dynamic history) async {
     try {
-      final id = history is HistoryModel ? history.id : history as String;
+      final HistoryModel historyEntry;
+      if (history is HistoryModel) {
+        historyEntry = history;
+      } else {
+        // If only ID was passed, fetch the full history entry
+        final doc =
+            await _firestore
+                .collection(collectionHistory)
+                .doc(history as String)
+                .get();
+        if (!doc.exists) {
+          throw Exception('History entry not found');
+        }
+        historyEntry = HistoryModel.fromFirestore(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
+      }
 
-      // Delete the document from Firestore
-      await _firestore.collection(collectionHistory).doc(id).delete();
+      debugPrint(
+        'Deleting history entry: ${historyEntry.currencyCode}, ${historyEntry.operationType}, ${historyEntry.quantity}',
+      );
 
+      // Use a transaction to ensure the history deletion and currency updates are atomic
+      await _firestore.runTransaction((transaction) async {
+        // First, reverse the currency balance changes
+        await _reverseHistoryImpact(transaction, historyEntry);
+
+        // Then delete the history entry
+        transaction.delete(
+          _firestore.collection(collectionHistory).doc(historyEntry.id),
+        );
+      });
+
+      debugPrint('History entry deleted successfully and balances updated');
       return true;
     } catch (e) {
       debugPrint('Error in deleteHistory: $e');
       return false; // Return false to indicate failure
+    }
+  }
+
+  /// Reverse the impact of a history entry on currency balances
+  Future<void> _reverseHistoryImpact(
+    Transaction transaction,
+    HistoryModel entry,
+  ) async {
+    try {
+      final operationType = entry.operationType;
+      final currencyCode = entry.currencyCode;
+      final quantity = entry.quantity;
+      final total = entry.total;
+
+      // Get references to the affected currency documents
+      final currencyRef = _firestore
+          .collection(collectionCurrencies)
+          .doc(currencyCode);
+      final somRef = _firestore.collection(collectionCurrencies).doc('SOM');
+
+      // Get current data for the affected currencies
+      final currencyDoc = await transaction.get(currencyRef);
+      final somDoc = await transaction.get(somRef);
+
+      if (!currencyDoc.exists || !somDoc.exists) {
+        throw Exception('Currency documents not found');
+      }
+
+      final currencyData = currencyDoc.data() as Map<String, dynamic>;
+      final somData = somDoc.data() as Map<String, dynamic>;
+
+      double currencyQuantity = currencyData['quantity'] ?? 0.0;
+      double somQuantity = somData['quantity'] ?? 0.0;
+
+      switch (operationType) {
+        case 'Purchase':
+          // For a purchase: decrease currency quantity and increase SOM
+          currencyQuantity -= quantity;
+          somQuantity += total; // Add back the SOM spent
+          break;
+        case 'Sale':
+          // For a sale: increase currency quantity and decrease SOM
+          currencyQuantity += quantity;
+          somQuantity -= total; // Remove the SOM received
+          break;
+        case 'Deposit':
+          // For a deposit of SOM, just decrease SOM balance
+          if (currencyCode == 'SOM') {
+            somQuantity -= quantity;
+          }
+          break;
+      }
+
+      // Ensure quantities don't go negative
+      currencyQuantity = currencyQuantity < 0 ? 0 : currencyQuantity;
+      somQuantity = somQuantity < 0 ? 0 : somQuantity;
+
+      // Update the currency quantities
+      if (currencyCode != 'SOM') {
+        transaction.update(currencyRef, {
+          'quantity': currencyQuantity,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      transaction.update(somRef, {
+        'quantity': somQuantity,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint(
+        'Reversed impact - ${currencyCode}: ${currencyQuantity}, SOM: ${somQuantity}',
+      );
+    } catch (e) {
+      debugPrint('Error in _reverseHistoryImpact: $e');
+      rethrow;
     }
   }
 
