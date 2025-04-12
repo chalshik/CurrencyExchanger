@@ -55,4 +55,17 @@ class LanguageProvider extends ChangeNotifier {
     await _loadTranslations();
     notifyListeners();
   }
+
+  Map<String, Map<String, String>> get translations => {
+    'en': {
+      // ... other translations ... 
+      'group_by': 'Group by',
+      'daily': 'Daily',
+      'weekly': 'Weekly', 
+      'monthly': 'Monthly',
+      'week_of': 'Week of',
+      // ... other translations ...
+    },
+    // Add to other languages as well (if the app has multiple languages)
+  };
 }
