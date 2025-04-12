@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/currency.dart';
 import '../models/history.dart';
 import '../models/user.dart';
@@ -22,6 +21,7 @@ class DatabaseHelper {
   static const String collectionCurrencies = 'currencies';
   static const String collectionHistory = 'history';
   static const String collectionUsers = 'users';
+  static const String collectionArchive = 'archive'; // New collection for statistics archives
 
   Future<void> initialize() async {
     if (!_isInitialized) {
@@ -282,7 +282,20 @@ class DatabaseHelper {
   // Reset all data in Firestore
   Future<void> resetAllData() async {
     try {
+      debugPrint('Starting data reset process...');
+      
+      // First, create a backup of the current statistics
+      debugPrint('Creating backup before reset...');
+      final backupSuccess = await backupStatistics();
+      if (backupSuccess) {
+        debugPrint('Backup created successfully before reset');
+      } else {
+        debugPrint('Warning: Failed to create backup before reset');
+        // Continue with reset even if backup fails
+      }
+      
       // Clear history collection
+      debugPrint('Clearing transaction history...');
       await _firestore.collection(collectionHistory).get().then((
         snapshot,
       ) async {
@@ -292,6 +305,7 @@ class DatabaseHelper {
       });
 
       // Reset ALL currencies to 0, including SOM
+      debugPrint('Resetting all currency quantities to zero...');
       final currenciesSnapshot =
           await _firestore.collection(collectionCurrencies).get();
       for (var doc in currenciesSnapshot.docs) {
@@ -302,10 +316,14 @@ class DatabaseHelper {
       }
 
       debugPrint(
-        'Transaction history reset. All currency quantities reset to 0. Users preserved.',
+        'Reset completed: Transaction history cleared. All currency quantities reset to 0. Users preserved.',
       );
     } catch (e) {
       debugPrint('Error in resetAllData: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       rethrow;
     }
   }
@@ -2578,6 +2596,146 @@ class DatabaseHelper {
     } catch (e) {
       debugPrint('Error in adjustCurrencyQuantity: $e');
       return false;
+    }
+  }
+
+  /// Archive current statistics to Firestore
+  Future<bool> backupStatistics() async {
+    try {
+      debugPrint('Creating statistics backup in archive collection...');
+      
+      // Calculate today's statistics (use all available data)
+      final analytics = await calculateAnalytics();
+      
+      // Create timestamp for archive record
+      final now = DateTime.now();
+      final dateStr = now.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      
+      // Prepare archive document
+      final archiveDocument = {
+        'timestamp': now.toIso8601String(),
+        'date': dateStr,
+        'total_profit': analytics['total_profit'] ?? 0.0,
+        'currencies': [],
+      };
+      
+      // Process each currency's statistics
+      final List<Map<String, dynamic>> currenciesData = [];
+      
+      if (analytics.containsKey('currency_stats')) {
+        for (var stat in analytics['currency_stats']) {
+          // Skip if not a valid map
+          if (stat is! Map<String, dynamic> || !stat.containsKey('currency')) {
+            continue;
+          }
+          
+          final currencyCode = stat['currency'];
+          
+          // Prepare currency data - excluding avg rates, current quantity, and cost of sold
+          final currencyData = {
+            'currency_code': currencyCode,
+            'total_purchased': stat['total_purchased'] ?? 0.0,
+            'total_purchase_amount': stat['total_purchase_amount'] ?? 0.0,
+            'total_sold': stat['total_sold'] ?? 0.0,
+            'total_sale_amount': stat['total_sale_amount'] ?? 0.0,
+            'profit': stat['profit'] ?? 0.0,
+          };
+          
+          currenciesData.add(currencyData);
+        }
+      }
+      
+      // Add currencies data to archive document
+      archiveDocument['currencies'] = currenciesData;
+      
+      // Add additional summary data
+      double totalPurchased = 0.0;
+      double totalSold = 0.0;
+      
+      for (var currency in currenciesData) {
+        if (currency['currency_code'] != 'SOM') {
+          totalPurchased += _safeDouble(currency['total_purchase_amount']);
+          totalSold += _safeDouble(currency['total_sale_amount']);
+        }
+      }
+      
+      archiveDocument['summary'] = {
+        'total_purchased': totalPurchased,
+        'total_sold': totalSold,
+        'total_profit': analytics['total_profit'] ?? 0.0,
+        'som_balance': _getSomBalanceFromAnalytics(analytics),
+      };
+      
+      // Create a document ID with date for easy retrieval
+      final docId = 'stats_${dateStr}';
+      
+      // Save to Firestore
+      await _firestore.collection(collectionArchive).doc(docId).set(archiveDocument);
+      
+      debugPrint('Statistics backup created successfully: $docId');
+      return true;
+    } catch (e) {
+      debugPrint('Error creating statistics backup: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      return false;
+    }
+  }
+  
+  // Helper method to extract SOM balance from analytics data
+  double _getSomBalanceFromAnalytics(Map<String, dynamic> analytics) {
+    if (!analytics.containsKey('currency_stats')) return 0.0;
+    
+    final currencyStats = analytics['currency_stats'] as List<dynamic>;
+    final somCurrency = currencyStats.firstWhere(
+      (stat) => stat is Map<String, dynamic> && stat['currency'] == 'SOM',
+      orElse: () => {'current_quantity': 0.0}
+    );
+    
+    if (somCurrency is Map<String, dynamic>) {
+      return _safeDouble(somCurrency['current_quantity']);
+    }
+    
+    return 0.0;
+  }
+
+  /// Get archived statistics from a specific date
+  Future<Map<String, dynamic>?> getArchivedStatistics(String date) async {
+    try {
+      final docId = 'stats_$date';
+      final docSnapshot = await _firestore.collection(collectionArchive).doc(docId).get();
+      
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        return docSnapshot.data()!;
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('Error retrieving archived statistics: $e');
+      return null;
+    }
+  }
+  
+  /// Get list of available archived statistics dates
+  Future<List<String>> getArchiveDates() async {
+    try {
+      final querySnapshot = await _firestore.collection(collectionArchive).get();
+      
+      final dates = querySnapshot.docs
+          .map((doc) => doc.id.startsWith('stats_') ? doc.id.substring(6) : null)
+          .where((date) => date != null)
+          .map((date) => date!)
+          .toList();
+      
+      // Sort dates in descending order (newest first)
+      dates.sort((a, b) => b.compareTo(a));
+      
+      return dates;
+    } catch (e) {
+      debugPrint('Error retrieving archive dates: $e');
+      return [];
     }
   }
 }
