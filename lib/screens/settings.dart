@@ -172,30 +172,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetAllData() async {
+    bool shouldBackup = true; // Default to true for safety
+    
     bool? confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(_getTranslatedText('reset_all_data')),
-            content: Text(
-              _getTranslatedText('reset_warning'),
-              style: const TextStyle(color: Colors.red),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(_getTranslatedText('cancel')),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(_getTranslatedText('reset_all_data')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _getTranslatedText('reset_warning'),
+                style: const TextStyle(color: Colors.red),
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: Text(
-                  _getTranslatedText('reset_everything'),
-                  style: const TextStyle(color: Colors.white),
-                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Checkbox(
+                    value: shouldBackup,
+                    onChanged: (value) {
+                      setState(() {
+                        shouldBackup = value ?? true;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Text(
+                      _getTranslatedText('backup_before_reset'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(_getTranslatedText('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text(
+                _getTranslatedText('reset_everything'),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
 
     if (confirmed == true) {
@@ -203,9 +231,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder:
-              (context) => const Center(child: CircularProgressIndicator()),
+          builder: (context) => const Center(child: CircularProgressIndicator()),
         );
+
+        // If backup is selected, create a backup first
+        if (shouldBackup) {
+          debugPrint('Creating backup before reset...');
+          await _dbHelper.backupStatistics();
+        }
 
         // Perform the reset
         await _dbHelper.resetAllData();
