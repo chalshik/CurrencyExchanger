@@ -20,30 +20,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
-  // Date filters
-  DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _toDate = DateTime.now();
-  final TextEditingController _fromDateController = TextEditingController();
-  final TextEditingController _toDateController = TextEditingController();
-
-  // Other filters
-  String? _selectedCurrency;
-  String? _selectedOperationType;
-  List<String> _currencyCodes = [];
-  List<String> _operationTypes = [];
-
   // Controllers for edit dialog
   final TextEditingController _editQuantityController = TextEditingController();
   final TextEditingController _editRateController = TextEditingController();
   final TextEditingController _editDateController = TextEditingController();
   String? _editOperationType;
   String? _editCurrencyCode;
+  List<String> _currencyCodes = [];
+  List<String> _operationTypes = [];
 
   @override
   void initState() {
     super.initState();
-    _fromDateController.text = DateFormat('dd/MM/yy').format(_fromDate);
-    _toDateController.text = DateFormat('dd/MM/yy').format(_toDate);
     _loadFilters();
     _loadHistory();
     _searchController.addListener(_filterEntries);
@@ -51,8 +39,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   void dispose() {
-    _fromDateController.dispose();
-    _toDateController.dispose();
     _editQuantityController.dispose();
     _editRateController.dispose();
     _editDateController.dispose();
@@ -119,29 +105,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
 
     try {
-      final fromDate = DateFormat('dd/MM/yy').parse(_fromDateController.text);
-      final toDate = DateFormat('dd/MM/yy').parse(_toDateController.text);
-
-      final adjustedToDate = DateTime(
-        toDate.year,
-        toDate.month,
-        toDate.day,
-        23,
-        59,
-        59,
-      );
-
+      // Load all history entries for the current day
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      
       final entries = await _dbHelper.getFilteredHistoryByDate(
-        startDate: fromDate,
-        endDate: adjustedToDate,
-        currencyCode:
-            _selectedCurrency == null || _selectedCurrency!.isEmpty
-                ? null
-                : _selectedCurrency,
-        operationType:
-            _selectedOperationType == null || _selectedOperationType!.isEmpty
-                ? null
-                : _selectedOperationType,
+        startDate: startOfDay,
+        endDate: endOfDay,
+        currencyCode: null,
+        operationType: null,
       );
 
       if (!mounted) return;
@@ -157,41 +130,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _selectDate(BuildContext context, bool isFromDate) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isFromDate ? _fromDate : _toDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        if (isFromDate) {
-          _fromDate = picked;
-          _fromDateController.text = DateFormat('dd/MM/yy').format(picked);
-        } else {
-          _toDate = picked;
-          _toDateController.text = DateFormat('dd/MM/yy').format(picked);
-        }
-      });
-      _loadHistory();
-    }
-  }
-
-  void _resetFilters() {
-    if (!mounted) return;
-
-    setState(() {
-      _fromDate = DateTime.now().subtract(const Duration(days: 30));
-      _toDate = DateTime.now();
-      _fromDateController.text = DateFormat('dd/MM/yy').format(_fromDate);
-      _toDateController.text = DateFormat('dd/MM/yy').format(_toDate);
-      _selectedCurrency = null;
-      _selectedOperationType = null;
-    });
-    _loadHistory();
   }
 
   Future<void> _showDeleteDialog(
@@ -281,7 +219,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
         // Update was successful
         debugPrint('Entry updated successfully');
         if (mounted) {
-          Navigator.pop(context);
+          // Pop dialog only if context is still valid and safe to pop
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_getTranslatedText("transaction_updated")),
@@ -322,7 +264,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _editQuantityController.text = entry.quantity.toStringAsFixed(2);
     _editRateController.text = entry.rate.toStringAsFixed(2);
     _editDateController.text = DateFormat(
-      'dd/MM/yy HH:mm',
+      'HH:mm',
     ).format(entry.createdAt);
     _editOperationType = entry.operationType;
     _editCurrencyCode = entry.currencyCode;
@@ -343,6 +285,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      InkWell(
+                        onTap: () async {
+                          final TimeOfDay? time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.fromDateTime(selectedDate),
+                          );
+                          if (time != null) {
+                            setState(() {
+                              selectedDate = DateTime(
+                                selectedDate.year,
+                                selectedDate.month,
+                                selectedDate.day,
+                                time.hour,
+                                time.minute,
+                              );
+                              _editDateController.text = DateFormat(
+                                'HH:mm',
+                              ).format(selectedDate);
+                            });
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: _getTranslatedText("time"),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_editDateController.text),
+                              const Icon(Icons.access_time),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       if (!isDeposit) ...[
                         DropdownButtonFormField<String>(
                           value: _editOperationType,
@@ -428,63 +405,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      InkWell(
-                        onTap: () async {
-                          final DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) {
-                            final TimeOfDay? time = await showTimePicker(
-                              context: context,
-                              initialTime: TimeOfDay.fromDateTime(selectedDate),
-                            );
-                            if (time != null) {
-                              setState(() {
-                                selectedDate = DateTime(
-                                  picked.year,
-                                  picked.month,
-                                  picked.day,
-                                  time.hour,
-                                  time.minute,
-                                );
-                                _editDateController.text = DateFormat(
-                                  'dd/MM/yy HH:mm',
-                                ).format(selectedDate);
-                              });
-                            }
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("date_time"),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(_editDateController.text),
-                              const Icon(Icons.calendar_today),
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 actions: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _resetFilters();
-                        },
-                        child: Text(_getTranslatedText("reset_filters")),
-                      ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: Text(_getTranslatedText("cancel")),
@@ -515,15 +442,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   entry.rate;
                               final total = quantity * rate;
 
-                              // Parse the date from the controller with error handling
+                              // Create a new DateTime with the same date but updated time
+                              final timeStr = _editDateController.text;
                               DateTime updatedDate;
                               try {
-                                updatedDate = DateFormat(
-                                  'dd/MM/yy HH:mm',
-                                ).parse(_editDateController.text);
+                                final timeParts = timeStr.split(':');
+                                if (timeParts.length == 2) {
+                                  final hour = int.parse(timeParts[0]);
+                                  final minute = int.parse(timeParts[1]);
+                                  updatedDate = DateTime(
+                                    entry.createdAt.year,
+                                    entry.createdAt.month,
+                                    entry.createdAt.day,
+                                    hour,
+                                    minute,
+                                  );
+                                } else {
+                                  updatedDate = entry.createdAt;
+                                }
                               } catch (e) {
-                                // If date parsing fails, use the original date
-                                debugPrint('Date parsing failed: $e');
+                                debugPrint('Time parsing failed: $e');
                                 updatedDate = entry.createdAt;
                               }
 
@@ -598,10 +536,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final isTablet = screenSize.width >= 600;
     final isLandscape = screenSize.width > screenSize.height;
     final isWideTablet = isTablet && isLandscape;
+    
+    // Format current date in DD-MM-YYYY format
+    final String currentDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
 
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(kToolbarHeight + 34), // Increased height to fix overflow
+        child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade600, Colors.blue.shade800],
@@ -609,40 +551,75 @@ class _HistoryScreenState extends State<HistoryScreen> {
               end: Alignment.bottomRight,
             ),
           ),
-        ),
-        title:
-            _isSearching
-                ? TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: _getTranslatedText("search_transactions"),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    contentPadding: EdgeInsets.all(8.0),
-                    filled: false,
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Current date at the top
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(top: 8, bottom: 2), // Reduced bottom padding
+                  child: Text(
+                    currentDate,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  style: TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
-                  autofocus: true,
-                )
-                : Text(
-                  _getTranslatedText("transaction_history"),
-                  style: TextStyle(color: Colors.white),
                 ),
-        actions: [
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: _toggleSearch,
+                
+                // App bar content
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 8, bottom: 10), // Increased bottom padding
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center, // Ensure vertical centering
+                    children: [
+                      Expanded(
+                        child: _isSearching
+                          ? Container(
+                              height: 36, // Fixed height for search field
+                              alignment: Alignment.center,
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: _getTranslatedText("search_transactions"),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+                                  isDense: true, // Makes the field more compact
+                                  filled: false,
+                                ),
+                                style: const TextStyle(color: Colors.white),
+                                cursorColor: Colors.white,
+                                autofocus: true,
+                              ),
+                            )
+                          : Text(
+                              _getTranslatedText("transaction_history"),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                      ),
+                      IconButton(
+                        icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
+                        onPressed: _toggleSearch,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-          ),
-        ],
+        ),
       ),
       body: Column(
         children: [
@@ -658,226 +635,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTabletFilters() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 4,
-          child: TextField(
-            controller: _fromDateController,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              labelText: _getTranslatedText("from"),
-              prefixIcon: const Icon(Icons.calendar_today, size: 18),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-            ),
-            readOnly: true,
-            onTap: () => _selectDate(context, true),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 4,
-          child: TextField(
-            controller: _toDateController,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              labelText: _getTranslatedText("to"),
-              prefixIcon: const Icon(Icons.calendar_today, size: 18),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-            ),
-            readOnly: true,
-            onTap: () => _selectDate(context, false),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 3,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedCurrency,
-                hint: Text(_getTranslatedText("currency")),
-                isExpanded: true,
-                items: [
-                  DropdownMenuItem<String>(
-                    value: '',
-                    child: Text(_getTranslatedText("all_currencies")),
-                  ),
-                  ..._currencyCodes.map((String currency) {
-                    return DropdownMenuItem<String>(
-                      value: currency,
-                      child: Text(currency),
-                    );
-                  }).toList(),
-                ],
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedCurrency = value;
-                  });
-                  _loadHistory();
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 3,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedOperationType,
-                hint: Text(_getTranslatedText("type")),
-                isExpanded: true,
-                items: [
-                  DropdownMenuItem<String>(
-                    value: '',
-                    child: Text(_getTranslatedText("all_types")),
-                  ),
-                  ..._operationTypes.map((String type) {
-                    return DropdownMenuItem<String>(
-                      value: type,
-                      child: Text(_getTranslatedText(type.toLowerCase())),
-                    );
-                  }).toList(),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedOperationType = value;
-                  });
-                  _loadHistory();
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _resetFilters,
-          icon: const Icon(Icons.refresh),
-          tooltip: _getTranslatedText("reset_filters"),
-          color: Colors.blue.shade700,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMobileFilters() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 4,
-          child: TextField(
-            controller: _fromDateController,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              labelText: _getTranslatedText("from"),
-              prefixIcon: const Icon(Icons.calendar_today, size: 18),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-            ),
-            readOnly: true,
-            onTap: () => _selectDate(context, true),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 4,
-          child: TextField(
-            controller: _toDateController,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              labelText: _getTranslatedText("to"),
-              prefixIcon: const Icon(Icons.calendar_today, size: 18),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-            ),
-            readOnly: true,
-            onTap: () => _selectDate(context, false),
-          ),
-        ),
-        const SizedBox(width: 8),
-        InkWell(
-          onTap: _showFilterDialog,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color:
-                  (_selectedCurrency != null &&
-                              _selectedCurrency!.isNotEmpty) ||
-                          (_selectedOperationType != null &&
-                              _selectedOperationType!.isNotEmpty)
-                      ? Colors.blue.shade100
-                      : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color:
-                    (_selectedCurrency != null &&
-                                _selectedCurrency!.isNotEmpty) ||
-                            (_selectedOperationType != null &&
-                                _selectedOperationType!.isNotEmpty)
-                        ? Colors.blue.shade300
-                        : Colors.grey.shade300,
-              ),
-            ),
-            child: Icon(
-              Icons.filter_list,
-              color:
-                  (_selectedCurrency != null &&
-                              _selectedCurrency!.isNotEmpty) ||
-                          (_selectedOperationType != null &&
-                              _selectedOperationType!.isNotEmpty)
-                      ? Colors.blue.shade700
-                      : Colors.grey.shade600,
-              size: 24,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1100,163 +857,198 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradientColors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding: EdgeInsets.zero,
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          maintainState: true,
-          backgroundColor: Colors.transparent,
-          collapsedBackgroundColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          collapsedShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Time at the top centered
-              Center(
-                child: Text(
-                  DateFormat('HH:mm').format(entry.createdAt),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Main container with gradient background
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-
-              const SizedBox(height: 8),
-
-              // Main transaction details
-              Row(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              childrenPadding: EdgeInsets.zero,
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              maintainState: true,
+              backgroundColor: Colors.transparent,
+              collapsedBackgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              collapsedShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Operation icon
-                  Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Icon(operationIcon, color: iconColor, size: 20),
-                  ),
-
-                  // Currency and amount
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                  // Add padding at the top to make room for the time label
+                  const SizedBox(height: 4),
+                  
+                  // Main transaction details
+                  Row(
+                    children: [
+                      // Operation icon
+                      Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        child: Icon(operationIcon, color: iconColor, size: 20),
                       ),
-                    ),
-                  ),
 
-                  // Rate in the center
-                  Expanded(
-                    flex: 2,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _getTranslatedText("rate"),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey.shade600,
+                      // Currency and amount
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+
+                      // Rate in the center with horizontal layout
+                      Expanded(
+                        flex: 2,
+                        child: Center(
+                          child: RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${_getTranslatedText("rate")}: ',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: entry.rate.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            entry.rate.toStringAsFixed(2),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
 
-                  // Total in soms
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      '${entry.total.toStringAsFixed(2)} SOM',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: iconColor,
-                        fontSize: 14,
+                      // Total in soms
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '${entry.total.toStringAsFixed(2)} SOM',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: iconColor,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.end,
+                        ),
                       ),
-                      textAlign: TextAlign.end,
-                    ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          // Only show children for non-deposit entries
-          children:
-              entry.operationType != 'Deposit'
-                  ? [
-                    // Action buttons for edit and delete
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(10),
-                          bottomRight: Radius.circular(10),
+              // Only show children for non-deposit entries
+              children:
+                  entry.operationType != 'Deposit'
+                      ? [
+                        // Action buttons for edit and delete
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(10),
+                              bottomRight: Radius.circular(10),
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              // Edit button
+                              ElevatedButton.icon(
+                                onPressed: () => _showEditDialog(context, entry),
+                                icon: const Icon(Icons.edit, color: Colors.white),
+                                label: Text(
+                                  _getTranslatedText("edit"),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue.shade600,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              // Delete button
+                              ElevatedButton.icon(
+                                onPressed: () => _confirmDelete(entry),
+                                icon: const Icon(Icons.delete, color: Colors.white),
+                                label: Text(
+                                  _getTranslatedText("delete"),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade600,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Edit button
-                          ElevatedButton.icon(
-                            onPressed: () => _showEditDialog(context, entry),
-                            icon: const Icon(Icons.edit, color: Colors.white),
-                            label: Text(
-                              _getTranslatedText("edit"),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade600,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Delete button
-                          ElevatedButton.icon(
-                            onPressed: () => _confirmDelete(entry),
-                            icon: const Icon(Icons.delete, color: Colors.white),
-                            label: Text(
-                              _getTranslatedText("delete"),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade600,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]
-                  : [],
-        ),
+                      ]
+                      : [],
+            ),
+          ),
+          
+          // Time at the absolute top-left corner
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: entry.operationType == 'Purchase' 
+                    ? Colors.red.shade100
+                    : (entry.operationType == 'Sale'
+                        ? Colors.green.shade100
+                        : Colors.blue.shade100),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(6),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+              child: Text(
+                DateFormat('HH:mm').format(entry.createdAt),
+                style: TextStyle(
+                  fontSize: 8,
+                  color: entry.operationType == 'Purchase'
+                      ? Colors.red.shade800
+                      : (entry.operationType == 'Sale'
+                          ? Colors.green.shade800
+                          : Colors.blue.shade800),
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1277,245 +1069,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             style: Theme.of(context).textTheme.titleMedium,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          if (_searchController.text.isEmpty)
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade400, Colors.blue.shade700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.shade200.withOpacity(0.5),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: _resetFilters,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-                child: Text(
-                  _getTranslatedText("reset_filters"),
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
         ],
       ),
-    );
-  }
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (dialogContext) => StatefulBuilder(
-            builder:
-                (dialogContext, setStateDialog) => AlertDialog(
-                  title: Text(_getTranslatedText("filter_history")),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getTranslatedText("date_range"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _fromDateController,
-                                style: TextStyle(fontSize: 15.5),
-                                decoration: InputDecoration(
-                                  labelText: _getTranslatedText("from"),
-                                  labelStyle: TextStyle(fontSize: 16),
-                                  suffixIcon: Icon(
-                                    Icons.calendar_today,
-                                    size: 20,
-                                  ),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 10,
-                                  ),
-                                ),
-                                readOnly: true,
-                                onTap: () {
-                                  _selectDate(dialogContext, true);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _toDateController,
-                                style: TextStyle(fontSize: 15.5),
-                                decoration: InputDecoration(
-                                  labelText: _getTranslatedText("to"),
-                                  labelStyle: TextStyle(fontSize: 12),
-                                  suffixIcon: Icon(
-                                    Icons.calendar_today,
-                                    size: 20,
-                                  ),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 10,
-                                  ),
-                                ),
-                                readOnly: true,
-                                onTap: () {
-                                  _selectDate(dialogContext, false);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _getTranslatedText("currency"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                          value: _selectedCurrency,
-                          hint: Text(_getTranslatedText("all_currencies")),
-                          isExpanded: true,
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: null,
-                              child: Text(_getTranslatedText("all_currencies")),
-                            ),
-                            ..._currencyCodes.map((String code) {
-                              return DropdownMenuItem<String>(
-                                value: code,
-                                child: Text(code),
-                              );
-                            }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _selectedCurrency = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _getTranslatedText("type"),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                          value: _selectedOperationType,
-                          hint: Text(_getTranslatedText("all_types")),
-                          isExpanded: true,
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: '',
-                              child: Text(_getTranslatedText("all_types")),
-                            ),
-                            ..._operationTypes.map((String type) {
-                              return DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(
-                                  _getTranslatedText(type.toLowerCase()),
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setStateDialog(() {
-                              _selectedOperationType = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _resetFilters();
-                          },
-                          child: Text(_getTranslatedText("reset_filters")),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(_getTranslatedText("cancel")),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.blue.shade400,
-                                Colors.blue.shade700,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _loadHistory();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              minimumSize: Size(50, 36),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              _getTranslatedText("apply"),
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-          ),
     );
   }
 

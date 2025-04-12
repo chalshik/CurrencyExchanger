@@ -446,33 +446,36 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildTotalDisplay() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _getTranslatedText('total'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade200.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade50, Colors.blue.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.shade200.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.blue.shade100],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      ),
+      child: Column(
+        children: [
+          Text(
+            _getTranslatedText('total'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade800,
             ),
           ),
-          child: Text(
+          const SizedBox(height: 4),
+          Text(
             '${_totalSum.toStringAsFixed(2)} SOM',
             style: TextStyle(
               fontSize: 20,
@@ -481,8 +484,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ),
             textAlign: TextAlign.center,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -541,12 +544,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _getTranslatedText('currency'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
         const SizedBox(height: 8),
         Container(
+          width: double.infinity,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.grey.shade300),
@@ -559,28 +559,61 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: DropdownButton<String>(
-            value: _selectedCurrency.isNotEmpty ? _selectedCurrency : null,
-            hint: Text(_getTranslatedText('select_currency')),
-            isExpanded: true,
-            underline: Container(),
-            icon: Icon(Icons.arrow_drop_down, color: Colors.blue.shade700),
-            items:
-                allCurrencies.map((String currency) {
-                  return DropdownMenuItem<String>(
-                    value: currency,
-                    child: Text(currency, style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  _selectedCurrency = newValue;
-                  _calculateTotal();
-                });
-              }
-            },
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Wrap(
+            spacing: 5, // Minimal spacing between buttons
+            runSpacing: 8, // Reduced vertical spacing
+            children: allCurrencies.map((currency) {
+              final isSelected = _selectedCurrency == currency;
+              final screenWidth = MediaQuery.of(context).size.width;
+              // Ensure we subtract enough for padding, borders and spacing
+              final buttonWidth = (screenWidth - 70) / 4;
+              
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedCurrency = currency;
+                    _calculateTotal();
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: buttonWidth,
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: [Colors.blue.shade400, Colors.blue.shade600],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected ? null : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.blue.shade200.withOpacity(0.5),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    currency,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
@@ -591,11 +624,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _getTranslatedText('operation_type'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
+        
         Row(
           children: [
             Expanded(
@@ -725,21 +754,22 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _getTranslatedText('amount_label'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
         TextFormField(
           controller: _quantityController,
           focusNode: _quantityFocusNode,
+          textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             filled: true,
             fillColor:
                 _isRateFieldActive
                     ? Colors.white
                     : Colors.blue.shade50, // Highlight when active
-            hintText: '0.00',
+            hintText: _getTranslatedText('enter_amount'),
+            labelText: _getTranslatedText('amount_label'),
+            labelStyle: TextStyle(
+              color: _isRateFieldActive ? Colors.blue.shade400 : Colors.blue.shade700,
+              fontWeight: FontWeight.w500,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -792,6 +822,17 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               _calculateTotal();
             });
           },
+          onFieldSubmitted: (value) {
+            // If SOM is selected, there's no rate field to focus, so submit directly
+            if (_selectedCurrency == 'SOM') {
+              _validateAndSubmit();
+            } else {
+              setState(() {
+                _isRateFieldActive = true;
+                _currencyFocusNode.requestFocus();
+              });
+            }
+          },
         ),
       ],
     );
@@ -809,21 +850,24 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _getTranslatedText('exchange_rate'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
         TextFormField(
           controller: _currencyController,
           focusNode: _currencyFocusNode,
+          textInputAction: TextInputAction.done,
           decoration: InputDecoration(
             filled: true,
             fillColor:
                 _isRateFieldActive
                     ? Colors.blue.shade50
                     : Colors.white, // Highlight when active
-            hintText: '0.00',
+            hintText: _operationType == 'Purchase' 
+                ? _getTranslatedText('enter_buy_rate') 
+                : _getTranslatedText('enter_sell_rate'),
+            labelText: _getTranslatedText('exchange_rate'),
+            labelStyle: TextStyle(
+              color: _isRateFieldActive ? Colors.blue.shade700 : Colors.blue.shade400,
+              fontWeight: FontWeight.w500,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -875,6 +919,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             setState(() {
               _calculateTotal();
             });
+          },
+          onFieldSubmitted: (value) {
+            _validateAndSubmit();
           },
         ),
       ],
@@ -1074,13 +1121,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            _getTranslatedText('recent_transactions'),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        ),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -1109,47 +1149,26 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
               final isPurchase = transaction.operationType == 'Purchase';
 
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors:
-                        isPurchase
-                            ? [Colors.green.shade50, Colors.white]
-                            : [Colors.orange.shade50, Colors.white],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Time centered at the top but offset slightly to match rate position
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                      ), // Align with rate position
-                      child: Center(
-                        child: Text(
-                          formattedTime,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Main container
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors:
+                            isPurchase
+                                ? [Colors.green.shade50, Colors.white]
+                                : [Colors.orange.shade50, Colors.white],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-
-                    const SizedBox(height: 8),
-
-                    // Currency amount, rate, and total with icon on the left
-                    Row(
+                    child: Row(
                       children: [
-                        // Arrow icon on the left
+                        // Arrow icon
                         Container(
                           padding: const EdgeInsets.all(4),
                           margin: const EdgeInsets.only(right: 8),
@@ -1175,34 +1194,38 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           child: Text(
                             '${transaction.quantity.toStringAsFixed(2)} ${transaction.currencyCode}',
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13, // Reduced from 14
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
 
-                        // Rate centered
+                        // Rate horizontally displayed
                         Expanded(
-                          flex: 1,
+                          flex: 2,
                           child: Center(
-                            child: Column(
-                              children: [
-                                Text(
-                                  _getTranslatedText('rate'),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade600,
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${_getTranslatedText('rate')}: ',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.normal,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  transaction.rate.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
+                                  TextSpan(
+                                    text: transaction.rate.toStringAsFixed(1),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade800,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1213,7 +1236,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           child: Text(
                             '${transaction.total.toStringAsFixed(2)} SOM',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13, // Reduced from 14
                               fontWeight: FontWeight.bold,
                               color: Colors.blue.shade700,
                             ),
@@ -1222,8 +1245,36 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  
+                  // Time absolutely positioned at the corner
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isPurchase 
+                            ? Colors.green.shade100
+                            : Colors.orange.shade100,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(6),
+                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+                      child: Text(
+                        formattedTime,
+                        style: TextStyle(
+                          fontSize: 8,
+                          color: isPurchase 
+                              ? Colors.green.shade800 
+                              : Colors.orange.shade800,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           ),
