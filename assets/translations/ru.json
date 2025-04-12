@@ -167,7 +167,7 @@
   "statistics_and_balance": "Статистика и баланс",
   "refresh_statistics": "Обновить статистику",
   "som_balance": "Баланс СОМ",
-  "foreign_currency_value": "Стоимость иностранной валюты",
+  "foreign_currency_value": "Стоимость валют",
   "total_value": "Общая стоимость",
   "total_profit": "Общая прибыль",
   "currency_statistics": "Статистика валют",
@@ -215,5 +215,9 @@
   "retry_connection": "Повторить подключение",
   "no_connection_still": "Подключение к интернету не обнаружено. Пожалуйста, проверьте настройки сети.",
   "transaction_updated": "Транзакция успешно обновлена",
-  "add_currency": "Добавить валюту"
+  "add_currency": "Добавить валюту",
+  "profit_distribution": "Распределение прибыли",
+  "transaction_successful": "Транзакция успешно выполнена",
+  "transaction_failed": "Транзакция не выполнена",
+  "invalid_quantity": "Неверное количество"
 } 

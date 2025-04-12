@@ -168,7 +168,7 @@
   "statistics_and_balance": "Statistics & Balance",
   "refresh_statistics": "Refresh Statistics",
   "som_balance": "SOM Balance",
-  "foreign_currency_value": "Foreign Currency Value",
+  "foreign_currency_value": "Currencies' Values",
   "total_value": "Total Value",
   "total_profit": "Total Profit",
   "currency_statistics": "Currency Statistics",
@@ -216,5 +216,9 @@
   "currency_converter": "Currency Converter",
   "transaction_updated": "Transaction updated successfully",
   "add_currency": "Add Currency",
-  "no_recent_transactions": "No recent transactions"
+  "no_recent_transactions": "No recent transactions",
+  "profit_distribution": "Profit Distribution",
+  "transaction_successful": "Transaction successful",
+  "transaction_failed": "Transaction failed",
+  "invalid_quantity": "Invalid quantity"
 } 

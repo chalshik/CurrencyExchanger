@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../db_helper.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import 'dart:math' as math;
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -123,21 +124,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           color: Colors.blue.shade50,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _getTranslatedText('som_balance'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    color: Colors.blue.shade700,
                   ),
                 ),
-                const SizedBox(height: 8),
-                _buildStatRow(
-                  _getTranslatedText('amount_label'),
+                Text(
                   '${_somBalance.toStringAsFixed(2)} SOM',
-                  valueColor: Colors.blue,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700,
+                  ),
                 ),
               ],
             ),
@@ -150,31 +154,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             color: Colors.green.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _getTranslatedText('foreign_currency_value'),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      Icon(
-                        Icons.info_outline,
+                    Text(
+                      _getTranslatedText('foreign_currency_value'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         color: Colors.green.shade700,
-                        size: 20,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _buildStatRow(
-                    _getTranslatedText('total_value'),
+                    ),
+                  Text(
                     '${_kassaValue.toStringAsFixed(2)} SOM',
-                    valueColor: Colors.green,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                    ),
                   ),
                 ],
               ),
@@ -186,21 +183,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           color: Colors.amber.shade50,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _getTranslatedText('total_profit'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber,
+                    color: Colors.amber.shade700,
                   ),
                 ),
-                const SizedBox(height: 8),
-                _buildStatRow(
-                  _getTranslatedText('amount_label'),
+                Text(
                   '${formatProfit(_totalProfit)} SOM',
-                  valueColor: _totalProfit >= 0 ? Colors.green : Colors.red,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _totalProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
                 ),
               ],
             ),
@@ -264,6 +264,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           ), // Vertical cards for portrait mode
                       // Always use table view with horizontal scrolling for small screens
                       _buildScrollableTable(isTablet),
+
+                      // Profit Pie Chart Section
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text(
+                          _getTranslatedText('profit_distribution'),
+                          style: TextStyle(
+                            fontSize: isTablet ? 20 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
+                      _buildProfitPieChart(),
                     ],
                   ),
                 ),
@@ -661,21 +675,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             color: Colors.blue.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _getTranslatedText('som_balance'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: Colors.blue.shade700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildStatRow(
-                    _getTranslatedText('amount_label'),
+                  Text(
                     '${_somBalance.toStringAsFixed(2)} SOM',
-                    valueColor: Colors.blue,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
                   ),
                 ],
               ),
@@ -690,19 +707,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               color: Colors.green.shade50,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           _getTranslatedText('foreign_currency_value'),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          style: TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: Colors.green.shade700,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Icon(
                           Icons.info_outline,
                           color: Colors.green.shade700,
@@ -710,11 +728,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    _buildStatRow(
-                      _getTranslatedText('total_value'),
+                    Text(
                       '${_kassaValue.toStringAsFixed(2)} SOM',
-                      valueColor: Colors.green,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
                     ),
                   ],
                 ),
@@ -728,21 +748,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             color: Colors.amber.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _getTranslatedText('total_profit'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber,
+                      color: Colors.amber.shade700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _buildStatRow(
-                    _getTranslatedText('amount_label'),
+                  Text(
                     '${formatProfit(_totalProfit)} SOM',
-                    valueColor: _totalProfit >= 0 ? Colors.green : Colors.red,
+                    style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.bold,
+                      color: _totalProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
+                    ),
                   ),
                 ],
               ),
@@ -929,4 +952,214 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
     );
   }
+
+  Widget _buildProfitPieChart() {
+    // Get currencies excluding SOM, with non-zero profit
+    final currenciesWithProfit = _currencyStats
+        .where((stat) => 
+            stat['currency'] != 'SOM' && 
+            ((stat['profit'] as double? ?? 0.0).abs() > 0.01)) // Only include if profit is not near-zero
+        .toList();
+    
+    if (currenciesWithProfit.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            _getTranslatedText('no_profit_data'),
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    // Sort by profit value (absolute) for better visualization
+    currenciesWithProfit.sort((a, b) => 
+        (b['profit'] as double).abs().compareTo((a['profit'] as double).abs()));
+    
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 250,
+            child: _ProfitPieChart(
+              currencies: currenciesWithProfit,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: currenciesWithProfit.asMap().entries.map((entry) {
+              final index = entry.key;
+              final currency = entry.value;
+              final profit = currency['profit'] as double;
+              final isPositive = profit >= 0;
+              
+              // Assign a color based on index and profit sign
+              final hue = 120 + (index * 50) % 240;
+              final color = isPositive 
+                  ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor()
+                  : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor(); // Red for negative
+                  
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${currency['currency']}: ${formatProfit(profit)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isPositive ? Colors.green.shade800 : Colors.red.shade800,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfitPieChart extends StatelessWidget {
+  final List<Map<String, dynamic>> currencies;
+  
+  const _ProfitPieChart({required this.currencies});
+  
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(double.infinity, 250),
+      painter: _PieChartPainter(currencies),
+    );
+  }
+}
+
+class _PieChartPainter extends CustomPainter {
+  final List<Map<String, dynamic>> currencies;
+  
+  _PieChartPainter(this.currencies);
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2.2;
+    
+    // Calculate total absolute profit for pie segment sizing
+    final totalProfit = currencies.fold<double>(
+      0, 
+      (sum, currency) => sum + (currency['profit'] as double).abs()
+    );
+    
+    if (totalProfit <= 0) return; // Nothing to draw
+    
+    double startAngle = 0;
+    
+    for (int i = 0; i < currencies.length; i++) {
+      final currency = currencies[i];
+      final profit = currency['profit'] as double;
+      
+      // Calculate segment angle
+      final sweepAngle = 2 * math.pi * profit.abs() / totalProfit;
+      
+      // Assign a color based on index and profit sign
+      final hue = 120 + (i * 50) % 240;
+      final color = profit >= 0 
+          ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor()
+          : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor(); // Red for negative
+      
+      final paint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = color;
+      
+      // Draw pie segment
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        true,
+        paint,
+      );
+      
+      // Draw a thin white border around the segment
+      final borderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = Colors.white
+        ..strokeWidth = 2;
+        
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        true,
+        borderPaint,
+      );
+      
+      // Update start angle for next segment
+      startAngle += sweepAngle;
+    }
+    
+    // Draw a center circle with white fill for a donut chart effect
+    final centerCirclePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.white;
+      
+    canvas.drawCircle(
+      center,
+      radius * 0.5, // Inner radius is half of outer radius
+      centerCirclePaint,
+    );
+    
+    // Draw total profit in the center
+    final totalPositiveProfit = currencies
+        .where((c) => (c['profit'] as double) > 0)
+        .fold<double>(0, (sum, c) => sum + (c['profit'] as double));
+        
+    final totalNegativeProfit = currencies
+        .where((c) => (c['profit'] as double) < 0)
+        .fold<double>(0, (sum, c) => sum + (c['profit'] as double));
+    
+    final totalProfitText = totalPositiveProfit + totalNegativeProfit;
+    
+    final textSpan = TextSpan(
+      text: '${totalProfitText.toStringAsFixed(2)}\nSOM',
+      style: TextStyle(
+        color: totalProfitText >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    
+    textPainter.layout();
+    
+    // Center the text
+    final textOffset = Offset(
+      center.dx - textPainter.width / 2,
+      center.dy - textPainter.height / 2,
+    );
+    
+    textPainter.paint(canvas, textOffset);
+  }
+  
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

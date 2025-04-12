@@ -166,7 +166,7 @@
   "statistics_and_balance": "Статистика жана баланс",
   "refresh_statistics": "Статистиканы жаңыртуу",
   "som_balance": "СОМ балансы",
-  "foreign_currency_value": "Чет элдик валюта наркы",
+  "foreign_currency_value": "Валюталардын наркы",
   "total_value": "Жалпы нарк",
   "total_profit": "Жалпы пайда",
   "currency_statistics": "Валюта статистикасы",
@@ -214,6 +214,9 @@
   "retry_connection": "Байланышты кайра текшерүү",
   "no_connection_still": "Интернет байланышы табылган жок. Сураныч, тармак жөндөөлөрүн текшериңиз.",
   "transaction_updated": "Транзакция ийгиликтүү жаңыртылды",
-  "no_recent_transactions": "Акыркы транзакциялар жок"
-
+  "no_recent_transactions": "Акыркы транзакциялар жок",
+  "profit_distribution": "Киреше",
+  "transaction_successful": "Транзакция ийгиликтүү жүргүзүлдү",
+  "transaction_failed": "Транзакцияда ката кетти",
+  "invalid_quantity": "Туура эмес сан"
 } 

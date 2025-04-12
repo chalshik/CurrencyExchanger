@@ -109,7 +109,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      
+
       final entries = await _dbHelper.getFilteredHistoryByDate(
         startDate: startOfDay,
         endDate: endOfDay,
@@ -582,41 +582,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               height: 36, // Fixed height for search field
                               alignment: Alignment.center,
                               child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: _getTranslatedText("search_transactions"),
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  errorBorder: InputBorder.none,
-                                  disabledBorder: InputBorder.none,
-                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: _getTranslatedText("search_transactions"),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
                                   contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
                                   isDense: true, // Makes the field more compact
-                                  filled: false,
-                                ),
+                    filled: false,
+                  ),
                                 style: const TextStyle(color: Colors.white),
-                                cursorColor: Colors.white,
-                                autofocus: true,
+                  cursorColor: Colors.white,
+                  autofocus: true,
                               ),
-                            )
-                          : Text(
-                              _getTranslatedText("transaction_history"),
+                )
+                : Text(
+                  _getTranslatedText("transaction_history"),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w500,
-                              ),
+                ),
                             ),
                       ),
-                      IconButton(
+          IconButton(
                         icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
-                        onPressed: _toggleSearch,
-                      ),
+            onPressed: _toggleSearch,
+          ),
                     ],
                   ),
-                ),
-              ],
+          ),
+        ],
             ),
           ),
         ),
@@ -864,157 +864,157 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           // Main container with gradient background
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradientColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              childrenPadding: EdgeInsets.zero,
-              expandedCrossAxisAlignment: CrossAxisAlignment.start,
-              maintainState: true,
-              backgroundColor: Colors.transparent,
-              collapsedBackgroundColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              collapsedShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: EdgeInsets.zero,
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          maintainState: true,
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                   // Add padding at the top to make room for the time label
                   const SizedBox(height: 4),
-                  
-                  // Main transaction details
-                  Row(
-                    children: [
-                      // Operation icon
-                      Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        child: Icon(operationIcon, color: iconColor, size: 20),
-                      ),
 
-                      // Currency and amount
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
+              // Main transaction details
+              Row(
+                children: [
+                  // Operation icon
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Icon(operationIcon, color: iconColor, size: 20),
+                  ),
+
+                  // Currency and amount
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
+                    ),
+                  ),
 
                       // Rate in the center with horizontal layout
-                      Expanded(
-                        flex: 2,
-                        child: Center(
+                  Expanded(
+                    flex: 2,
+                    child: Center(
                           child: RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
-                              children: [
+                        children: [
                                 TextSpan(
                                   text: '${_getTranslatedText("rate")}: ',
-                                  style: TextStyle(
+                            style: TextStyle(
                                     fontSize: 13,
-                                    color: Colors.grey.shade600,
+                              color: Colors.grey.shade600,
                                     fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: entry.rate.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
-                        ),
-                      ),
-
-                      // Total in soms
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          '${entry.total.toStringAsFixed(2)} SOM',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: iconColor,
-                            fontSize: 13,
+                                TextSpan(
+                                  text: entry.rate.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade800,
+                            ),
                           ),
-                          textAlign: TextAlign.end,
-                        ),
+                        ],
+                            ),
                       ),
-                    ],
+                    ),
+                  ),
+
+                  // Total in soms
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${entry.total.toStringAsFixed(2)} SOM',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: iconColor,
+                            fontSize: 13,
+                      ),
+                      textAlign: TextAlign.end,
+                    ),
                   ),
                 ],
               ),
-              // Only show children for non-deposit entries
-              children:
-                  entry.operationType != 'Deposit'
-                      ? [
-                        // Action buttons for edit and delete
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(10),
-                              bottomRight: Radius.circular(10),
+            ],
+          ),
+          // Only show children for non-deposit entries
+          children:
+              entry.operationType != 'Deposit'
+                  ? [
+                    // Action buttons for edit and delete
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Edit button
+                          ElevatedButton.icon(
+                            onPressed: () => _showEditDialog(context, entry),
+                            icon: const Icon(Icons.edit, color: Colors.white),
+                            label: Text(
+                              _getTranslatedText("edit"),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade600,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                           ),
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Edit button
-                              ElevatedButton.icon(
-                                onPressed: () => _showEditDialog(context, entry),
-                                icon: const Icon(Icons.edit, color: Colors.white),
-                                label: Text(
-                                  _getTranslatedText("edit"),
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade600,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                ),
+                          const SizedBox(width: 16),
+                          // Delete button
+                          ElevatedButton.icon(
+                            onPressed: () => _confirmDelete(entry),
+                            icon: const Icon(Icons.delete, color: Colors.white),
+                            label: Text(
+                              _getTranslatedText("delete"),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
                               ),
-                              const SizedBox(width: 16),
-                              // Delete button
-                              ElevatedButton.icon(
-                                onPressed: () => _confirmDelete(entry),
-                                icon: const Icon(Icons.delete, color: Colors.white),
-                                label: Text(
-                                  _getTranslatedText("delete"),
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.shade600,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ]
-                      : [],
-            ),
+                        ],
+                      ),
+                    ),
+                  ]
+                  : [],
+        ),
           ),
           
           // Time at the absolute top-left corner
@@ -1070,7 +1070,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
+          ),
     );
   }
 
