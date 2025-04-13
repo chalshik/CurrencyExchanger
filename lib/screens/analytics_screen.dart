@@ -9,6 +9,8 @@ enum ChartType { distribution, bar }
 
 enum TimeRange { day, week, month }
 
+enum DateAggregation { day, week, month }
+
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
 
@@ -29,6 +31,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   String _activeTab = 'purchases'; // Track active tab for distribution view
   String? _selectedCurrency;
   List<String> _availableCurrencies = [];
+  DateAggregation _dateAggregation = DateAggregation.day; // Default to daily aggregation
 
   // Translation helper method
   String _getTranslatedText(String key, [Map<String, String>? params]) {
@@ -336,6 +339,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           );
         }
 
+        // Apply date aggregation if needed
+        if (_dateAggregation != DateAggregation.day) {
+          dailyData = _aggregateDataByPeriod(dailyData, _dateAggregation);
+        }
+
         // The daily data is now already processed by the DB helper methods
         if (dailyData.isNotEmpty) {
           final firstDay = dailyData.first;
@@ -346,6 +354,77 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
         return dailyData;
     }
+  }
+
+  // New method to aggregate data by week or month
+  List<Map<String, dynamic>> _aggregateDataByPeriod(
+    List<Map<String, dynamic>> dailyData,
+    DateAggregation aggregation,
+  ) {
+    if (dailyData.isEmpty) return dailyData;
+
+    // Map to store aggregated data
+    final Map<String, Map<String, dynamic>> aggregatedData = {};
+
+    for (var dayData in dailyData) {
+      // Parse the date
+      final dateStr = dayData['day'] as String;
+      final date = DateTime.parse(dateStr);
+      
+      // Generate period key based on aggregation
+      String periodKey;
+      if (aggregation == DateAggregation.week) {
+        // Calculate the start of the week (Monday)
+        final startOfWeek = date.subtract(Duration(days: date.weekday - 1));
+        periodKey = DateFormat('yyyy-MM-dd').format(startOfWeek);
+      } else if (aggregation == DateAggregation.month) {
+        // Monthly aggregation (first day of month)
+        periodKey = DateFormat('yyyy-MM-01').format(date);
+      } else {
+        // Fallback to daily (shouldn't happen)
+        periodKey = dateStr;
+      }
+
+      // Initialize period data if not exists
+      if (!aggregatedData.containsKey(periodKey)) {
+        aggregatedData[periodKey] = {
+          'day': aggregation == DateAggregation.week 
+              ? '${_getTranslatedText('week_of')} ${DateFormat('MMM d').format(DateTime.parse(periodKey))}'
+              : DateFormat('MMM yyyy').format(DateTime.parse(periodKey)),
+          'purchases': 0.0,
+          'sales': 0.0,
+          'profit': 0.0,
+          'deposits': 0.0,
+        };
+      }
+
+      // Add values to the aggregated period
+      aggregatedData[periodKey]!['purchases'] += (dayData['purchases'] as num).toDouble();
+      aggregatedData[periodKey]!['sales'] += (dayData['sales'] as num).toDouble();
+      aggregatedData[periodKey]!['profit'] += (dayData['profit'] as num).toDouble();
+      aggregatedData[periodKey]!['deposits'] += (dayData['deposits'] as num? ?? 0.0);
+    }
+
+    // Convert map to list and sort by date
+    final result = aggregatedData.values.toList();
+    if (aggregation == DateAggregation.month) {
+      result.sort((a, b) {
+        final dateA = DateFormat('MMM yyyy').parse(a['day'] as String);
+        final dateB = DateFormat('MMM yyyy').parse(b['day'] as String);
+        return dateA.compareTo(dateB);
+      });
+    } else if (aggregation == DateAggregation.week) {
+      // Extract date from "Week of Jan 1" format for comparison
+      result.sort((a, b) {
+        final weekOfA = (a['day'] as String).replaceFirst(_getTranslatedText('week_of'), '').trim();
+        final weekOfB = (b['day'] as String).replaceFirst(_getTranslatedText('week_of'), '').trim();
+        final dateA = DateFormat('MMM d').parse(weekOfA);
+        final dateB = DateFormat('MMM d').parse(weekOfB);
+        return dateA.compareTo(dateB);
+      });
+    }
+    
+    return result;
   }
 
   Widget _buildBarChart(dynamic data) {
@@ -362,11 +441,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     return Column(
       children: [
-        // Compact currency selector
+        // Top section with selectors
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: Row(
             children: [
+              // Currency selector
               Text(
                 _getTranslatedText('currency_selector'),
                 style: Theme.of(
@@ -411,6 +491,60 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       _selectedCurrency = value;
                       _refreshData();
                     });
+                  },
+                ),
+              ),
+              const Spacer(),
+              // New date aggregation selector
+              Text(
+                _getTranslatedText('group_by'),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color:
+                        Theme.of(context).dividerTheme.color ??
+                        Colors.transparent,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButton<DateAggregation>(
+                  value: _dateAggregation,
+                  underline: const SizedBox(),
+                  isDense: true,
+                  items: DateAggregation.values.map((agg) {
+                    String label;
+                    switch (agg) {
+                      case DateAggregation.day:
+                        label = _getTranslatedText('daily');
+                        break;
+                      case DateAggregation.week:
+                        label = _getTranslatedText('weekly');
+                        break;
+                      case DateAggregation.month:
+                        label = _getTranslatedText('monthly');
+                        break;
+                    }
+                    return DropdownMenuItem(
+                      value: agg,
+                      child: Text(
+                        label,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _dateAggregation = value;
+                        _refreshData();
+                      });
+                    }
                   },
                 ),
               ),

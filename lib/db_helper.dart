@@ -1283,6 +1283,10 @@ class DatabaseHelper {
       return {'currency_stats': currencyStats, 'total_profit': totalProfit};
     } catch (e) {
       debugPrint('Error in calculateAnalytics: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return {'currency_stats': [], 'total_profit': 0.0};
     }
   }
@@ -1297,95 +1301,86 @@ class DatabaseHelper {
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
 
-      final fromDateStr = fromDate.toIso8601String();
-      final toDateStr = toDate.toIso8601String();
+      final fromDateStr = fromDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = toDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
-      debugPrint('Fetching data from $fromDateStr to $toDateStr');
+      debugPrint('Fetching pie chart data from $fromDateStr to $toDateStr');
 
-      // Get all transactions within the date range
-      final querySnapshot =
-          await _firestore
-              .collection(collectionHistory)
-              .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
-              .where('created_at', isLessThanOrEqualTo: toDateStr)
-              .get();
+      // Find relevant archives within date range
+      final archiveQuery = await _firestore.collection(collectionArchive)
+          .where('date', isGreaterThanOrEqualTo: fromDateStr)
+          .where('date', isLessThanOrEqualTo: toDateStr)
+          .orderBy('date', descending: true)
+          .get();
 
-      debugPrint('Found ${querySnapshot.docs.length} total transactions');
+      debugPrint('Found ${archiveQuery.docs.length} archive records');
 
-      // Process purchase data
+      // If no archives in range, return empty results
+      if (archiveQuery.docs.isEmpty) {
+        debugPrint('No archive data found, returning empty results');
+        return {'purchases': [], 'sales': []};
+      }
+
+      // Process purchase and sales data from archived statistics
       final Map<String, Map<String, dynamic>> purchaseData = {};
-      // Process sales data
       final Map<String, Map<String, dynamic>> salesData = {};
 
-      // Process all transactions
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        final operationType = data['operation_type'] as String;
-        final currencyCode = data['currency_code'] as String;
-        final total = _safeDouble(data['total']);
+      // Use the most recent archive record in the date range
+      final archiveDoc = archiveQuery.docs.first.data();
+      if (!archiveDoc.containsKey('currencies')) {
+        debugPrint('Archive record missing currencies data');
+        return {'purchases': [], 'sales': []};
+      }
 
-        // Skip if currency code is SOM
+      // Process currencies data to extract purchase and sales information
+      final currenciesData = List<Map<String, dynamic>>.from(archiveDoc['currencies'] ?? []);
+      for (var currency in currenciesData) {
+        final currencyCode = currency['currency_code'] as String;
+        
+        // Skip SOM currency
         if (currencyCode == 'SOM') continue;
 
-        // Process based on operation type
-        if (operationType == 'Purchase') {
-          if (!purchaseData.containsKey(currencyCode)) {
-            purchaseData[currencyCode] = {
-              'currency': currencyCode,
-              'total_value': 0.0,
-              'count': 0,
-            };
-          }
-          purchaseData[currencyCode]!['total_value'] =
-              _safeDouble(purchaseData[currencyCode]!['total_value']) + total;
-          purchaseData[currencyCode]!['count'] =
-              _safeDouble(purchaseData[currencyCode]!['count']) + 1;
-        } else if (operationType == 'Sale') {
-          if (!salesData.containsKey(currencyCode)) {
-            salesData[currencyCode] = {
-              'currency': currencyCode,
-              'total_value': 0.0,
-              'count': 0,
-            };
-          }
-          salesData[currencyCode]!['total_value'] =
-              _safeDouble(salesData[currencyCode]!['total_value']) + total;
-          salesData[currencyCode]!['count'] =
-              _safeDouble(salesData[currencyCode]!['count']) + 1;
+        // Extract purchase data
+        final totalPurchased = _safeDouble(currency['total_purchased']);
+        final totalPurchaseAmount = _safeDouble(currency['total_purchase_amount']);
+        
+        if (totalPurchased > 0) {
+          purchaseData[currencyCode] = {
+            'currency': currencyCode,
+            'total_value': totalPurchaseAmount,
+            'count': 1, // Simplified count since we're aggregating from archive
+          };
+        }
+        
+        // Extract sales data
+        final totalSold = _safeDouble(currency['total_sold']);
+        final totalSaleAmount = _safeDouble(currency['total_sale_amount']);
+        
+        if (totalSold > 0) {
+          salesData[currencyCode] = {
+            'currency': currencyCode,
+            'total_value': totalSaleAmount,
+            'count': 1, // Simplified count since we're aggregating from archive
+          };
         }
       }
 
       // Convert to lists and sort by total_value
-      final purchases =
-          purchaseData.values.toList()..sort(
-            (a, b) =>
-                (_safeDouble(b['total_value']) - _safeDouble(a['total_value']))
-                    .toInt(),
-          );
+      final purchases = purchaseData.values.toList()
+        ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
-      final sales =
-          salesData.values.toList()..sort(
-            (a, b) =>
-                (_safeDouble(b['total_value']) - _safeDouble(a['total_value']))
-                    .toInt(),
-          );
+      final sales = salesData.values.toList()
+        ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
-      debugPrint('Processed ${purchases.length} purchase currencies');
-      debugPrint('Processed ${sales.length} sales currencies');
-
-      if (purchases.isNotEmpty) {
-        debugPrint('Sample purchase data: ${purchases.first}');
-        debugPrint(
-          'All purchase currencies: ${purchases.map((p) => p['currency']).join(', ')}',
-        );
-      }
-      if (sales.isNotEmpty) {
-        debugPrint('Sample sales data: ${sales.first}');
-      }
-
+      debugPrint('Processed ${purchases.length} purchase currencies and ${sales.length} sales currencies');
+      
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return {'purchases': [], 'sales': []};
     }
   }
@@ -1395,189 +1390,103 @@ class DatabaseHelper {
     required DateTime endDate,
   }) async {
     try {
-      final fromDateStr = startDate.toIso8601String();
-      final toDateStr = endDate.toIso8601String();
+      final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
       debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
 
-      // Get ALL transactions without complex queries
-      final querySnapshot =
-          await _firestore.collection(collectionHistory).get();
+      // Get all archive records in the date range
+      final archiveQuery = await _firestore.collection(collectionArchive)
+          .where('date', isGreaterThanOrEqualTo: fromDateStr)
+          .where('date', isLessThanOrEqualTo: toDateStr)
+          .orderBy('date')
+          .get();
 
-      debugPrint('Total history records: ${querySnapshot.docs.length}');
+      debugPrint('Found ${archiveQuery.docs.length} archive records');
 
-      // Group transactions by date first
-      final Map<String, Map<String, dynamic>> dailyData = {};
-
-      // Process all transactions and filter by date in code
-      for (var doc in querySnapshot.docs) {
+      // Build daily data from archive records
+      final List<Map<String, dynamic>> dailyData = [];
+      
+      for (var doc in archiveQuery.docs) {
         final data = doc.data();
-        final createdAt = data['created_at'] as String;
-
-        // Parse the date string to DateTime for comparison
-        final transactionDate = DateTime.parse(createdAt);
-
-        // Skip if outside the date range
-        if (transactionDate.isBefore(startDate) ||
-            transactionDate.isAfter(endDate)) {
-          continue;
-        }
-
-        final date = createdAt.substring(
-          0,
-          10,
-        ); // Extract date part (YYYY-MM-DD)
-        final operationType = data['operation_type'] as String;
-        final currencyCode = data['currency_code'] as String;
-        final total = _safeDouble(data['total']);
-        final quantity = _safeDouble(data['quantity']);
-
-        // Skip if currency code is SOM
-        if (currencyCode == 'SOM') continue;
-
-        // Initialize daily data entry
-        if (!dailyData.containsKey(date)) {
-          dailyData[date] = {
-            'day': date,
-            'purchases': 0.0,
-            'sales': 0.0,
-            'profit': 0.0,
-            'deposits': 0.0,
-            'currencies': <String, Map<String, dynamic>>{},
-          };
-        }
-
-        // Initialize currency entry for this day
-        if (!(dailyData[date]!['currencies'] as Map).containsKey(
-          currencyCode,
-        )) {
-          (dailyData[date]!['currencies'] as Map)[currencyCode] = {
-            'currency': currencyCode,
-            'purchase_amount': 0.0,
-            'purchase_quantity': 0.0,
-            'sale_amount': 0.0,
-            'sale_quantity': 0.0,
-            'count_purchase': 0,
-            'count_sale': 0,
-          };
-        }
-
-        // Add transaction data
-        final currencyData =
-            (dailyData[date]!['currencies'] as Map)[currencyCode]
-                as Map<String, dynamic>;
-
-        if (operationType == 'Purchase') {
-          dailyData[date]!['purchases'] =
-              (dailyData[date]!['purchases'] as double) + total;
-          currencyData['purchase_amount'] =
-              (currencyData['purchase_amount'] as double) + total;
-          currencyData['purchase_quantity'] =
-              (currencyData['purchase_quantity'] as double) + quantity;
-          currencyData['count_purchase'] =
-              (currencyData['count_purchase'] as int) + 1;
-        } else if (operationType == 'Sale') {
-          dailyData[date]!['sales'] =
-              (dailyData[date]!['sales'] as double) + total;
-          currencyData['sale_amount'] =
-              (currencyData['sale_amount'] as double) + total;
-          currencyData['sale_quantity'] =
-              (currencyData['sale_quantity'] as double) + quantity;
-          currencyData['count_sale'] = (currencyData['count_sale'] as int) + 1;
-        } else if (operationType == 'Deposit') {
-          dailyData[date]!['deposits'] =
-              (dailyData[date]!['deposits'] as double) + total;
-        }
-      }
-
-      // Now calculate profit based on selling cost only for sold currencies
-      for (var date in dailyData.keys) {
-        final dayData = dailyData[date]!;
-        double dailyProfit = 0.0;
-
-        debugPrint('Calculating profit for date: $date');
-
-        // For each currency, calculate profit on the sold amount
-        for (var currencyCode in (dayData['currencies'] as Map).keys) {
-          final currencyData =
-              (dayData['currencies'] as Map)[currencyCode]
-                  as Map<String, dynamic>;
-          final saleAmount = currencyData['sale_amount'] as double;
-          final saleQuantity = currencyData['sale_quantity'] as double;
-
-          debugPrint(
-            '  Currency: $currencyCode, Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
-          );
-
-          if (saleQuantity > 0) {
-            // Get average purchase rate for this currency up to this date
-            // Instead of querying Firestore again, we'll use the data we already have
-            double totalQuantity = 0.0;
-            double totalAmount = 0.0;
-
-            // Find all purchase transactions for this currency up to this date
-            for (var doc in querySnapshot.docs) {
-              final data = doc.data();
-              final docDate = data['created_at'] as String;
-
-              // Skip if after the current date
-              if (docDate.compareTo('$date 23:59:59.999Z') > 0) continue;
-
-              final docCurrencyCode = data['currency_code'] as String;
-              final docOperationType = data['operation_type'] as String;
-
-              // Only count purchase transactions for this currency
-              if (docCurrencyCode == currencyCode &&
-                  docOperationType == 'Purchase') {
-                totalQuantity += _safeDouble(data['quantity']);
-                totalAmount += _safeDouble(data['total']);
-              }
-            }
-
-            final avgPurchaseRate =
-                totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-
-            // Calculate cost of sold currency
-            final costOfSold = saleQuantity * avgPurchaseRate;
-
-            // Calculate profit for this currency on this day
-            final currencyProfit = saleAmount - costOfSold;
-
-            debugPrint(
-              '    Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $currencyProfit',
-            );
-
-            // Add to daily profit
-            dailyProfit += currencyProfit;
+        final date = data['date'] as String;
+        
+        // Create daily data structure
+        final dayData = {
+          'day': date,
+          'purchases': 0.0,
+          'sales': 0.0,
+          'profit': 0.0,
+          'deposits': 0.0,
+          'currencies': <String, Map<String, dynamic>>{},
+        };
+        
+        // Process currency-specific data
+        if (data.containsKey('currencies')) {
+          final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
+          
+          double dailyPurchaseTotal = 0.0;
+          double dailySaleTotal = 0.0;
+          double dailyProfitTotal = 0.0;
+          
+          for (var currency in currenciesData) {
+            final currencyCode = currency['currency_code'] as String;
+            
+            // Skip SOM for daily aggregates
+            if (currencyCode == 'SOM') continue;
+            
+            final purchaseAmount = _safeDouble(currency['total_purchase_amount']);
+            final saleAmount = _safeDouble(currency['total_sale_amount']);
+            final profit = _safeDouble(currency['profit']);
+            
+            // Add to daily totals
+            dailyPurchaseTotal += purchaseAmount;
+            dailySaleTotal += saleAmount;
+            dailyProfitTotal += profit;
+            
+            // Add currency-specific data
+            (dayData['currencies'] as Map)[currencyCode] = {
+              'currency': currencyCode,
+              'purchase_amount': purchaseAmount,
+              'purchase_quantity': _safeDouble(currency['total_purchased']),
+              'sale_amount': saleAmount,
+              'sale_quantity': _safeDouble(currency['total_sold']),
+              'count_purchase': 1, // Simplified since we don't have actual counts
+              'count_sale': 1,     // Simplified since we don't have actual counts
+            };
           }
+          
+          // Set aggregated values
+          dayData['purchases'] = dailyPurchaseTotal;
+          dayData['sales'] = dailySaleTotal;
+          dayData['profit'] = dailyProfitTotal;
         }
-
-        // Update daily profit
-        dayData['profit'] = dailyProfit;
-        debugPrint('  Total daily profit for $date: $dailyProfit');
-
-        // Extra validation to ensure profit field is properly set
-        if (!dayData.containsKey('profit') || dayData['profit'] == null) {
-          debugPrint(
-            '  WARNING: Profit field was null or missing, setting to 0.0',
-          );
-          dayData['profit'] = 0.0;
+        
+        // Add summary data if available
+        if (data.containsKey('summary')) {
+          final summary = data['summary'] as Map<String, dynamic>;
+          dayData['purchases'] = _safeDouble(summary['total_purchased']);
+          dayData['sales'] = _safeDouble(summary['total_sold']);
+          dayData['profit'] = _safeDouble(summary['total_profit']);
         }
+        
+        dailyData.add(dayData);
       }
 
-      // Convert to list and sort by date
-      final formattedResult = dailyData.values.toList();
-      formattedResult.sort(
-        (a, b) => (a['day'] as String).compareTo(b['day'] as String),
-      );
-
-      if (formattedResult.isNotEmpty) {
-        debugPrint('First day data: ${formattedResult.first}');
+      // Sort by date
+      dailyData.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
+      
+      if (dailyData.isNotEmpty) {
+        debugPrint('First day data: ${dailyData.first}');
       }
 
-      return formattedResult;
+      return dailyData;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
@@ -1588,152 +1497,145 @@ class DatabaseHelper {
     int limit = 5,
   }) async {
     try {
-      final fromDateStr = startDate.toIso8601String();
-      final toDateStr = endDate.toIso8601String();
+      final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
-      // Get all transactions for the date range
-      final querySnapshot =
-          await _firestore.collection(collectionHistory).get();
+      debugPrint('Fetching most profitable currencies from $fromDateStr to $toDateStr');
 
-      // Process transactions locally
-      final Map<String, Map<String, dynamic>> purchaseData = {};
-      final Map<String, Map<String, dynamic>> salesData = {};
+      // Get all history entries in the date range to calculate profits directly
+      final historyQuery = await _firestore.collection(collectionHistory)
+          .where('created_at', isGreaterThanOrEqualTo: startDate.toIso8601String())
+          .where('created_at', isLessThanOrEqualTo: endDate.toIso8601String())
+          .get();
 
-      // Group transactions by type and currency
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-
-        // Check if the transaction is within our date range
-        final createdAt = data['created_at'] as String;
-        if (createdAt.compareTo(fromDateStr) < 0 ||
-            createdAt.compareTo(toDateStr) > 0) {
-          continue; // Skip transactions outside date range
-        }
-
-        final currencyCode = data['currency_code'] as String;
-        final operationType = data['operation_type'] as String;
-        final quantity = _safeDouble(data['quantity']);
-        final rate = _safeDouble(data['rate']);
-        final total = _safeDouble(data['total']);
-
-        // Skip SOM currency for profit calculations
+      final historyEntries = historyQuery.docs.map((doc) => 
+          HistoryModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
+      ).toList();
+      
+      debugPrint('Found ${historyEntries.length} history entries for calculation');
+      
+      // Maps to track statistics by currency
+      final Map<String, Map<String, dynamic>> currencyStats = {};
+      
+      // Process each history entry
+      for (var entry in historyEntries) {
+        final currencyCode = entry.currencyCode;
+        
+        // Skip SOM for profit calculation
         if (currencyCode == 'SOM') continue;
-
-        if (operationType == 'Purchase') {
-          if (!purchaseData.containsKey(currencyCode)) {
-            purchaseData[currencyCode] = {
-              'currency_code': currencyCode,
-              'total_quantity': 0.0,
-              'total_spent': 0.0,
-              'avg_rate': 0.0,
-            };
-          }
-          purchaseData[currencyCode]!['total_quantity'] =
-              _safeDouble(purchaseData[currencyCode]!['total_quantity']) +
-              quantity;
-          purchaseData[currencyCode]!['total_spent'] =
-              _safeDouble(purchaseData[currencyCode]!['total_spent']) + total;
-        } else if (operationType == 'Sale') {
-          if (!salesData.containsKey(currencyCode)) {
-            salesData[currencyCode] = {
-              'currency_code': currencyCode,
-              'total_quantity': 0.0,
-              'total_earned': 0.0,
-              'avg_rate': 0.0,
-            };
-          }
-          salesData[currencyCode]!['total_quantity'] =
-              _safeDouble(salesData[currencyCode]!['total_quantity']) +
-              quantity;
-          salesData[currencyCode]!['total_earned'] =
-              _safeDouble(salesData[currencyCode]!['total_earned']) + total;
+        
+        // Initialize currency stats if needed
+        if (!currencyStats.containsKey(currencyCode)) {
+          currencyStats[currencyCode] = {
+            'total_purchased': 0.0,
+            'total_purchase_amount': 0.0,
+            'total_sold': 0.0,
+            'total_sale_amount': 0.0,
+            'profit': 0.0,
+            'purchase_count': 0,
+            'sale_count': 0,
+          };
+        }
+        
+        // Update statistics based on operation type
+        if (entry.operationType == 'Purchase') {
+          currencyStats[currencyCode]!['total_purchased'] += entry.quantity;
+          currencyStats[currencyCode]!['total_purchase_amount'] += entry.total;
+          currencyStats[currencyCode]!['purchase_count'] += 1;
+        } else if (entry.operationType == 'Sale') {
+          currencyStats[currencyCode]!['total_sold'] += entry.quantity;
+          currencyStats[currencyCode]!['total_sale_amount'] += entry.total;
+          currencyStats[currencyCode]!['sale_count'] += 1;
+          
+          // Calculate profit contribution
+          // Estimate cost of goods sold using average purchase rate
+          final totalPurchased = currencyStats[currencyCode]!['total_purchased'] as double;
+          final totalPurchaseAmount = currencyStats[currencyCode]!['total_purchase_amount'] as double;
+          final avgPurchaseRate = totalPurchased > 0 ? totalPurchaseAmount / totalPurchased : 0.0;
+          
+          // Profit = sale amount - (quantity sold * avg purchase price)
+          final costOfSold = entry.quantity * avgPurchaseRate;
+          final entryProfit = entry.total - costOfSold;
+          
+          currencyStats[currencyCode]!['profit'] += entryProfit;
         }
       }
 
-      // Calculate average rates properly: total amount ÷ total quantity
-      for (var code in purchaseData.keys) {
-        final totalQuantity = _safeDouble(
-          purchaseData[code]!['total_quantity'],
-        );
-        final totalSpent = _safeDouble(purchaseData[code]!['total_spent']);
-        purchaseData[code]!['avg_rate'] =
-            totalQuantity > 0 ? totalSpent / totalQuantity : 0.0;
-
-        // Debug purchases
-        debugPrint(
-          'Purchase - $code: totalSpent=$totalSpent, totalQuantity=$totalQuantity, avgRate=${purchaseData[code]!['avg_rate']}',
-        );
-      }
-
-      for (var code in salesData.keys) {
-        final totalQuantity = _safeDouble(salesData[code]!['total_quantity']);
-        final totalEarned = _safeDouble(salesData[code]!['total_earned']);
-        salesData[code]!['avg_rate'] =
-            totalQuantity > 0 ? totalEarned / totalQuantity : 0.0;
-
-        // Debug sales
-        debugPrint(
-          'Sale - $code: totalEarned=$totalEarned, totalQuantity=$totalQuantity, avgRate=${salesData[code]!['avg_rate']}',
-        );
-      }
-
-      // Get all currency codes
-      final Set<String> allCurrencyCodes = {};
-      allCurrencyCodes.addAll(purchaseData.keys);
-      allCurrencyCodes.addAll(salesData.keys);
-
-      // Calculate profits locally
+      // Convert to format needed for the UI
       final List<Map<String, dynamic>> profitData = [];
-
-      for (var code in allCurrencyCodes) {
-        final buyData =
-            purchaseData[code] ??
-            {'total_quantity': 0.0, 'total_spent': 0.0, 'avg_rate': 0.0};
-        final sellData =
-            salesData[code] ??
-            {'total_quantity': 0.0, 'total_earned': 0.0, 'avg_rate': 0.0};
-
-        final totalQuantityPurchased = _safeDouble(buyData['total_quantity']);
-        final totalQuantitySold = _safeDouble(sellData['total_quantity']);
-        final avgPurchaseRate = _safeDouble(buyData['avg_rate']);
-        final avgSaleRate = _safeDouble(sellData['avg_rate']);
-
-        // Calculate profit as (average sale - average purchase) * sold quantity
-        final profit = (avgSaleRate - avgPurchaseRate) * totalQuantitySold;
-
-        // Debug profit
+      
+      // Get current currencies for display
+      final currencies = await getAllCurrencies();
+      
+      for (var currency in currencies) {
+        final currencyCode = currency.code!;
+        
+        // Skip SOM
+        if (currencyCode == 'SOM') continue;
+        
+        final stats = currencyStats[currencyCode] ?? {
+          'total_purchased': 0.0,
+          'total_purchase_amount': 0.0,
+          'total_sold': 0.0,
+          'total_sale_amount': 0.0,
+          'profit': 0.0,
+        };
+        
+        // Calculate averages
+        final totalPurchased = stats['total_purchased'] as double;
+        final totalPurchaseAmount = stats['total_purchase_amount'] as double;
+        final totalSold = stats['total_sold'] as double;
+        final totalSaleAmount = stats['total_sale_amount'] as double;
+        final profit = stats['profit'] as double;
+        
+        final avgPurchaseRate = totalPurchased > 0 ? totalPurchaseAmount / totalPurchased : 0.0;
+        final avgSaleRate = totalSold > 0 ? totalSaleAmount / totalSold : 0.0;
+        final costOfSold = totalSold * avgPurchaseRate;
+        
+        profitData.add({
+          'currency_code': currencyCode,
+          'amount': profit,
+          'avg_purchase_rate': avgPurchaseRate,
+          'avg_sale_rate': avgSaleRate,
+          'total_purchased': totalPurchased,
+          'total_sold': totalSold,
+          'cost_of_sold': costOfSold,
+          'total_purchase_amount': totalPurchaseAmount,
+          'total_sale_amount': totalSaleAmount,
+        });
+        
+        // Debug output
         debugPrint(
-          'Profit - $code: avgSaleRate=$avgSaleRate, avgPurchaseRate=$avgPurchaseRate, soldQty=$totalQuantitySold, profit=$profit',
+          'Direct Stats - ${currencyCode}: ' +
+              'avgPurchase=$avgPurchaseRate, ' +
+              'avgSale=$avgSaleRate, ' +
+              'totalPurchased=$totalPurchased, ' +
+              'totalSold=$totalSold, ' +
+              'purchaseAmount=$totalPurchaseAmount, ' +
+              'saleAmount=$totalSaleAmount, ' +
+              'profit=$profit'
         );
-
-        final shouldAdd =
-            true; // Include all currencies for statistics, even if no sales or purchases
-
-        if (shouldAdd) {
-          profitData.add({
-            'currency_code': code,
-            'amount': profit,
-            'avg_purchase_rate': avgPurchaseRate,
-            'avg_sale_rate': avgSaleRate,
-            'total_purchased': totalQuantityPurchased,
-            'total_sold': totalQuantitySold,
-            'cost_of_sold': totalQuantitySold * avgPurchaseRate,
-          });
-        }
       }
 
-      // Sort by profit and limit locally
-      profitData.sort(
-        (a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt(),
-      );
+      // Sort by profit and limit
+      profitData.sort((a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt());
+      
+      debugPrint('Found ${profitData.length} currencies with profit data');
+      if (profitData.isNotEmpty) {
+        debugPrint('Most profitable: ${profitData.first['currency_code']}, profit: ${profitData.first['amount']}');
+      }
 
-      if (profitData.length > limit) {
+      if (limit > 0 && profitData.length > limit) {
         return profitData.sublist(0, limit);
       }
 
       return profitData;
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
@@ -1744,160 +1646,77 @@ class DatabaseHelper {
     required String currencyCode,
   }) async {
     try {
-      final fromDateStr = startDate.toIso8601String();
-      final toDateStr = endDate.toIso8601String();
+      final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
-      debugPrint(
-        'Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr',
-      );
+      debugPrint('Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr');
 
-      // Get ALL transactions without complex queries
-      final querySnapshot =
-          await _firestore.collection(collectionHistory).get();
+      // Get all archive records in the date range
+      final archiveQuery = await _firestore.collection(collectionArchive)
+          .where('date', isGreaterThanOrEqualTo: fromDateStr)
+          .where('date', isLessThanOrEqualTo: toDateStr)
+          .orderBy('date')
+          .get();
 
-      debugPrint('Total history records: ${querySnapshot.docs.length}');
+      debugPrint('Found ${archiveQuery.docs.length} archive records');
 
-      // Group transactions by date
-      final Map<String, Map<String, dynamic>> dailyData = {};
+      // Prepare daily data structure
+      final List<Map<String, dynamic>> dailyData = [];
 
-      // Process all transactions and filter by date and currency in code
-      for (var doc in querySnapshot.docs) {
+      // Process each archive record
+      for (var doc in archiveQuery.docs) {
         final data = doc.data();
-        final createdAt = data['created_at'] as String;
-
-        // Parse the date string to DateTime for comparison
-        final transactionDate = DateTime.parse(createdAt);
-
-        // Skip if outside the date range
-        if (transactionDate.isBefore(startDate) ||
-            transactionDate.isAfter(endDate)) {
-          continue;
-        }
-
-        // Skip if not the requested currency
-        final docCurrencyCode = data['currency_code'] as String;
-        if (docCurrencyCode != currencyCode) {
-          continue;
-        }
-
-        final date = createdAt.substring(
-          0,
-          10,
-        ); // Extract date part (YYYY-MM-DD)
-        final operationType = data['operation_type'] as String;
-        final amount = _safeDouble(data['total']);
-        final quantity = _safeDouble(data['quantity']);
-
-        debugPrint(
-          'Processing $date - $operationType: Amount=$amount, Quantity=$quantity',
+        final date = data['date'] as String;
+        
+        // Skip if archive doesn't have currencies data
+        if (!data.containsKey('currencies')) continue;
+        
+        final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
+        
+        // Find data for the requested currency
+        final currencyData = currenciesData.firstWhere(
+          (c) => c['currency_code'] == currencyCode,
+          orElse: () => {},
         );
-
-        // Initialize daily data entry
-        if (!dailyData.containsKey(date)) {
-          dailyData[date] = {
-            'day': date,
-            'purchases': 0.0,
-            'purchase_quantity': 0.0,
-            'sales': 0.0,
-            'sale_quantity': 0.0,
-            'profit': 0.0,
-            'deposits': 0.0,
-          };
-        }
-
-        // Add transaction data
-        if (operationType == 'Purchase') {
-          dailyData[date]!['purchases'] =
-              (dailyData[date]!['purchases'] as double) + amount;
-          dailyData[date]!['purchase_quantity'] =
-              (dailyData[date]!['purchase_quantity'] as double) + quantity;
-        } else if (operationType == 'Sale') {
-          dailyData[date]!['sales'] =
-              (dailyData[date]!['sales'] as double) + amount;
-          dailyData[date]!['sale_quantity'] =
-              (dailyData[date]!['sale_quantity'] as double) + quantity;
-        } else if (operationType == 'Deposit') {
-          dailyData[date]!['deposits'] =
-              (dailyData[date]!['deposits'] as double) + amount;
-        }
+        
+        // Skip if currency not found in this archive
+        if (currencyData.isEmpty) continue;
+        
+        // Extract data for this currency
+        final purchaseAmount = _safeDouble(currencyData['total_purchase_amount']);
+        final purchaseQuantity = _safeDouble(currencyData['total_purchased']);
+        final saleAmount = _safeDouble(currencyData['total_sale_amount']);
+        final saleQuantity = _safeDouble(currencyData['total_sold']);
+        final profit = _safeDouble(currencyData['profit']);
+        
+        // Create daily entry
+        dailyData.add({
+          'day': date,
+          'purchases': purchaseAmount,
+          'purchase_quantity': purchaseQuantity,
+          'sales': saleAmount,
+          'sale_quantity': saleQuantity,
+          'profit': profit,
+          'deposits': 0.0, // Archive doesn't typically store deposit information
+        });
       }
 
-      // Calculate profit for each day based on sold quantity
-      for (var date in dailyData.keys) {
-        final dayData = dailyData[date]!;
-        final saleAmount = dayData['sales'] as double;
-        final saleQuantity = dayData['sale_quantity'] as double;
-
-        debugPrint(
-          'Calculating profit for $date - Sale Amount: $saleAmount, Sale Quantity: $saleQuantity',
-        );
-
-        if (saleQuantity > 0) {
-          // Get average purchase rate for this currency up to this date
-          // Instead of querying Firestore again, we'll use the data we already have
-          double totalQuantity = 0.0;
-          double totalAmount = 0.0;
-
-          // Find all purchase transactions for this currency up to this date
-          for (var doc in querySnapshot.docs) {
-            final data = doc.data();
-            final docDate = data['created_at'] as String;
-
-            // Skip if after the current date
-            if (docDate.compareTo('$date 23:59:59.999Z') > 0) continue;
-
-            final docCurrencyCode = data['currency_code'] as String;
-            final docOperationType = data['operation_type'] as String;
-
-            // Only count purchase transactions for this currency
-            if (docCurrencyCode == currencyCode &&
-                docOperationType == 'Purchase') {
-              totalQuantity += _safeDouble(data['quantity']);
-              totalAmount += _safeDouble(data['total']);
-            }
-          }
-
-          final avgPurchaseRate =
-              totalQuantity > 0 ? totalAmount / totalQuantity : 0.0;
-
-          // Calculate cost of sold currency
-          final costOfSold = saleQuantity * avgPurchaseRate;
-
-          // Calculate profit for this currency on this day (sale amount minus cost of sold)
-          final profit = saleAmount - costOfSold;
-          dayData['profit'] = profit;
-
-          debugPrint(
-            '  Avg Purchase Rate: $avgPurchaseRate, Cost of Sold: $costOfSold, Profit: $profit',
-          );
-        } else {
-          // If nothing was sold, profit is 0 (not negative)
-          dayData['profit'] = 0.0;
-          debugPrint('  No sales, profit is 0');
-        }
-
-        // Extra validation to ensure profit field is properly set
-        if (!dayData.containsKey('profit') || dayData['profit'] == null) {
-          debugPrint(
-            '  WARNING: Profit field was null or missing, setting to 0.0',
-          );
-          dayData['profit'] = 0.0;
-        }
+      // Sort by date
+      dailyData.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
+      
+      if (dailyData.isNotEmpty) {
+        debugPrint('First day data for $currencyCode: ${dailyData.first}');
+      } else {
+        debugPrint('No daily data found for currency $currencyCode');
       }
 
-      // Convert to list and sort by date
-      final formattedResult = dailyData.values.toList();
-      formattedResult.sort(
-        (a, b) => (a['day'] as String).compareTo(b['day'] as String),
-      );
-
-      if (formattedResult.isNotEmpty) {
-        debugPrint('First day formatted data: ${formattedResult.first}');
-      }
-
-      return formattedResult;
+      return dailyData;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
