@@ -266,11 +266,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         return data;
 
       case ChartType.bar:
+        debugPrint('Fetching bar chart data for ${_dateAggregation.name} aggregation');
         List<Map<String, dynamic>> dailyData;
 
         if (_selectedCurrency != null &&
             _selectedCurrency != _getTranslatedText('all_currencies')) {
           // Get data for specific currency
+          debugPrint('Fetching data for specific currency: $_selectedCurrency');
           dailyData = await _dbHelper.getDailyDataByCurrency(
             startDate: _selectedStartDate,
             endDate: _selectedEndDate,
@@ -278,18 +280,30 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           );
         } else {
           // Get data for all currencies
+          debugPrint('Fetching data for all currencies');
           dailyData = await _dbHelper.getDailyData(
             startDate: _selectedStartDate,
             endDate: _selectedEndDate,
           );
         }
 
+        if (dailyData.isEmpty) {
+          debugPrint('No data returned from database helper');
+          return [];
+        }
+
+        debugPrint('Raw data count from database: ${dailyData.length}');
+        if (dailyData.isNotEmpty) {
+          debugPrint('First raw data point: ${dailyData.first}');
+        }
+
         // Apply date aggregation if needed
         if (_dateAggregation != DateAggregation.day) {
+          debugPrint('Applying ${_dateAggregation.name} aggregation to ${dailyData.length} data points');
           dailyData = _aggregateDataByPeriod(dailyData, _dateAggregation);
         }
 
-        // The daily data is now already processed by the DB helper methods
+        // Debug the processed data
         if (dailyData.isNotEmpty) {
           final firstDay = dailyData.first;
           debugPrint(
@@ -308,13 +322,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   ) {
     if (dailyData.isEmpty) return dailyData;
 
+    debugPrint('Aggregating ${dailyData.length} data points to ${aggregation.name}');
+
     // Map to store aggregated data
     final Map<String, Map<String, dynamic>> aggregatedData = {};
 
     for (var dayData in dailyData) {
-      // Parse the date
+      // Parse the date - handle both database format (YYYY-MM-DD) and possibly other formats
       final dateStr = dayData['day'] as String;
-      final date = DateTime.parse(dateStr);
+      DateTime date;
+      try {
+        // First try ISO format (YYYY-MM-DD)
+        date = DateTime.parse(dateStr);
+      } catch (e) {
+        // Log the problematic date string
+        debugPrint('Error parsing date: $dateStr. Error: $e');
+        // Try alternative formats (in case the date is already formatted for display)
+        try {
+          final locale = Provider.of<LanguageProvider>(context, listen: false).currentLocale.languageCode;
+          // Try parsing month year format (e.g., "Jan 2023")
+          if (dateStr.split(' ').length == 2) {
+            date = DateFormat('MMM yyyy', locale).parse(dateStr);
+          } 
+          // Try parsing week format (e.g., "Week of Jan 1")
+          else if (dateStr.contains(_getTranslatedText('week_of'))) {
+            final weekDateStr = dateStr.replaceFirst(_getTranslatedText('week_of'), '').trim();
+            date = DateFormat('MMM d', locale).parse(weekDateStr);
+          } else {
+            // Default to today if all parsing fails
+            debugPrint('Could not parse date: $dateStr, using current date as fallback');
+            date = DateTime.now();
+          }
+        } catch (e2) {
+          debugPrint('Failed parsing date with alternative formats: $e2, using current date');
+          date = DateTime.now();
+        }
+      }
       
       // Generate period key based on aggregation
       String periodKey;
@@ -326,50 +369,64 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         // Monthly aggregation (first day of month)
         periodKey = DateFormat('yyyy-MM-01').format(date);
       } else {
-        // Fallback to daily (shouldn't happen)
-        periodKey = dateStr;
+        // Fallback to daily
+        periodKey = DateFormat('yyyy-MM-dd').format(date);
       }
 
       // Initialize period data if not exists
       if (!aggregatedData.containsKey(periodKey)) {
+        final locale = Provider.of<LanguageProvider>(context, listen: false).currentLocale.languageCode;
         aggregatedData[periodKey] = {
           'day': aggregation == DateAggregation.week 
-              ? '${_getTranslatedText('week_of')} ${DateFormat('MMM d').format(DateTime.parse(periodKey))}'
-              : DateFormat('MMM yyyy').format(DateTime.parse(periodKey)),
+              ? '${_getTranslatedText('week_of')} ${DateFormat('MMM d', locale).format(DateTime.parse(periodKey))}'
+              : DateFormat('MMM yyyy', locale).format(DateTime.parse(periodKey)),
           'purchases': 0.0,
           'sales': 0.0,
           'profit': 0.0,
           'deposits': 0.0,
+          '_date': periodKey, // Store raw date for sorting
         };
       }
 
-      // Add values to the aggregated period
-      aggregatedData[periodKey]!['purchases'] += (dayData['purchases'] as num).toDouble();
-      aggregatedData[periodKey]!['sales'] += (dayData['sales'] as num).toDouble();
-      aggregatedData[periodKey]!['profit'] += (dayData['profit'] as num).toDouble();
-      aggregatedData[periodKey]!['deposits'] += (dayData['deposits'] as num? ?? 0.0);
+      // Add values to the aggregated period - safely handle different types
+      aggregatedData[periodKey]!['purchases'] += _safeDouble(dayData['purchases']);
+      aggregatedData[periodKey]!['sales'] += _safeDouble(dayData['sales']);
+      aggregatedData[periodKey]!['profit'] += _safeDouble(dayData['profit']);
+      aggregatedData[periodKey]!['deposits'] += _safeDouble(dayData['deposits']);
     }
 
-    // Convert map to list and sort by date
+    // Convert map to list
     final result = aggregatedData.values.toList();
-    if (aggregation == DateAggregation.month) {
-      result.sort((a, b) {
-        final dateA = DateFormat('MMM yyyy').parse(a['day'] as String);
-        final dateB = DateFormat('MMM yyyy').parse(b['day'] as String);
-        return dateA.compareTo(dateB);
-      });
-    } else if (aggregation == DateAggregation.week) {
-      // Extract date from "Week of Jan 1" format for comparison
-      result.sort((a, b) {
-        final weekOfA = (a['day'] as String).replaceFirst(_getTranslatedText('week_of'), '').trim();
-        final weekOfB = (b['day'] as String).replaceFirst(_getTranslatedText('week_of'), '').trim();
-        final dateA = DateFormat('MMM d').parse(weekOfA);
-        final dateB = DateFormat('MMM d').parse(weekOfB);
-        return dateA.compareTo(dateB);
-      });
+    
+    // Sort by the raw date string
+    result.sort((a, b) => (a['_date'] as String).compareTo(b['_date'] as String));
+    
+    // Remove the temporary _date field used for sorting
+    for (var item in result) {
+      item.remove('_date');
+    }
+    
+    debugPrint('Aggregation complete: ${result.length} ${aggregation.name} periods');
+    if (result.isNotEmpty) {
+      debugPrint('First aggregated period: ${result.first}');
     }
     
     return result;
+  }
+  
+  // Helper method to safely convert values to double
+  double _safeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
   }
 
   Widget _buildBarChart(dynamic data) {
