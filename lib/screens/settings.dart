@@ -41,8 +41,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isAdmin = false;
   final _currencyController = TextEditingController();
   final TextEditingController _somController = TextEditingController();
-  final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _endDateController = TextEditingController();
   final TextEditingController _defaultBuyRateController =
       TextEditingController();
   final TextEditingController _defaultSellRateController =
@@ -111,8 +109,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _roleController.dispose();
     _currencyController.dispose();
     _somController.dispose();
-    _startDateController.dispose();
-    _endDateController.dispose();
     _defaultBuyRateController.dispose();
     _defaultSellRateController.dispose();
     super.dispose();
@@ -757,17 +753,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 20),
                     onTap: () {
-                      final now = DateTime.now();
-                      final today = DateTime(now.year, now.month, now.day);
                       setState(() {
-                        _startDate = today;
-                        _endDate = now;
-                        _startDateController.text = DateFormat(
-                          'dd-MM-yyyy',
-                        ).format(today);
-                        _endDateController.text = DateFormat(
-                          'dd-MM-yyyy',
-                        ).format(now);
                         _showExportSection = true;
                         _showCurrencyManagement = false;
                         _showUserManagement = false;
@@ -1359,7 +1345,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          // Date range and export settings
+          // Export settings
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Card(
@@ -1372,59 +1358,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _getTranslatedText('select_date_range'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Date Range Selection
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _startDateController,
-                            decoration: InputDecoration(
-                              labelText: _getTranslatedText('start_date'),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              suffixIcon: const Icon(Icons.calendar_today),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            readOnly: true,
-                            onTap: () => _selectDate(true),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: TextField(
-                            controller: _endDateController,
-                            decoration: InputDecoration(
-                              labelText: _getTranslatedText('end_date'),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              suffixIcon: const Icon(Icons.calendar_today),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            readOnly: true,
-                            onTap: () => _selectDate(false),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-
                     Text(
                       _getTranslatedText('export_format'),
                       style: const TextStyle(
@@ -1539,43 +1472,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Date selection method
-  Future<void> _selectDate(bool isStartDate) async {
-    final initialDate =
-        isStartDate ? _startDate ?? DateTime.now() : _endDate ?? DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _startDate = picked;
-          _startDateController.text = DateFormat('dd-MM-yyyy').format(picked);
-        } else {
-          _endDate = picked;
-          _endDateController.text = DateFormat('dd-MM-yyyy').format(picked);
-        }
-      });
-    }
-  }
-
   // Method to export data
   Future<void> _exportData() async {
     try {
-      // Check start and end dates
-      if (_startDate == null || _endDate == null) {
-        _showSnackBar(_getTranslatedText('select_date_range_error'));
-        return;
-      }
-
-      if (_endDate!.isBefore(_startDate!)) {
-        _showSnackBar(_getTranslatedText('invalid_date_range'));
-        return;
-      }
+      // Set start and end dates to today
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      _startDate = today;
+      _endDate = now;
 
       // Get the Documents directory
       final directory = Directory('/storage/emulated/0/Documents');
