@@ -259,11 +259,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
               filled: true,
               fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-              prefixIcon: Icon(
-                Icons.attach_money,
-                color: Colors.blue.shade700, // Blue icon color
-                size: iconSize,
-              ),
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16, // Increased vertical padding
                 horizontal: 16, // Increased horizontal padding
@@ -329,11 +324,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
               filled: true,
               fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-              prefixIcon: Icon(
-                Icons.numbers,
-                color: Colors.blue.shade700, // Blue icon color
-                size: iconSize,
-              ),
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16, // Increased vertical padding
                 horizontal: 16, // Increased horizontal padding
@@ -802,13 +792,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               horizontal: 16,
               vertical: 16,
             ),
-            prefixIcon: Icon(
-              Icons.numbers,
-              color:
-                  _isRateFieldActive
-                      ? Colors.blue.shade400
-                      : Colors.blue.shade700,
-            ),
           ),
           style: const TextStyle(fontSize: 16),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -899,13 +882,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
-            ),
-            prefixIcon: Icon(
-              Icons.attach_money,
-              color:
-                  _isRateFieldActive
-                      ? Colors.blue.shade700
-                      : Colors.blue.shade400,
             ),
           ),
           style: const TextStyle(fontSize: 16),
