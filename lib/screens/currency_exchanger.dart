@@ -540,6 +540,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             .where((code) => code != null)
             .cast<String>()
             .toList();
+            
+    // Check if device is tablet based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
+    // Always show 4 currencies per row
+    final int currenciesPerRow = 4;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,14 +567,19 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Wrap(
-            spacing: 5, // Minimal spacing between buttons
-            runSpacing: 8, // Reduced vertical spacing
-            children: allCurrencies.map((currency) {
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: currenciesPerRow,
+              childAspectRatio: 2.8,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: allCurrencies.length,
+            itemBuilder: (context, index) {
+              final currency = allCurrencies[index];
               final isSelected = _selectedCurrency == currency;
-              final screenWidth = MediaQuery.of(context).size.width;
-              // Ensure we subtract enough for padding, borders and spacing
-              final buttonWidth = (screenWidth - 70) / 4;
               
               return InkWell(
                 onTap: () {
@@ -578,9 +590,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  width: buttonWidth,
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-                  margin: const EdgeInsets.only(bottom: 2),
                   decoration: BoxDecoration(
                     gradient: isSelected
                         ? LinearGradient(
@@ -601,19 +610,21 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           ]
                         : null,
                   ),
-                  child: Text(
-                    currency,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : Colors.black87,
+                  child: Center(
+                    child: Text(
+                      currency,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: isTablet ? 15 : 13,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : Colors.black87,
+                      ),
                     ),
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
         ),
       ],
