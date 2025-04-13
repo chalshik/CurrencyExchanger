@@ -363,6 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Extract login form to avoid duplication
   Widget _buildLoginForm(double borderRadius) {
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Form(
       key: _formKey,
@@ -396,7 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(borderRadius),
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -428,7 +429,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(borderRadius),
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {

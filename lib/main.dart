@@ -9,6 +9,7 @@ import 'providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'db_helper.dart';
+import 'screens/app_exit_handler.dart';
 
 // Custom theme extension for additional text styling
 class TextStyleExtension extends ThemeExtension<TextStyleExtension> {
@@ -137,7 +138,7 @@ class _MyAppState extends State<MyApp> {
         ],
       ),
       themeMode: themeProvider.themeMode,
-      home: const SplashScreen(),
+      home: const AppExitHandler(child: SplashScreen()),
     );
   }
 }

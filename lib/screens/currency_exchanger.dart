@@ -12,6 +12,7 @@ import 'login_screen.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import 'app_exit_handler.dart';
 
 // Responsive Currency Converter
 class ResponsiveCurrencyConverter extends StatelessWidget {
@@ -22,9 +23,9 @@ class ResponsiveCurrencyConverter extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 599) {
-          return const TabletCurrencyConverterLayout();
+          return const AppExitHandler(child: TabletCurrencyConverterLayout());
         } else {
-          return const MobileCurrencyConverterLayout();
+          return const AppExitHandler(child: MobileCurrencyConverterLayout());
         }
       },
     );

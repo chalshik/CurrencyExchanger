@@ -990,6 +990,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildProfitPieChart() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     // Get currencies excluding SOM, with non-zero profit
     final currenciesWithProfit = _currencyStats
         .where((stat) => 
@@ -1003,7 +1005,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         child: Center(
           child: Text(
             _getTranslatedText('no_profit_data'),
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
           ),
         ),
       );
@@ -1021,6 +1023,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             height: 250,
             child: _ProfitPieChart(
               currencies: currenciesWithProfit,
+              isDarkMode: isDarkMode,
             ),
           ),
           const SizedBox(height: 16),
@@ -1037,8 +1040,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               // Assign a color based on index and profit sign
               final hue = 120 + (index * 50) % 240;
               final color = profit >= 0 
-                  ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor().withOpacity(0.9)
-                  : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(0.9); // Red for negative
+                  ? (isDarkMode
+                      ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.8, 0.3).toColor().withOpacity(0.9)
+                      : HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor().withOpacity(0.9))
+                  : (isDarkMode
+                      ? HSLColor.fromAHSL(1.0, 0.0, 0.8, 0.3).toColor().withOpacity(0.9)
+                      : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(0.9)); // Red for negative
                   
               return Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1057,7 +1064,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: isPositive ? Colors.green.shade800 : Colors.red.shade800,
+                      color: isPositive 
+                          ? (isDarkMode ? Colors.cyan.shade300 : Colors.green.shade800)
+                          : (isDarkMode ? Colors.pink.shade300 : Colors.red.shade800),
                     ),
                   ),
                 ],
@@ -1142,22 +1151,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
 class _ProfitPieChart extends StatelessWidget {
   final List<Map<String, dynamic>> currencies;
+  final bool isDarkMode;
   
-  const _ProfitPieChart({required this.currencies});
+  const _ProfitPieChart({required this.currencies, required this.isDarkMode});
   
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: const Size(double.infinity, 250),
-      painter: _PieChartPainter(currencies),
+      painter: _PieChartPainter(currencies, isDarkMode),
     );
   }
 }
 
 class _PieChartPainter extends CustomPainter {
   final List<Map<String, dynamic>> currencies;
+  final bool isDarkMode;
   
-  _PieChartPainter(this.currencies);
+  _PieChartPainter(this.currencies, this.isDarkMode);
   
   @override
   void paint(Canvas canvas, Size size) {
@@ -1181,11 +1192,15 @@ class _PieChartPainter extends CustomPainter {
       // Calculate segment angle
       final sweepAngle = 2 * math.pi * profit.abs() / totalProfit;
       
-      // Assign a color based on index and profit sign
+      // Assign a color based on index and profit sign - darker for dark mode
       final hue = 120 + (i * 50) % 240;
       final color = profit >= 0 
-          ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor().withOpacity(0.9)
-          : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(0.9); // Red for negative
+          ? (isDarkMode
+              ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.8, 0.3).toColor().withOpacity(0.9)
+              : HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor().withOpacity(0.9))
+          : (isDarkMode
+              ? HSLColor.fromAHSL(1.0, 0.0, 0.8, 0.3).toColor().withOpacity(0.9)
+              : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(0.9)); // Red for negative
       
       final paint = Paint()
         ..style = PaintingStyle.fill
@@ -1200,10 +1215,10 @@ class _PieChartPainter extends CustomPainter {
         paint,
       );
       
-      // Draw a thin white border around the segment
+      // Draw a thin border around the segment - darker in dark mode
       final borderPaint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = Colors.white
+        ..color = isDarkMode ? Colors.grey.shade800 : Colors.white
         ..strokeWidth = 2;
         
       canvas.drawArc(
@@ -1218,10 +1233,10 @@ class _PieChartPainter extends CustomPainter {
       startAngle += sweepAngle;
     }
     
-    // Draw a center circle with white fill for a donut chart effect
+    // Draw a center circle with fill for a donut chart effect
     final centerCirclePaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white;
+      ..color = isDarkMode ? Colors.grey.shade900 : Colors.white;
       
     canvas.drawCircle(
       center,
@@ -1243,7 +1258,9 @@ class _PieChartPainter extends CustomPainter {
     final textSpan = TextSpan(
       text: '${totalProfitText.toStringAsFixed(2)}\nSOM',
       style: TextStyle(
-        color: totalProfitText >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+        color: totalProfitText >= 0 
+            ? (isDarkMode ? Colors.cyan.shade300 : Colors.green.shade800)
+            : (isDarkMode ? Colors.pink.shade300 : Colors.red.shade800),
         fontSize: 16,
         fontWeight: FontWeight.bold,
       ),

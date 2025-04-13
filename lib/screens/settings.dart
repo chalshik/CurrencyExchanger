@@ -1002,6 +1002,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildCurrencyList() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     // Filter out SOM currency
     final displayableCurrencies =
         _currencies.where((c) => c.code != 'SOM').toList();
@@ -1027,26 +1029,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.grey.shade800 
-                        : Colors.blue.shade100,
-                    child: Text(
-                      currency.code!.substring(0, 1),
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.white 
-                            : Colors.blue.shade800,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
                   title: Text(
                     currency.code!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: Colors.black87,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
                   trailing: Row(

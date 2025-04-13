@@ -218,5 +218,9 @@
   "profit_distribution": "Киреше",
   "transaction_successful": "Транзакция ийгиликтүү жүргүзүлдү",
   "transaction_failed": "Транзакцияда ката кетти",
-  "invalid_quantity": "Туура эмес сан"
+  "invalid_quantity": "Туура эмес сан",
+  "backup_before_reset": "камдык көчүрмө жасоо",
+  "exit_app": "Тиркемеден чыгуу",
+  "exit_confirmation": "Тиркемеден чыгууну каалайсызбы?",
+  "exit": "Чыгуу"
 } 

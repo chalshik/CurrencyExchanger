@@ -219,5 +219,9 @@
   "profit_distribution": "Распределение прибыли",
   "transaction_successful": "Транзакция успешно выполнена",
   "transaction_failed": "Транзакция не выполнена",
-  "invalid_quantity": "Неверное количество"
+  "invalid_quantity": "Неверное количество",
+  "backup_before_reset": "Сохранить резервную копию перед сбросом",
+  "exit_app": "Выход из приложения",
+  "exit_confirmation": "Вы уверены, что хотите выйти из приложения?",
+  "exit": "Выйти"
 } 
