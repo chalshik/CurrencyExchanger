@@ -157,14 +157,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                    Text(
-                      _getTranslatedText('foreign_currency_value'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
+                  Text(
+                    _getTranslatedText('foreign_currency_value'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
                     ),
+                  ),
                   Text(
                     '${_kassaValue.toStringAsFixed(2)} SOM',
                     style: TextStyle(
@@ -243,7 +243,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isTablet = screenSize.width >= 600;
-    final isLandscape = screenSize.width > screenSize.height;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -257,11 +256,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      isLandscape
-                          ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
-                          : _buildSummaryCards(
-                            isTablet,
-                          ), // Vertical cards for portrait mode
+                      _buildSummaryCards(isTablet), // Always use portrait mode cards
                       // Always use table view with horizontal scrolling for small screens
                       _buildScrollableTable(isTablet),
 
@@ -664,116 +659,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   double _calculateTotal(List<Map<String, dynamic>> stats, String field) {
     return stats.fold(0.0, (sum, stat) => sum + (stat[field] as double? ?? 0.0));
-  }
-
-  Widget _buildLandscapeSummaryCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            margin: const EdgeInsets.all(8),
-            color: Colors.blue.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _getTranslatedText('som_balance'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                  Text(
-                    '${_somBalance.toStringAsFixed(2)} SOM',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: InkWell(
-            onTap: () => _showForeignCurrencyValueDetails(),
-            child: Card(
-              margin: const EdgeInsets.all(8),
-              color: Colors.green.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          _getTranslatedText('foreign_currency_value'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.green.shade700,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '${_kassaValue.toStringAsFixed(2)} SOM',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Card(
-            margin: const EdgeInsets.all(8),
-            color: Colors.amber.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _getTranslatedText('total_profit'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.amber.shade700,
-                    ),
-                  ),
-                  Text(
-                    '${formatProfit(_totalProfit)} SOM',
-                    style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold,
-                      color: _totalProfit >= 0 ? Colors.green.shade700 : Colors.red.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   void _showForeignCurrencyValueDetails() {

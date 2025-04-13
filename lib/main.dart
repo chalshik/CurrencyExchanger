@@ -45,22 +45,20 @@ class TextStyleExtension extends ThemeExtension<TextStyleExtension> {
 }
 
 void main() async {
-  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
-  // Force portrait mode for all devices
+  
+  // Force portrait mode
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
+  
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => LanguageProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ],
+    ChangeNotifierProvider(
+      create: (context) => LanguageProvider(),
       child: const MyApp(),
     ),
   );

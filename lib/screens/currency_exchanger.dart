@@ -259,11 +259,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
               filled: true,
               fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-              prefixIcon: Icon(
-                Icons.attach_money,
-                color: Colors.blue.shade700, // Blue icon color
-                size: iconSize,
-              ),
+
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16, // Increased vertical padding
                 horizontal: 16, // Increased horizontal padding
@@ -1649,238 +1645,88 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 }
 
 // Mobile Layout
-class MobileCurrencyConverterLayout extends StatefulWidget {
+class MobileCurrencyConverterLayout extends StatelessWidget {
   const MobileCurrencyConverterLayout({super.key});
 
   @override
-  State<MobileCurrencyConverterLayout> createState() =>
-      _MobileCurrencyConverterLayoutState();
-}
-
-class _MobileCurrencyConverterLayoutState
-    extends State<MobileCurrencyConverterLayout> {
-  int _selectedIndex = 0;
-  final _currencyConverterCoreKey = GlobalKey<_CurrencyConverterCoreState>();
-  Key _historyScreenKey = UniqueKey();
-
-  late List<Widget> _pages;
-  late List<BottomNavigationBarItem> _navigationItems;
-
-  @override
-  void initState() {
-    super.initState();
-    _initPages();
-    _initNavigationItems();
-  }
-
-  void _initPages() {
-    final bool isAdmin = currentUser?.role == 'admin';
-
-    _pages = [CurrencyConverterCore(key: _currencyConverterCoreKey)];
-
-    if (isAdmin) {
-      _pages.add(HistoryScreen(key: _historyScreenKey));
-      _pages.add(StatisticsScreen(key: UniqueKey()));
-      _pages.add(AnalyticsScreen(key: UniqueKey()));
-    }
-
-    _pages.add(const SettingsScreen());
-  }
-
-  void _initNavigationItems() {
-    final bool isAdmin = currentUser?.role == 'admin';
-
-    _navigationItems = [
-      BottomNavigationBarItem(
-        icon: Icon(Icons.currency_exchange, size: 28),
-        label: '',
-        activeIcon: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade100, Colors.blue.shade200],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.currency_exchange, size: 28),
-        ),
-      ),
-    ];
-
-    if (isAdmin) {
-      _navigationItems.add(
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history, size: 28),
-          label: '',
-          activeIcon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade100, Colors.blue.shade200],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.history, size: 28),
-          ),
-        ),
-      );
-
-      _navigationItems.add(
-        BottomNavigationBarItem(
-          icon: Icon(Icons.analytics, size: 28),
-          label: '',
-          activeIcon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade100, Colors.blue.shade200],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.analytics, size: 28),
-          ),
-        ),
-      );
-
-      _navigationItems.add(
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pie_chart, size: 28),
-          label: '',
-          activeIcon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade100, Colors.blue.shade200],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.pie_chart, size: 28),
-          ),
-        ),
-      );
-    }
-
-    _navigationItems.add(
-      BottomNavigationBarItem(
-        icon: Icon(Icons.settings, size: 28),
-        label: '',
-        activeIcon: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade100, Colors.blue.shade200],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.settings, size: 28),
-        ),
-      ),
-    );
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-
-      if (index == 1) {
-        _historyScreenKey = UniqueKey();
-      }
-
-      if (index == 0) {
-        _loadCurrencyData();
-      }
-    });
-  }
-
-  void _loadCurrencyData() {
-    _currencyConverterCoreKey.currentState?._loadCurrencies();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (currentUser == null) {
-      return const LoginScreen();
-    }
-
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: Colors.blue.shade50,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: _buildCurrentPage(),
+    // Simple mobile layout - always in portrait
+    return Column(
+      children: [
+        // Top bar with date and settings icon
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: _buildAppBar(context),
         ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.white, Colors.blue.shade50],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.shade100,
-                spreadRadius: 2,
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              selectedItemColor: Colors.blue.shade700,
-              unselectedItemColor: Colors.grey.shade400,
-              showSelectedLabels: false,
-              showUnselectedLabels: false,
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              iconSize: 32,
-              items: _navigationItems,
-              mouseCursor: SystemMouseCursors.click,
-              unselectedFontSize: 0,
-              selectedFontSize: 0,
-            ),
+        // Main converter area
+        const Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: CurrencyConverterCore(),
           ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildCurrentPage() {
-    return _pages[_selectedIndex];
+  Widget _buildAppBar(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          _getTranslatedText(context, 'currency_exchanger'),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue,
+          ),
+        ),
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.history, color: Colors.blue),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.show_chart, color: Colors.blue),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.analytics_outlined, color: Colors.blue),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.blue),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
-  String _getTranslatedText(String key, [Map<String, String>? params]) {
-    final languageProvider = Provider.of<LanguageProvider>(
-      context,
-      listen: false,
-    );
-    String text = languageProvider.translate(key);
-    if (params != null) {
-      params.forEach((key, value) {
-        text = text.replaceAll('{$key}', value);
-      });
-    }
-    return text;
+  String _getTranslatedText(BuildContext context, String key) {
+    return Provider.of<LanguageProvider>(context).getTranslatedValue(key);
   }
 }
 
