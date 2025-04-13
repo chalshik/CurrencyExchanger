@@ -51,6 +51,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   String _operationType = 'Purchase';
   double _totalSum = 0.0;
   bool _isLoading = true;
+  bool _isProcessingTransaction = false;
 
   // Add focus nodes to track which field is active
   final FocusNode _currencyFocusNode = FocusNode();
@@ -501,7 +502,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         ),
       ),
       child: ElevatedButton(
-        onPressed: _validateAndSubmit,
+        onPressed: _isProcessingTransaction ? null : _validateAndSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -511,15 +512,41 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          // Add disabledBackgroundColor to show a visual indication that the button is disabled
+          disabledBackgroundColor: Colors.transparent,
+          disabledForegroundColor: Colors.white.withOpacity(0.7),
         ),
-        child: Text(
-          _getTranslatedText('finish'),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
+        child: _isProcessingTransaction
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _getTranslatedText('processing'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                _getTranslatedText('finish'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
       ),
     );
   }
@@ -1363,50 +1390,172 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
   // Validate inputs and submit transaction
   void _validateAndSubmit() async {
-    // Validate currency selection
-    if (_selectedCurrency.isEmpty) {
-      _showBriefNotification(
-        _getTranslatedText('select_currency_first'),
-        Colors.red,
-      );
+    // If a transaction is already being processed, exit early
+    if (_isProcessingTransaction) {
       return;
     }
+    
+    // Set processing flag to true at the start
+    setState(() {
+      _isProcessingTransaction = true;
+    });
+    
+    try {
+      // Validate currency selection
+      if (_selectedCurrency.isEmpty) {
+        _showBriefNotification(
+          _getTranslatedText('select_currency_first'),
+          Colors.red,
+        );
+        setState(() => _isProcessingTransaction = false);
+        return;
+      }
 
-    // Validate quantity input
-    final quantity =
-        _quantityController.text.isEmpty
-            ? 0.0
-            : double.tryParse(_quantityController.text);
+      // Validate quantity input
+      final quantity =
+          _quantityController.text.isEmpty
+              ? 0.0
+              : double.tryParse(_quantityController.text);
 
-    if (quantity == null || quantity <= 0) {
-      _showBriefNotification(
-        _getTranslatedText('invalid_quantity'),
-        Colors.red,
-      );
-      return;
-    }
+      if (quantity == null || quantity <= 0) {
+        _showBriefNotification(
+          _getTranslatedText('invalid_quantity'),
+          Colors.red,
+        );
+        setState(() => _isProcessingTransaction = false);
+        return;
+      }
 
-    // Special validation for SOM
-    if (_selectedCurrency == 'SOM') {
-      // For 'Sale' operation, check if we have enough SOM
-      if (_operationType == 'Sale') {
-        final somBalance = await _databaseHelper.getCurrencyQuantity('SOM');
-        if (quantity > somBalance) {
+      // Special validation for SOM
+      if (_selectedCurrency == 'SOM') {
+        // For 'Sale' operation, check if we have enough SOM
+        if (_operationType == 'Sale') {
+          final somBalance = await _databaseHelper.getCurrencyQuantity('SOM');
+          if (quantity > somBalance) {
+            _showBriefNotification(
+              _getTranslatedText('insufficient_balance', {'code': 'SOM'}),
+              Colors.red,
+            );
+            setState(() => _isProcessingTransaction = false);
+            return;
+          }
+        }
+
+        try {
+          // Create history entry for SOM with rate=1.0
+          final historyEntry = HistoryModel(
+            currencyCode: 'SOM',
+            quantity: quantity,
+            rate: 1.0, // Fixed rate for SOM
+            total: quantity, // Total equals quantity for SOM
+            operationType: _operationType,
+            username: currentUser?.username ?? 'unknown',
+          );
+
+          // Add to database
+          await _databaseHelper.addHistoryEntry(historyEntry);
+
+          // Update SOM quantity
+          if (_operationType == 'Purchase') {
+            // For purchase, we add to SOM balance
+            await _databaseHelper.adjustCurrencyQuantity(
+              'SOM',
+              quantity,
+              true, // Increment
+            );
+          } else {
+            // For sale, we deduct from SOM balance
+            await _databaseHelper.adjustCurrencyQuantity(
+              'SOM',
+              quantity,
+              false, // Decrement
+            );
+          }
+
+          // Show success message
           _showBriefNotification(
-            _getTranslatedText('insufficient_balance', {'code': 'SOM'}),
+            _getTranslatedText('transaction_complete'),
+            Colors.green,
+          );
+
+          // Reset form
+          setState(() {
+            _quantityController.text = '';
+            _totalSum = 0.0;
+            _isProcessingTransaction = false; // Reset processing flag
+          });
+
+          // Reload data
+          await _initializeData();
+
+          return; // Exit early, we're done with SOM transaction
+        } catch (e) {
+          debugPrint('Error processing SOM transaction: $e');
+          _showBriefNotification(
+            _getTranslatedText('transaction_failed'),
             Colors.red,
           );
+          setState(() => _isProcessingTransaction = false); // Reset processing flag on error
           return;
         }
       }
 
+      // Validate rate input for non-SOM currencies
+      final rate =
+          _currencyController.text.isEmpty
+              ? 0.0
+              : double.tryParse(_currencyController.text);
+
+      if (rate == null || rate <= 0) {
+        _showBriefNotification(_getTranslatedText('invalid_rate'), Colors.red);
+        setState(() => _isProcessingTransaction = false);
+        return;
+      }
+
+      // Calculate total SOM needed for purchase
+      final totalSomNeeded = rate * quantity;
+
+      // Check if we have enough SOM balance for a purchase operation
+      if (_operationType == 'Purchase') {
+        // Get current SOM balance
+        final somBalance = await _databaseHelper.getCurrencyQuantity('SOM');
+
+        if (totalSomNeeded > somBalance) {
+          _showBriefNotification(
+            _getTranslatedText('insufficient_balance', {'code': 'SOM'}) +
+                ' (${somBalance.toStringAsFixed(2)} SOM)',
+            Colors.red,
+          );
+          setState(() => _isProcessingTransaction = false);
+          return;
+        }
+      }
+
+      // Check if we have enough balance for a sale operation
+      if (_operationType == 'Sale') {
+        final currencyBalance = await _databaseHelper.getCurrencyQuantity(
+          _selectedCurrency,
+        );
+        if (quantity > currencyBalance) {
+          _showBriefNotification(
+            _getTranslatedText('insufficient_balance', {
+              'code': _selectedCurrency,
+            }),
+            Colors.red,
+          );
+          setState(() => _isProcessingTransaction = false);
+          return;
+        }
+      }
+
+      // All validations passed, proceed with transaction for non-SOM currencies
       try {
-        // Create history entry for SOM with rate=1.0
+        // Create history entry
         final historyEntry = HistoryModel(
-          currencyCode: 'SOM',
+          currencyCode: _selectedCurrency,
           quantity: quantity,
-          rate: 1.0, // Fixed rate for SOM
-          total: quantity, // Total equals quantity for SOM
+          rate: rate!,
+          total: _totalSum,
           operationType: _operationType,
           username: currentUser?.username ?? 'unknown',
         );
@@ -1414,158 +1563,71 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         // Add to database
         await _databaseHelper.addHistoryEntry(historyEntry);
 
-        // Update SOM quantity
+        // Update currency quantities
         if (_operationType == 'Purchase') {
-          // For purchase, we add to SOM balance
+          // For purchase, we add to the currency and deduct from SOM
           await _databaseHelper.adjustCurrencyQuantity(
-            'SOM',
+            _selectedCurrency,
             quantity,
-            true, // Increment
+            true,
           );
+
+          // Deduct from SOM
+          await _databaseHelper.adjustCurrencyQuantity('SOM', _totalSum, false);
         } else {
-          // For sale, we deduct from SOM balance
+          // For sale, we deduct from the currency and add to SOM
           await _databaseHelper.adjustCurrencyQuantity(
-            'SOM',
+            _selectedCurrency,
             quantity,
-            false, // Decrement
+            false,
           );
+
+          // Add to SOM
+          await _databaseHelper.adjustCurrencyQuantity('SOM', _totalSum, true);
         }
 
         // Show success message
         _showBriefNotification(
-          _getTranslatedText('transaction_complete'),
+          _getTranslatedText('transaction_successful'),
           Colors.green,
         );
 
         // Reset form
         setState(() {
+          _currencyController.text = '';
           _quantityController.text = '';
           _totalSum = 0.0;
+          _isProcessingTransaction = false; // Reset processing flag
         });
 
         // Reload data
         await _initializeData();
-
-        return; // Exit early, we're done with SOM transaction
       } catch (e) {
-        debugPrint('Error processing SOM transaction: $e');
+        debugPrint('Error processing transaction: $e');
         _showBriefNotification(
           _getTranslatedText('transaction_failed'),
           Colors.red,
         );
-        return;
+        setState(() => _isProcessingTransaction = false); // Reset processing flag on error
       }
-    }
-
-    // Validate rate input for non-SOM currencies
-    final rate =
-        _currencyController.text.isEmpty
-            ? 0.0
-            : double.tryParse(_currencyController.text);
-
-    if (rate == null || rate <= 0) {
-      _showBriefNotification(_getTranslatedText('invalid_rate'), Colors.red);
-      return;
-    }
-
-    // Calculate total SOM needed for purchase
-    final totalSomNeeded = rate * quantity;
-
-    // Check if we have enough SOM balance for a purchase operation
-    if (_operationType == 'Purchase') {
-      // Get current SOM balance
-      final somBalance = await _databaseHelper.getCurrencyQuantity('SOM');
-
-      if (totalSomNeeded > somBalance) {
-        _showBriefNotification(
-          _getTranslatedText('insufficient_balance', {'code': 'SOM'}) +
-              ' (${somBalance.toStringAsFixed(2)} SOM)',
-          Colors.red,
-        );
-        return;
-      }
-    }
-
-    // Check if we have enough balance for a sale operation
-    if (_operationType == 'Sale') {
-      final currencyBalance = await _databaseHelper.getCurrencyQuantity(
-        _selectedCurrency,
-      );
-      if (quantity > currencyBalance) {
-        _showBriefNotification(
-          _getTranslatedText('insufficient_balance', {
-            'code': _selectedCurrency,
-          }),
-          Colors.red,
-        );
-        return;
-      }
-    }
-
-    // All validations passed, proceed with transaction for non-SOM currencies
-    try {
-      // Create history entry
-      final historyEntry = HistoryModel(
-        currencyCode: _selectedCurrency,
-        quantity: quantity,
-        rate: rate!,
-        total: _totalSum,
-        operationType: _operationType,
-        username: currentUser?.username ?? 'unknown',
-      );
-
-      // Add to database
-      await _databaseHelper.addHistoryEntry(historyEntry);
-
-      // Update currency quantities
-      if (_operationType == 'Purchase') {
-        // For purchase, we add to the currency and deduct from SOM
-        await _databaseHelper.adjustCurrencyQuantity(
-          _selectedCurrency,
-          quantity,
-          true,
-        );
-
-        // Deduct from SOM
-        await _databaseHelper.adjustCurrencyQuantity('SOM', _totalSum, false);
-      } else {
-        // For sale, we deduct from the currency and add to SOM
-        await _databaseHelper.adjustCurrencyQuantity(
-          _selectedCurrency,
-          quantity,
-          false,
-        );
-
-        // Add to SOM
-        await _databaseHelper.adjustCurrencyQuantity('SOM', _totalSum, true);
-      }
-
-      // Show success message
-      _showBriefNotification(
-        _getTranslatedText('transaction_successful'),
-        Colors.green,
-      );
-
-      // Reset form
-      setState(() {
-        _currencyController.text = '';
-        _quantityController.text = '';
-        _totalSum = 0.0;
-      });
-
-      // Reload data
-      await _initializeData();
     } catch (e) {
-      debugPrint('Error processing transaction: $e');
+      // Catch any unexpected errors
+      debugPrint('Unexpected error in transaction: $e');
       _showBriefNotification(
         _getTranslatedText('transaction_failed'),
         Colors.red,
       );
+      setState(() => _isProcessingTransaction = false); // Reset processing flag on error
     }
   }
 
   // Handle numpad input
   void _handleNumpadInput(String value) {
+    // If processing transaction and user presses enter, ignore
+    if (_isProcessingTransaction && value == '↵') {
+      return;
+    }
+    
     final controller =
         _isRateFieldActive ? _currencyController : _quantityController;
     final focusNode =
@@ -1688,7 +1750,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       }
     } else if (value == '↵') {
       // Handle enter button - submit the transaction
-      _validateAndSubmit();
+      if (!_isProcessingTransaction) {
+        _validateAndSubmit();
+      }
     } else {
       // Handle number input
       String newText;
