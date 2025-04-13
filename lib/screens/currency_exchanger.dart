@@ -225,11 +225,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             controller: _currencyController,
             focusNode: _currencyFocusNode,
             decoration: InputDecoration(
-              labelText: _getTranslatedText('exchange_rate'),
-              labelStyle: TextStyle(
-                fontSize: fontSize - 2,
-                color: Colors.blue.shade700,
-              ), // Adjusted label with blue color
               hintText:
                   _operationType == 'Purchase'
                       ? _getTranslatedText('enter_buy_rate')
@@ -237,36 +232,31 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(
                   12,
-                ), // Increased border radius
+                ),
                 borderSide: BorderSide(
-                  color: Colors.blue.shade500,
+                  color: Colors.blue.shade400.withOpacity(0.8),
                   width: 2.0,
-                ), // Blue border
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: Colors.blue.shade300,
+                  color: Colors.blue.shade300.withOpacity(0.6),
                   width: 2.0,
-                ), // Light blue when not focused
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: Colors.blue.shade700,
+                  color: Colors.blue.shade600.withOpacity(0.8),
                   width: 2.5,
-                ), // Darker blue when focused
+                ),
               ),
               filled: true,
               fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-              prefixIcon: Icon(
-                Icons.attach_money,
-                color: Colors.blue.shade700, // Blue icon color
-                size: iconSize,
-              ),
               contentPadding: const EdgeInsets.symmetric(
-                vertical: 16, // Increased vertical padding
-                horizontal: 16, // Increased horizontal padding
+                vertical: 16,
+                horizontal: 16,
               ),
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -296,11 +286,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             controller: _quantityController,
             focusNode: _quantityFocusNode,
             decoration: InputDecoration(
-              labelText: _getTranslatedText('quantity'),
-              labelStyle: TextStyle(
-                fontSize: fontSize - 2,
-                color: Colors.blue.shade700,
-              ), // Adjusted label with blue color
               hintText: _getTranslatedText('amount_in_currency', {
                 'code': _selectedCurrency,
               }),
@@ -329,11 +314,6 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
               filled: true,
               fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-              prefixIcon: Icon(
-                Icons.numbers,
-                color: Colors.blue.shade700, // Blue icon color
-                size: iconSize,
-              ),
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16, // Increased vertical padding
                 horizontal: 16, // Increased horizontal padding
@@ -446,24 +426,30 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildTotalDisplay() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.shade200.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withOpacity(0.4)
+                : Colors.blue.shade100.withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            gradient: LinearGradient(
+          colors: isDarkMode
+              ? [Colors.blue.shade900.withOpacity(0.6), Colors.blue.shade800.withOpacity(0.4)]
+              : [Colors.blue.shade50.withOpacity(0.8), Colors.blue.shade100.withOpacity(0.6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ],
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.blue.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
       child: Column(
         children: [
           Text(
@@ -471,7 +457,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.blue.shade800,
+              color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade800,
             ),
           ),
           const SizedBox(height: 4),
@@ -480,33 +466,39 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.blue.shade700,
+              color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade700,
             ),
             textAlign: TextAlign.center,
-          ),
-        ],
+        ),
+      ],
       ),
     );
   }
 
   Widget _buildFinishButton() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       height: 54,
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green.shade400, Colors.green.shade700],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.shade300.withOpacity(0.4),
+            color: isDarkMode 
+                ? Colors.green.shade900.withOpacity(0.6)
+                : Colors.green.shade300.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
+        gradient: LinearGradient(
+          colors: isDarkMode
+              ? [Colors.green.shade800, Colors.green.shade900]
+              : [Colors.green.shade300, Colors.green.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
       ),
       child: ElevatedButton(
         onPressed: _validateAndSubmit,
@@ -556,11 +548,26 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           width: double.infinity,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
-            color: Colors.white,
+            gradient: LinearGradient(
+              colors: _selectedCurrency == 'SOM'
+                  ? (Theme.of(context).brightness == Brightness.dark
+                      ? [Colors.blue.shade900, Colors.indigo.shade900]
+                      : [Colors.blue.shade100, Colors.blue.shade200])
+                  : (Theme.of(context).brightness == Brightness.dark
+                      ? [Colors.grey.shade900, Colors.black]
+                      : [Colors.grey.shade50, Colors.white]),
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: _selectedCurrency == 'SOM'
+                    ? (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.blue.shade700.withOpacity(0.3)
+                        : Colors.blue.shade200.withOpacity(0.3))
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade700.withOpacity(0.3)
+                        : Colors.grey.shade300.withOpacity(0.3)),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -580,35 +587,61 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             itemBuilder: (context, index) {
               final currency = allCurrencies[index];
               final isSelected = _selectedCurrency == currency;
+              final isDarkMode = Theme.of(context).brightness == Brightness.dark;
               
               return InkWell(
                 onTap: () {
-                  setState(() {
+                setState(() {
                     _selectedCurrency = currency;
-                    _calculateTotal();
-                  });
+                  _calculateTotal();
+                });
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: isSelected
                         ? LinearGradient(
-                            colors: [Colors.blue.shade400, Colors.blue.shade600],
+                            colors: isDarkMode
+                                ? [Colors.blue.shade800, Colors.blue.shade900]
+                                : [Colors.blue.shade200, Colors.blue.shade400],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    color: isSelected ? null : Colors.grey.shade100,
+                    color: isSelected 
+                        ? null 
+                        : (isDarkMode ? Colors.grey.shade900 : Colors.white),
                     borderRadius: BorderRadius.circular(8),
+                    border: !isSelected 
+                        ? (isDarkMode
+                            ? Border.all(color: Colors.grey.shade800, width: 1.0)
+                            : Border.all(color: Colors.grey.shade200, width: 1.0))
+                        : null,
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: Colors.blue.shade200.withOpacity(0.5),
+                              color: isDarkMode
+                                  ? Colors.blue.shade900.withOpacity(0.6)
+                                  : Colors.blue.shade100.withOpacity(0.4),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
                           ]
-                        : null,
+                        : isDarkMode
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 2,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.grey.shade200.withOpacity(0.5),
+                                  blurRadius: 2,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
                   ),
                   child: Center(
                     child: Text(
@@ -618,7 +651,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       style: TextStyle(
                         fontSize: isTablet ? 15 : 13,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : Colors.black87,
+                        color: isDarkMode 
+                            ? Colors.white
+                            : (isSelected ? Colors.white : Colors.black87),
                       ),
                     ),
                   ),
@@ -632,6 +667,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildOperationButtons() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -644,10 +681,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   gradient:
                       _operationType == 'Purchase'
                           ? LinearGradient(
-                            colors: [
-                              Colors.blue.shade400,
-                              Colors.blue.shade600,
-                            ],
+                            colors: isDarkMode
+                              ? [Colors.blue.shade800, Colors.blue.shade900]
+                              : [Colors.blue.shade200, Colors.blue.shade400],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           )
@@ -657,7 +693,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       _operationType == 'Purchase'
                           ? [
                             BoxShadow(
-                              color: Colors.blue.shade200.withOpacity(0.5),
+                              color: isDarkMode
+                                ? Colors.blue.shade900.withOpacity(0.4)
+                                : Colors.blue.shade100.withOpacity(0.4),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -675,9 +713,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     backgroundColor:
                         _operationType == 'Purchase'
                             ? Colors.transparent
+                            : isDarkMode
+                                ? Colors.grey.shade800
                             : Colors.grey.shade200,
                     foregroundColor:
                         _operationType == 'Purchase'
+                            ? Colors.white
+                            : isDarkMode
                             ? Colors.white
                             : Colors.black87,
                     elevation: 0,
@@ -703,10 +745,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   gradient:
                       _operationType == 'Sale'
                           ? LinearGradient(
-                            colors: [
-                              Colors.blue.shade400,
-                              Colors.blue.shade600,
-                            ],
+                            colors: isDarkMode
+                              ? [Colors.blue.shade800, Colors.blue.shade900]
+                              : [Colors.blue.shade200, Colors.blue.shade400],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           )
@@ -716,7 +757,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       _operationType == 'Sale'
                           ? [
                             BoxShadow(
-                              color: Colors.blue.shade200.withOpacity(0.5),
+                              color: isDarkMode
+                                ? Colors.blue.shade900.withOpacity(0.4)
+                                : Colors.blue.shade100.withOpacity(0.4),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -734,9 +777,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     backgroundColor:
                         _operationType == 'Sale'
                             ? Colors.transparent
+                            : isDarkMode
+                                ? Colors.grey.shade800
                             : Colors.grey.shade200,
                     foregroundColor:
                         _operationType == 'Sale'
+                            ? Colors.white
+                            : isDarkMode
                             ? Colors.white
                             : Colors.black87,
                     elevation: 0,
@@ -762,6 +809,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildAmountInput(bool isTablet) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -773,48 +822,47 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             filled: true,
             fillColor:
                 _isRateFieldActive
-                    ? Colors.white
-                    : Colors.blue.shade50, // Highlight when active
+                    ? (isDarkMode ? Colors.grey.shade900.withOpacity(0.8) : Colors.white)
+                    : (isDarkMode ? Colors.blue.shade900.withOpacity(0.5) : Colors.blue.shade50),
             hintText: _getTranslatedText('enter_amount'),
-            labelText: _getTranslatedText('amount_label'),
-            labelStyle: TextStyle(
-              color: _isRateFieldActive ? Colors.blue.shade400 : Colors.blue.shade700,
-              fontWeight: FontWeight.w500,
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.grey.shade400 : null,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
                 color:
                     _isRateFieldActive
-                        ? Colors.grey.shade300
-                        : Colors.blue.shade400,
+                        ? (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300)
+                        : (isDarkMode ? Colors.blue.shade800 : Colors.blue.shade400),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.blue.shade800 : Colors.blue.shade500, 
+                width: 2,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
             ),
-            prefixIcon: Icon(
-              Icons.numbers,
-              color:
-                  _isRateFieldActive
-                      ? Colors.blue.shade400
-                      : Colors.blue.shade700,
-            ),
           ),
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           readOnly: isTablet && _isNumpadVisible,
           showCursor: true,
-          cursorColor: Colors.blue.shade700,
+          cursorColor: isDarkMode ? Colors.blue.shade400 : Colors.blue.shade700,
           cursorWidth: 2.0,
           cursorRadius: const Radius.circular(1.0),
           onTap: () {
@@ -850,6 +898,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildExchangeRateInput(bool isTablet) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     // Check if SOM is selected to hide the rate input
     final isSomSelected = _selectedCurrency == 'SOM';
 
@@ -869,50 +919,49 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             filled: true,
             fillColor:
                 _isRateFieldActive
-                    ? Colors.blue.shade50
-                    : Colors.white, // Highlight when active
+                    ? (isDarkMode ? Colors.blue.shade900.withOpacity(0.5) : Colors.blue.shade50.withOpacity(0.5))
+                    : (isDarkMode ? Colors.grey.shade900.withOpacity(0.8) : Colors.white),
             hintText: _operationType == 'Purchase' 
                 ? _getTranslatedText('enter_buy_rate') 
                 : _getTranslatedText('enter_sell_rate'),
-            labelText: _getTranslatedText('exchange_rate'),
-            labelStyle: TextStyle(
-              color: _isRateFieldActive ? Colors.blue.shade700 : Colors.blue.shade400,
-              fontWeight: FontWeight.w500,
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.grey.shade400 : null,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
                 color:
                     _isRateFieldActive
-                        ? Colors.blue.shade400
-                        : Colors.grey.shade300,
+                        ? (isDarkMode ? Colors.blue.shade800 : Colors.blue.shade400)
+                        : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.blue.shade800 : Colors.blue.shade500, 
+                width: 2,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
             ),
-            prefixIcon: Icon(
-              Icons.attach_money,
-              color:
-                  _isRateFieldActive
-                      ? Colors.blue.shade700
-                      : Colors.blue.shade400,
-            ),
           ),
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           readOnly: isTablet && _isNumpadVisible,
           showCursor: true,
-          cursorColor: Colors.blue.shade700,
+          cursorColor: isDarkMode ? Colors.blue.shade400 : Colors.blue.shade700,
           cursorWidth: 2.0,
           cursorRadius: const Radius.circular(1.0),
           onTap: () {
@@ -985,7 +1034,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             ],
             border: Border.all(color: Colors.grey.shade300),
             gradient: LinearGradient(
-              colors: [Colors.white, Colors.grey.shade50],
+              colors: [Colors.grey.shade50, Colors.grey.shade100],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -1008,7 +1057,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '⌫',
                     isFunction: true,
-                    color: Colors.blue.shade400,
+                    color: Colors.blue.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1025,7 +1074,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     'C',
                     isFunction: true,
-                    color: Colors.orange.shade400,
+                    color: Colors.orange.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1042,7 +1091,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '⇄',
                     isFunction: true,
-                    color: Colors.red.shade400,
+                    color: Colors.red.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1059,7 +1108,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '↵',
                     isFunction: true,
-                    color: Colors.green.shade400,
+                    color: Colors.green.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1112,18 +1161,20 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildTransactionHistorySection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     if (_recentHistory.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.grey.shade100,
-          border: Border.all(color: Colors.grey.shade300),
+          color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
+          border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
         ),
         child: Center(
           child: Text(
             _getTranslatedText('no_recent_transactions'),
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600, fontSize: 14),
           ),
         ),
       );
@@ -1135,11 +1186,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            color: Colors.white,
+            border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.shade200,
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -1151,7 +1202,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             itemCount: _recentHistory.length > 10 ? 10 : _recentHistory.length,
             separatorBuilder:
                 (context, index) =>
-                    Divider(color: Colors.grey.shade300, height: 1),
+                    Divider(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300, height: 1),
             itemBuilder: (context, index) {
               final transaction = _recentHistory[index];
               final formattedTime = DateFormat(
@@ -1168,10 +1219,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors:
-                            isPurchase
-                                ? [Colors.green.shade50, Colors.white]
-                                : [Colors.orange.shade50, Colors.white],
+                        colors: isPurchase
+                            ? (isDarkMode 
+                                ? [Colors.red.shade900.withOpacity(0.4), Colors.grey.shade900]
+                                : [Colors.red.shade50.withOpacity(0.7), Colors.white])
+                            : (isDarkMode 
+                                ? [Colors.green.shade900.withOpacity(0.4), Colors.grey.shade900]
+                                : [Colors.green.shade50.withOpacity(0.7), Colors.white]),
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
@@ -1184,17 +1238,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           padding: const EdgeInsets.all(4),
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
-                            color:
-                                isPurchase
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.orange.withOpacity(0.1),
+                            color: isPurchase
+                                ? (isDarkMode ? Colors.red.shade800.withOpacity(0.3) : Colors.red.withOpacity(0.1))
+                                : (isDarkMode ? Colors.green.shade800.withOpacity(0.3) : Colors.green.withOpacity(0.1)),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             isPurchase
                                 ? Icons.arrow_downward
                                 : Icons.arrow_upward,
-                            color: isPurchase ? Colors.green : Colors.orange,
+                            color: isPurchase 
+                                ? (isDarkMode ? Colors.red.shade400 : Colors.red)
+                                : (isDarkMode ? Colors.green.shade400 : Colors.green),
                             size: 14,
                           ),
                         ),
@@ -1204,9 +1259,10 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           flex: 2,
                           child: Text(
                             '${transaction.quantity.toStringAsFixed(2)} ${transaction.currencyCode}',
-                            style: const TextStyle(
-                              fontSize: 13, // Reduced from 14
+                            style: TextStyle(
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black87,
                             ),
                           ),
                         ),
@@ -1223,7 +1279,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                     text: '${_getTranslatedText('rate')}: ',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: Colors.grey.shade600,
+                                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                                       fontWeight: FontWeight.normal,
                                     ),
                                   ),
@@ -1232,7 +1288,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade800,
+                                      color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade800,
                                     ),
                                   ),
                                 ],
@@ -1247,9 +1303,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                           child: Text(
                             '${transaction.total.toStringAsFixed(2)} SOM',
                             style: TextStyle(
-                              fontSize: 13, // Reduced from 14
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
+                              color: isDarkMode 
+                                  ? (isPurchase ? Colors.red.shade300 : Colors.green.shade300)
+                                  : (isPurchase ? Colors.red.shade700 : Colors.green.shade700),
                             ),
                             textAlign: TextAlign.end,
                           ),
@@ -1265,8 +1323,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isPurchase 
-                            ? Colors.green.shade100
-                            : Colors.orange.shade100,
+                            ? (isDarkMode ? Colors.red.shade900 : Colors.red.shade100)
+                            : (isDarkMode ? Colors.green.shade900 : Colors.green.shade100),
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(12),
                           bottomRight: Radius.circular(6),
@@ -1278,8 +1336,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                         style: TextStyle(
                           fontSize: 8,
                           color: isPurchase 
-                              ? Colors.green.shade800 
-                              : Colors.orange.shade800,
+                              ? (isDarkMode ? Colors.red.shade200 : Colors.red.shade800)
+                              : (isDarkMode ? Colors.green.shade200 : Colors.green.shade800),
                           fontWeight: FontWeight.normal,
                         ),
                       ),

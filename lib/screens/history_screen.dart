@@ -804,6 +804,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildMobileHistoryList() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return ListView.builder(
       itemCount: _filteredEntries.length,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -818,17 +820,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
         Color iconColor;
 
         if (entry.operationType == 'Purchase') {
-          backgroundColor = Colors.red.shade50;
+          backgroundColor = isDarkMode ? Colors.red.shade900.withOpacity(0.2) : Colors.red.shade50;
           operationIcon = Icons.arrow_downward;
-          iconColor = Colors.red.shade700;
+          iconColor = isDarkMode ? Colors.red.shade300 : Colors.red.shade700;
         } else if (entry.operationType == 'Sale') {
-          backgroundColor = Colors.green.shade50;
+          backgroundColor = isDarkMode ? Colors.green.shade900.withOpacity(0.2) : Colors.green.shade50;
           operationIcon = Icons.arrow_upward;
-          iconColor = Colors.green.shade700;
+          iconColor = isDarkMode ? Colors.green.shade300 : Colors.green.shade700;
         } else {
-          backgroundColor = Colors.blue.shade50;
+          backgroundColor = isDarkMode ? Colors.blue.shade900.withOpacity(0.2) : Colors.blue.shade50;
           operationIcon = Icons.account_balance_wallet;
-          iconColor = Colors.blue.shade700;
+          iconColor = isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700;
         }
 
         return _buildHistoryCard(
@@ -850,14 +852,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     Color iconColor,
     String formattedDate,
   ) {
-    // Determine gradient colors based on operation type
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // Determine gradient colors based on operation type and theme
     List<Color> gradientColors;
     if (entry.operationType == 'Purchase') {
-      gradientColors = [Colors.red.shade50, Colors.red.shade100];
+      gradientColors = isDarkMode 
+          ? [Colors.red.shade900.withOpacity(0.6), Colors.red.shade900.withOpacity(0.4)]
+          : [Colors.red.shade50, Colors.red.shade100];
     } else if (entry.operationType == 'Sale') {
-      gradientColors = [Colors.green.shade50, Colors.green.shade100];
+      gradientColors = isDarkMode
+          ? [Colors.green.shade900.withOpacity(0.6), Colors.green.shade900.withOpacity(0.4)]
+          : [Colors.green.shade50, Colors.green.shade100];
     } else {
-      gradientColors = [Colors.blue.shade50, Colors.blue.shade100];
+      gradientColors = isDarkMode
+          ? [Colors.blue.shade900.withOpacity(0.6), Colors.blue.shade900.withOpacity(0.4)]
+          : [Colors.blue.shade50, Colors.blue.shade100];
     }
 
     return Card(
@@ -865,6 +875,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       elevation: 2,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      color: isDarkMode ? Colors.grey.shade900 : Colors.white,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -894,8 +905,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                  // Add padding at the top to make room for the time label
-                  const SizedBox(height: 4),
+                      // Add padding at the top to make room for the time label
+                      const SizedBox(height: 4),
 
               // Main transaction details
               Row(
@@ -903,7 +914,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   // Operation icon
                   Container(
                     margin: const EdgeInsets.only(right: 12),
-                    child: Icon(operationIcon, color: iconColor, size: 20),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? (entry.operationType == 'Purchase' 
+                                  ? Colors.red.shade800.withOpacity(0.3)
+                                  : entry.operationType == 'Sale'
+                                      ? Colors.green.shade800.withOpacity(0.3)
+                                      : Colors.blue.shade800.withOpacity(0.3))
+                              : (entry.operationType == 'Purchase'
+                                  ? Colors.red.withOpacity(0.1)
+                                  : entry.operationType == 'Sale'
+                                      ? Colors.green.withOpacity(0.1)
+                                      : Colors.blue.withOpacity(0.1)),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          operationIcon, 
+                          color: isDarkMode
+                              ? (entry.operationType == 'Purchase'
+                                  ? Colors.red.shade300
+                                  : entry.operationType == 'Sale'
+                                      ? Colors.green.shade300
+                                      : Colors.blue.shade300)
+                              : iconColor,
+                          size: 20
+                        ),
                   ),
 
                   // Currency and amount
@@ -911,9 +947,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     flex: 3,
                     child: Text(
                       '${entry.quantity.toStringAsFixed(2)} ${entry.currencyCode}',
-                      style: const TextStyle(
+                          style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                       ),
                     ),
                   ),
@@ -930,7 +967,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   text: '${_getTranslatedText("rate")}: ',
                             style: TextStyle(
                                     fontSize: 13,
-                              color: Colors.grey.shade600,
+                                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                                     fontWeight: FontWeight.normal,
                             ),
                           ),
@@ -939,7 +976,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade800,
+                                    color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade800,
                             ),
                           ),
                         ],
@@ -955,7 +992,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       '${entry.total.toStringAsFixed(2)} SOM',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: iconColor,
+                            color: isDarkMode
+                                ? (entry.operationType == 'Purchase'
+                                    ? Colors.red.shade300
+                                    : entry.operationType == 'Sale'
+                                        ? Colors.green.shade300
+                                        : Colors.blue.shade300)
+                                : iconColor,
                             fontSize: 13,
                       ),
                       textAlign: TextAlign.end,
@@ -972,7 +1015,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     // Action buttons for edit and delete
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                            color: isDarkMode ? Colors.grey.shade800 : Colors.white,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(10),
                           bottomRight: Radius.circular(10),
@@ -991,7 +1034,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               style: const TextStyle(color: Colors.white),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade600,
+                                  backgroundColor: isDarkMode ? Colors.blue.shade800 : Colors.blue.shade600,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 8,
@@ -1008,7 +1051,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               style: const TextStyle(color: Colors.white),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade600,
+                                  backgroundColor: isDarkMode ? Colors.red.shade800 : Colors.red.shade600,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 8,
@@ -1029,11 +1072,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
             left: 0,
             child: Container(
               decoration: BoxDecoration(
-                color: entry.operationType == 'Purchase' 
-                    ? Colors.red.shade100
-                    : (entry.operationType == 'Sale'
-                        ? Colors.green.shade100
-                        : Colors.blue.shade100),
+                color: isDarkMode
+                    ? (entry.operationType == 'Purchase' 
+                        ? Colors.red.shade900
+                        : entry.operationType == 'Sale'
+                            ? Colors.green.shade900
+                            : Colors.blue.shade900)
+                    : (entry.operationType == 'Purchase' 
+                        ? Colors.red.shade100
+                        : entry.operationType == 'Sale'
+                            ? Colors.green.shade100
+                            : Colors.blue.shade100),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(10),
                   bottomRight: Radius.circular(6),
@@ -1044,11 +1093,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 DateFormat('HH:mm').format(entry.createdAt),
                 style: TextStyle(
                   fontSize: 8,
-                  color: entry.operationType == 'Purchase'
-                      ? Colors.red.shade800
-                      : (entry.operationType == 'Sale'
-                          ? Colors.green.shade800
-                          : Colors.blue.shade800),
+                  color: isDarkMode
+                      ? (entry.operationType == 'Purchase'
+                          ? Colors.red.shade200
+                          : entry.operationType == 'Sale'
+                              ? Colors.green.shade200
+                              : Colors.blue.shade200)
+                      : (entry.operationType == 'Purchase'
+                          ? Colors.red.shade800
+                          : entry.operationType == 'Sale'
+                              ? Colors.green.shade800
+                              : Colors.blue.shade800),
                   fontWeight: FontWeight.normal,
                 ),
               ),
