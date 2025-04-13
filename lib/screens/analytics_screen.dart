@@ -490,13 +490,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
               const Spacer(),
               // New date aggregation selector
-              Text(
-                _getTranslatedText('group_by'),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 8),
+              
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
@@ -813,15 +807,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     gradient: LinearGradient(
-                      colors:
-                          isProfit
-                              ? (total >= 0
-                                  ? [
-                                    Colors.green.shade50,
-                                    Colors.green.shade100,
-                                  ]
-                                  : [Colors.red.shade50, Colors.red.shade100])
-                              : [Colors.blue.shade50, Colors.blue.shade100],
+                      colors: 
+                        Theme.of(context).brightness == Brightness.dark
+                          ? (isProfit
+                            ? (total >= 0
+                                ? [Colors.green.shade900, Colors.green.shade800]
+                                : [Colors.red.shade900, Colors.red.shade800])
+                            : [Colors.blue.shade900, Colors.blue.shade800])
+                          : (isProfit
+                            ? (total >= 0
+                                ? [Colors.green.shade50, Colors.green.shade100]
+                                : [Colors.red.shade50, Colors.red.shade100])
+                            : [Colors.blue.shade50, Colors.blue.shade100]),
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1025,14 +1022,35 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       );
     }
 
+    // Filter out currencies with no profit (zero or very near zero)
+    final currenciesWithProfit = data
+        .where((item) => 
+            ((item['amount'] as num?)?.toDouble() ?? 0.0).abs() > 0.01)
+        .toList();
+    
+    if (currenciesWithProfit.isEmpty) {
+      return Center(
+        child: Text(
+          _getTranslatedText('no_profit_data'),
+          style: const TextStyle(fontSize: 18),
+        ),
+      );
+    }
+    
+    // Recalculate total profit based on filtered data
+    final filteredTotalProfit = currenciesWithProfit.fold<double>(
+      0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    );
+
     return _buildPieChart(
       title: _getTranslatedText('profit_by_currency'),
-      data: data,
-      valueKey: 'profit',
+      data: currenciesWithProfit,
+      valueKey: 'amount',
       labelKey: 'currency_code',
       isCurrency: true,
       isProfit: true,
-      total: totalProfit,
+      total: filteredTotalProfit,
       showTotal: true,
     );
   }
@@ -1125,14 +1143,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
+            // Remove title to save space
             Expanded(
               child: SfCircularChart(
                 legend: Legend(
@@ -1167,13 +1178,28 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       final colorIndex = index % baseColors.length;
                       final color = baseColors[colorIndex];
 
-                      // Return different shades for a gradient-like effect
-                      if (index % 3 == 0) {
-                        return color.shade300;
-                      } else if (index % 3 == 1) {
-                        return color.shade500;
+                      // Check if we're in dark mode
+                      final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+                      // Return different shades based on dark mode
+                      if (isDarkMode) {
+                        // Darker shades for dark mode
+                        if (index % 3 == 0) {
+                          return color.shade600;
+                        } else if (index % 3 == 1) {
+                          return color.shade700;
+                        } else {
+                          return color.shade800;
+                        }
                       } else {
-                        return color.shade700;
+                        // Original lighter shades for light mode
+                        if (index % 3 == 0) {
+                          return color.shade300;
+                        } else if (index % 3 == 1) {
+                          return color.shade500;
+                        } else {
+                          return color.shade700;
+                        }
                       }
                     },
                     dataLabelSettings: const DataLabelSettings(
@@ -1198,14 +1224,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     borderRadius: BorderRadius.circular(12),
                     gradient: LinearGradient(
                       colors:
-                          isProfit
-                              ? (displayTotal >= 0
-                                  ? [
-                                    Colors.green.shade50,
-                                    Colors.green.shade100,
-                                  ]
-                                  : [Colors.red.shade50, Colors.red.shade100])
-                              : [Colors.blue.shade50, Colors.blue.shade100],
+                        Theme.of(context).brightness == Brightness.dark
+                          ? (isProfit
+                            ? (displayTotal >= 0
+                                ? [Colors.green.shade900, Colors.green.shade800]
+                                : [Colors.red.shade900, Colors.red.shade800])
+                            : [Colors.blue.shade900, Colors.blue.shade800])
+                          : (isProfit
+                            ? (displayTotal >= 0
+                                ? [Colors.green.shade50, Colors.green.shade100]
+                                : [Colors.red.shade50, Colors.red.shade100])
+                            : [Colors.blue.shade50, Colors.blue.shade100]),
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),

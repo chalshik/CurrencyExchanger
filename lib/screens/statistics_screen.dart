@@ -329,7 +329,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   Widget _buildCurrencyTable(List<Map<String, dynamic>> currenciesToDisplay) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (currenciesToDisplay.isEmpty) {
       return Center(
           child: Text(

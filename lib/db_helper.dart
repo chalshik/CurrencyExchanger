@@ -2418,64 +2418,52 @@ class DatabaseHelper {
       final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
       final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
-      debugPrint('Fetching most profitable currencies from $fromDateStr to $toDateStr');
+      debugPrint('Fetching most profitable currencies from $fromDateStr to $toDateStr from archive collection');
 
-      // Get all history entries in the date range to calculate profits directly
-      final historyQuery = await _firestore.collection(collectionHistory)
-          .where('created_at', isGreaterThanOrEqualTo: startDate.toIso8601String())
-          .where('created_at', isLessThanOrEqualTo: endDate.toIso8601String())
+      // Query the archive collection instead of history
+      final archiveQuery = await _firestore.collection(collectionArchive)
+          .where('date', isGreaterThanOrEqualTo: fromDateStr)
+          .where('date', isLessThanOrEqualTo: toDateStr)
           .get();
-
-      final historyEntries = historyQuery.docs.map((doc) => 
-          HistoryModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)
-      ).toList();
       
-      debugPrint('Found ${historyEntries.length} history entries for calculation');
+      debugPrint('Found ${archiveQuery.docs.length} archive entries for profit calculation');
       
       // Maps to track statistics by currency
       final Map<String, Map<String, dynamic>> currencyStats = {};
       
-      // Process each history entry
-      for (var entry in historyEntries) {
-        final currencyCode = entry.currencyCode;
+      // Process each archive entry
+      for (var doc in archiveQuery.docs) {
+        final data = doc.data();
         
-        // Skip SOM for profit calculation
-        if (currencyCode == 'SOM') continue;
+        // Skip if archive doesn't have currencies data
+        if (!data.containsKey('currencies')) continue;
         
-        // Initialize currency stats if needed
-        if (!currencyStats.containsKey(currencyCode)) {
-          currencyStats[currencyCode] = {
-            'total_purchased': 0.0,
-            'total_purchase_amount': 0.0,
-            'total_sold': 0.0,
-            'total_sale_amount': 0.0,
-            'profit': 0.0,
-            'purchase_count': 0,
-            'sale_count': 0,
-          };
-        }
+        final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
         
-        // Update statistics based on operation type
-        if (entry.operationType == 'Purchase') {
-          currencyStats[currencyCode]!['total_purchased'] += entry.quantity;
-          currencyStats[currencyCode]!['total_purchase_amount'] += entry.total;
-          currencyStats[currencyCode]!['purchase_count'] += 1;
-        } else if (entry.operationType == 'Sale') {
-          currencyStats[currencyCode]!['total_sold'] += entry.quantity;
-          currencyStats[currencyCode]!['total_sale_amount'] += entry.total;
-          currencyStats[currencyCode]!['sale_count'] += 1;
+        // Process each currency in this archive entry
+        for (var currencyData in currenciesData) {
+          final currencyCode = currencyData['currency_code'] as String;
           
-          // Calculate profit contribution
-          // Estimate cost of goods sold using average purchase rate
-          final totalPurchased = currencyStats[currencyCode]!['total_purchased'] as double;
-          final totalPurchaseAmount = currencyStats[currencyCode]!['total_purchase_amount'] as double;
-          final avgPurchaseRate = totalPurchased > 0 ? totalPurchaseAmount / totalPurchased : 0.0;
+          // Skip SOM for profit calculation
+          if (currencyCode == 'SOM') continue;
           
-          // Profit = sale amount - (quantity sold * avg purchase price)
-          final costOfSold = entry.quantity * avgPurchaseRate;
-          final entryProfit = entry.total - costOfSold;
+          // Initialize currency stats if needed
+          if (!currencyStats.containsKey(currencyCode)) {
+            currencyStats[currencyCode] = {
+              'total_purchased': 0.0,
+              'total_purchase_amount': 0.0,
+              'total_sold': 0.0,
+              'total_sale_amount': 0.0,
+              'profit': 0.0,
+            };
+          }
           
-          currencyStats[currencyCode]!['profit'] += entryProfit;
+          // Aggregate the statistics from archive
+          currencyStats[currencyCode]!['total_purchased'] += _safeDouble(currencyData['total_purchased']);
+          currencyStats[currencyCode]!['total_purchase_amount'] += _safeDouble(currencyData['total_purchase_amount']);
+          currencyStats[currencyCode]!['total_sold'] += _safeDouble(currencyData['total_sold']);
+          currencyStats[currencyCode]!['total_sale_amount'] += _safeDouble(currencyData['total_sale_amount']);
+          currencyStats[currencyCode]!['profit'] += _safeDouble(currencyData['profit']);
         }
       }
 
@@ -2523,7 +2511,7 @@ class DatabaseHelper {
         });
         
         // Debug output
-        debugPrint('Direct Stats - ${currencyCode}: ' +
+        debugPrint('Archive Stats - ${currencyCode}: ' +
             'avgPurchase=$avgPurchaseRate, ' +
             'avgSale=$avgSaleRate, ' +
             'totalPurchased=$totalPurchased, ' +
@@ -2537,7 +2525,7 @@ class DatabaseHelper {
       // Sort by profit and limit
       profitData.sort((a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt());
       
-      debugPrint('Found ${profitData.length} currencies with profit data');
+      debugPrint('Found ${profitData.length} currencies with profit data from archive');
       if (profitData.isNotEmpty) {
         debugPrint('Most profitable: ${profitData.first['currency_code']}, profit: ${profitData.first['amount']}');
       }
