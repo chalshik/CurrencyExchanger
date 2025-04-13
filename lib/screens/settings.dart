@@ -1028,11 +1028,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade100,
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                        ? Colors.grey.shade800 
+                        : Colors.blue.shade100,
                     child: Text(
                       currency.code!.substring(0, 1),
                       style: TextStyle(
-                        color: Colors.blue.shade700,
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.white 
+                            : Colors.blue.shade800,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

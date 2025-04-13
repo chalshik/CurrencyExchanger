@@ -420,10 +420,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           gradient: LinearGradient(
-                            colors: [
-                              Colors.blue.shade400,
-                              Colors.blue.shade700,
-                            ],
+                            colors: Theme.of(context).brightness == Brightness.dark
+                                ? [const Color(0xFF1A1A1A), const Color(0xFF0D47A1)]
+                                : [Colors.blue.shade400, Colors.blue.shade700],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -546,7 +545,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue.shade600, Colors.blue.shade800],
+              colors: Theme.of(context).brightness == Brightness.dark
+                  ? [const Color(0xFF1A1A1A), const Color(0xFF0D47A1)]
+                  : [Colors.blue.shade600, Colors.blue.shade800],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -723,12 +724,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
               _filteredEntries.map((entry) {
                 final dateFormat = DateFormat('dd-MM-yy HH:mm');
                 final formattedDate = dateFormat.format(entry.createdAt);
-                final backgroundColor =
-                    entry.operationType == 'Purchase'
+                final backgroundColor = Theme.of(context).brightness == Brightness.dark
+                    ? (entry.operationType == 'Purchase'
+                        ? Colors.red.shade900.withOpacity(0.2)
+                        : (entry.operationType == 'Sale'
+                            ? Colors.green.shade900.withOpacity(0.2)
+                            : Colors.blue.shade900.withOpacity(0.2)))
+                    : (entry.operationType == 'Purchase'
                         ? Colors.red.shade50
                         : (entry.operationType == 'Sale'
                             ? Colors.green.shade50
-                            : Colors.blue.shade50);
+                            : Colors.blue.shade50));
 
                 return DataRow(
                   color: MaterialStateProperty.all(backgroundColor),

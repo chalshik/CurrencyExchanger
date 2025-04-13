@@ -49,13 +49,16 @@ class ThemeProvider extends ChangeNotifier {
 
   // Light theme data (Black & White)
   ThemeData get lightTheme {
+    // Define a softer black color
+    final softerBlack = const Color(0xFF333333);
+    
     return ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.black,
+      primaryColor: softerBlack,
       scaffoldBackgroundColor: Colors.white,
       colorScheme: ColorScheme.light(
-        primary: Colors.black,
-        secondary: Colors.black87,
+        primary: softerBlack,
+        secondary: softerBlack.withOpacity(0.85),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         background: Colors.white,
@@ -66,42 +69,42 @@ class ThemeProvider extends ChangeNotifier {
         // Add subtle accent
         tertiary: Colors.grey[800],
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         // Title styles
-        titleLarge: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        titleLarge: TextStyle(color: softerBlack, fontWeight: FontWeight.bold),
         titleMedium: TextStyle(
-          color: Colors.black,
+          color: softerBlack,
           fontWeight: FontWeight.bold,
         ),
-        titleSmall: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        titleSmall: TextStyle(color: softerBlack, fontWeight: FontWeight.bold),
 
         // Body styles
-        bodyLarge: TextStyle(color: Colors.black),
-        bodyMedium: TextStyle(color: Colors.black),
-        bodySmall: TextStyle(color: Colors.black87),
+        bodyLarge: TextStyle(color: softerBlack),
+        bodyMedium: TextStyle(color: softerBlack),
+        bodySmall: TextStyle(color: softerBlack.withOpacity(0.85)),
 
         // Display styles
         displayLarge: TextStyle(
-          color: Colors.black,
+          color: softerBlack,
           fontWeight: FontWeight.bold,
         ),
         displayMedium: TextStyle(
-          color: Colors.black,
+          color: softerBlack,
           fontWeight: FontWeight.bold,
         ),
         displaySmall: TextStyle(
-          color: Colors.black,
+          color: softerBlack,
           fontWeight: FontWeight.bold,
         ),
 
         // Other styles
-        labelLarge: TextStyle(color: Colors.black),
-        labelMedium: TextStyle(color: Colors.black),
-        labelSmall: TextStyle(color: Colors.black),
+        labelLarge: TextStyle(color: softerBlack),
+        labelMedium: TextStyle(color: softerBlack),
+        labelSmall: TextStyle(color: softerBlack),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         elevation: 0,
-        backgroundColor: Colors.black,
+        backgroundColor: softerBlack,
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
@@ -116,7 +119,7 @@ class ThemeProvider extends ChangeNotifier {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
+          backgroundColor: softerBlack,
           foregroundColor: Colors.white,
           elevation: 2,
           shadowColor: Colors.black38,
@@ -126,12 +129,12 @@ class ThemeProvider extends ChangeNotifier {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: Colors.black87),
+        style: TextButton.styleFrom(foregroundColor: softerBlack.withOpacity(0.85)),
       ),
       iconTheme: IconThemeData(color: Colors.grey[850], size: 24),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.black,
+        selectedItemColor: softerBlack,
         unselectedItemColor: Colors.grey[600],
         elevation: 8,
         type: BottomNavigationBarType.fixed,
@@ -154,7 +157,7 @@ class ThemeProvider extends ChangeNotifier {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.black, width: 2),
+          borderSide: BorderSide(color: softerBlack, width: 2),
         ),
         labelStyle: TextStyle(color: Colors.grey[700]),
         hintStyle: TextStyle(color: Colors.grey[500]),
@@ -168,7 +171,7 @@ class ThemeProvider extends ChangeNotifier {
       switchTheme: SwitchThemeData(
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return Colors.black87;
+            return softerBlack.withOpacity(0.85);
           }
           return Colors.grey[300];
         }),
@@ -182,7 +185,7 @@ class ThemeProvider extends ChangeNotifier {
       checkboxTheme: CheckboxThemeData(
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return Colors.black;
+            return softerBlack;
           }
           return Colors.grey[300];
         }),
@@ -191,13 +194,13 @@ class ThemeProvider extends ChangeNotifier {
       radioTheme: RadioThemeData(
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return Colors.black;
+            return softerBlack;
           }
           return Colors.grey[400];
         }),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: Colors.black,
+        color: softerBlack,
         circularTrackColor: Colors.grey[200],
       ),
       dialogTheme: DialogTheme(
@@ -205,8 +208,8 @@ class ThemeProvider extends ChangeNotifier {
         elevation: 16,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: Colors.black,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: softerBlack,
         foregroundColor: Colors.white,
       ),
       snackBarTheme: SnackBarThemeData(
@@ -218,16 +221,16 @@ class ThemeProvider extends ChangeNotifier {
       ),
       listTileTheme: ListTileThemeData(
         tileColor: Colors.transparent,
-        iconColor: Colors.black87,
-        textColor: Colors.black,
+        iconColor: softerBlack.withOpacity(0.85),
+        textColor: softerBlack,
         selectedTileColor: Colors.grey[200],
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: Colors.grey[100],
-        selectedColor: Colors.black87,
+        selectedColor: softerBlack.withOpacity(0.85),
         disabledColor: Colors.grey[200],
-        labelStyle: const TextStyle(color: Colors.black87),
+        labelStyle: TextStyle(color: softerBlack.withOpacity(0.85)),
         secondaryLabelStyle: const TextStyle(color: Colors.white),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         shape: RoundedRectangleBorder(
@@ -236,10 +239,10 @@ class ThemeProvider extends ChangeNotifier {
         ),
       ),
       tabBarTheme: TabBarTheme(
-        labelColor: Colors.black,
+        labelColor: softerBlack,
         unselectedLabelColor: Colors.grey[600],
         indicator: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.black, width: 2)),
+          border: Border(bottom: BorderSide(color: softerBlack, width: 2)),
         ),
       ),
     );
@@ -264,7 +267,7 @@ class ThemeProvider extends ChangeNotifier {
         // Add subtle accent color
         tertiary: Colors.grey[400],
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         // Title styles
         titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         titleMedium: TextStyle(
@@ -297,7 +300,7 @@ class ThemeProvider extends ChangeNotifier {
         labelMedium: TextStyle(color: Colors.white),
         labelSmall: TextStyle(color: Colors.white70),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         elevation: 0,
         backgroundColor: Color(0xFF1A1A1A),
         foregroundColor: Colors.white,
@@ -352,7 +355,7 @@ class ThemeProvider extends ChangeNotifier {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white, width: 2),
+          borderSide: BorderSide(color: Colors.white, width: 2),
         ),
         labelStyle: const TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.grey[500]),
