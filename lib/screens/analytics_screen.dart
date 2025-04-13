@@ -52,6 +52,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Always use the week time range
+    _selectedTimeRange = TimeRange.week;
     _updateDateRange();
     _loadCurrencies();
     _refreshData();
@@ -67,20 +69,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final now = DateTime.now();
     if (!mounted) return;
     setState(() {
-      switch (_selectedTimeRange) {
-        case TimeRange.day:
-          _selectedStartDate = DateTime(now.year, now.month, now.day);
-          _selectedEndDate = now;
-          break;
-        case TimeRange.week:
-          _selectedStartDate = now.subtract(const Duration(days: 7));
-          _selectedEndDate = now;
-          break;
-        case TimeRange.month:
-          _selectedStartDate = DateTime(now.year, now.month - 1, now.day);
-          _selectedEndDate = now;
-          break;
-      }
+      // Always use week range
+      _selectedStartDate = now.subtract(const Duration(days: 7));
+      _selectedEndDate = now;
     });
   }
 
@@ -106,8 +97,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return Scaffold(
       body: Column(
         children: [
-          // Time range selector
-          _buildTimeRangeSelector(),
           // Chart type selector
           _buildChartTypeSelector(),
           // Date range display
@@ -161,50 +150,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTimeRangeSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children:
-              TimeRange.values.map((range) {
-                String label;
-                switch (range) {
-                  case TimeRange.day:
-                    label = _getTranslatedText('day');
-                    break;
-                  case TimeRange.week:
-                    label = _getTranslatedText('week');
-                    break;
-                  case TimeRange.month:
-                    label = _getTranslatedText('month');
-                    break;
-                }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: FilterChip(
-                    label: Text(label.toUpperCase()),
-                    selected: _selectedTimeRange == range,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedTimeRange = range;
-                        _updateDateRange();
-                        _refreshData();
-                      });
-                    },
-                    selectedColor: Theme.of(
-                      context,
-                    ).primaryColor.withOpacity(0.2),
-                    checkmarkColor: Theme.of(context).primaryColor,
-                  ),
-                );
-              }).toList(),
-        ),
       ),
     );
   }
@@ -446,14 +391,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: Row(
             children: [
-              // Currency selector
-              Text(
-                _getTranslatedText('currency_selector'),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
