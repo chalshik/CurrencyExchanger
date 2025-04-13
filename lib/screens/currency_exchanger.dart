@@ -1791,7 +1791,7 @@ class _MobileCurrencyConverterLayoutState
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.blue.shade50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -1804,17 +1804,21 @@ class _MobileCurrencyConverterLayoutState
           margin: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.white, Colors.blue.shade50],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
+              colors: Theme.of(context).brightness == Brightness.dark
+                  ? [const Color(0xFF1E1E1E), const Color(0xFF121212)]
+                  : [Colors.white, Colors.blue.shade50],
             ),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.shade100,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.5)
+                    : Colors.blue.shade100.withOpacity(0.5),
+                blurRadius: 12,
                 spreadRadius: 2,
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -1964,7 +1968,8 @@ class _TabletCurrencyConverterLayoutState
     }
 
     return Scaffold(
-      backgroundColor: Colors.blue.shade50,
+      extendBody: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(child: _buildPortraitLayout()),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -1974,12 +1979,16 @@ class _TabletCurrencyConverterLayoutState
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.white, Colors.blue.shade50],
+              colors: Theme.of(context).brightness == Brightness.dark
+                  ? [const Color(0xFF1E1E1E), const Color(0xFF121212)]
+                  : [Colors.white, Colors.blue.shade50],
             ),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.shade100.withOpacity(0.5),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.5)
+                    : Colors.blue.shade100.withOpacity(0.5),
                 blurRadius: 12,
                 spreadRadius: 2,
                 offset: const Offset(0, 4),
@@ -2008,10 +2017,9 @@ class _TabletCurrencyConverterLayoutState
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
-                              Colors.blue.shade100,
-                              Colors.blue.shade200,
-                            ],
+                            colors: Theme.of(context).brightness == Brightness.dark
+                                ? [Colors.grey.shade800, Colors.grey.shade700]
+                                : [Colors.blue.shade100, Colors.blue.shade200],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),

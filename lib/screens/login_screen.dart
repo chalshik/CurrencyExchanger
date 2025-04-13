@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final formWidth = isWideTablet ? 400.0 : double.infinity;
 
     return Scaffold(
-      backgroundColor: Colors.blue.shade50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(isWideTablet ? 40.0 : 24.0),
