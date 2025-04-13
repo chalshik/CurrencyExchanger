@@ -310,14 +310,285 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          // Set width based on device, but always ensure there's space for the table
-          width: isTablet ? MediaQuery.of(context).size.width - 32 : 800,
-          child: _buildCurrencyTable(currenciesToDisplay),
+      child: _buildAdaptiveTable(currenciesToDisplay, isTablet),
+    );
+  }
+
+  Widget _buildAdaptiveTable(List<Map<String, dynamic>> currenciesToDisplay, bool isTablet) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // For small screens, use a card-based layout
+    if (screenWidth < 600) {
+      return _buildCardBasedTable(currenciesToDisplay);
+    } else {
+      // For larger screens, use the regular table
+      return _buildCurrencyTable(currenciesToDisplay);
+    }
+  }
+
+  Widget _buildCardBasedTable(List<Map<String, dynamic>> currenciesToDisplay) {
+    return Column(
+      children: [
+        for (var index = 0; index < currenciesToDisplay.length; index++)
+          _buildCurrencyCard(currenciesToDisplay[index], index),
+        
+        // Summary card
+        Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          color: Colors.blue.shade50,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Colors.blue.shade300),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getTranslatedText('total'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_getTranslatedText('current_balance')),
+                    Text(
+                      _calculateTotal(currenciesToDisplay, 'current_quantity').toStringAsFixed(2),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_getTranslatedText('profit')),
+                    Text(
+                      formatProfit(_calculateTotal(currenciesToDisplay, 'profit')),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _calculateTotal(currenciesToDisplay, 'profit') >= 0
+                          ? Colors.green.shade700
+                          : Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCurrencyCard(Map<String, dynamic> currency, int index) {
+    final avgPurchaseRate = currency['avg_purchase_rate'] as double? ?? 0.0;
+    final avgSaleRate = currency['avg_sale_rate'] as double? ?? 0.0;
+    final totalPurchased = currency['total_purchased'] as double? ?? 0.0;
+    final totalSold = currency['total_sold'] as double? ?? 0.0;
+    final currentQuantity = currency['current_quantity'] as double? ?? 0.0;
+    final profit = currency['profit'] as double? ?? 0.0;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      elevation: 2,
+      child: InkWell(
+        onTap: () {
+          // Show detailed stats for this currency on tap
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              maxChildSize: 0.9,
+              minChildSize: 0.4,
+              builder: (_, controller) => Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: ListView(
+                  controller: controller,
+                  children: [
+                    Text(
+                      '${currency['currency']} ${_getTranslatedText('statistics')}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _getTranslatedText('current_balance'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      _getTranslatedText('amount_label'),
+                      '${currentQuantity.toStringAsFixed(2)} ${currency['currency']}',
+                    ),
+                    const Divider(height: 24),
+                    Text(
+                      _getTranslatedText('purchase_info'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      _getTranslatedText('total_purchased'),
+                      '${totalPurchased.toStringAsFixed(2)} ${currency['currency']}',
+                    ),
+                    _buildStatRow(
+                      _getTranslatedText('avg_purchase_rate'),
+                      avgPurchaseRate.toStringAsFixed(4),
+                    ),
+                    _buildStatRow(
+                      _getTranslatedText('total_spent'),
+                      '${(avgPurchaseRate * totalPurchased).toStringAsFixed(2)} SOM',
+                    ),
+                    const Divider(height: 24),
+                    Text(
+                      _getTranslatedText('sale_info'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      _getTranslatedText('total_sold'),
+                      '${totalSold.toStringAsFixed(2)} ${currency['currency']}',
+                    ),
+                    _buildStatRow(
+                      _getTranslatedText('avg_sale_rate'),
+                      avgSaleRate.toStringAsFixed(4),
+                    ),
+                    _buildStatRow(
+                      _getTranslatedText('total_earned'),
+                      '${(avgSaleRate * totalSold).toStringAsFixed(2)} SOM',
+                    ),
+                    const Divider(height: 24),
+                    Text(
+                      _getTranslatedText('profit'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            profit >= 0
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStatRow(
+                      _getTranslatedText('amount_label'),
+                      formatProfit(profit),
+                      valueColor:
+                          profit >= 0
+                              ? Colors.green.shade700
+                              : Colors.red.shade700,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    currency['currency'].toString(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: profit >= 0 ? Colors.green.shade100 : Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_getTranslatedText('profit')}: ${formatProfit(profit)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: profit >= 0 ? Colors.green.shade800 : Colors.red.shade800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(),
+              GridView.count(
+                crossAxisCount: 2,
+                childAspectRatio: 2.5,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildGridItem(_getTranslatedText('current_balance'), currentQuantity.toStringAsFixed(2)),
+                  _buildGridItem(_getTranslatedText('total_purchased'), totalPurchased.toStringAsFixed(2)),
+                  _buildGridItem(_getTranslatedText('avg_purchase_rate'), avgPurchaseRate.toStringAsFixed(2)),
+                  _buildGridItem(_getTranslatedText('avg_sale_rate'), avgSaleRate.toStringAsFixed(2)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGridItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
