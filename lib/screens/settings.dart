@@ -535,9 +535,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _deleteUser(int? id, String username) async {
+  Future<void> _deleteUser(String? id, String username) async {
     if (id == null) return;
-
+    
     // Show confirmation dialog
     bool? confirm = await showDialog<bool>(
       context: context,
@@ -563,7 +563,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await _dbHelper.deleteUser(id.toString());
+        await _dbHelper.deleteUser(id);
         await _loadUsers();
         ScaffoldMessenger.of(
           context,
@@ -1227,7 +1227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 onPressed:
                                     () => _deleteUser(
-                                      user.id as int?,
+                                      user.id,
                                       user.username,
                                     ),
                               ),
@@ -1782,9 +1782,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(_getTranslatedText('delete_currency')),
+            title: Text(_getTranslatedText('confirm_delete')),
             content: Text(
-              _getTranslatedText('delete_currency_confirm', {
+              _getTranslatedText('confirm_delete_currency', {
                 'code': currency.code!,
               }),
             ),
