@@ -13,7 +13,7 @@ class DatabaseHelper {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isInitialized = false;
-
+  
   // Add cache for currencies
   static List<CurrencyModel> _currenciesCache = [];
   static DateTime _lastCurrenciesLoadTime = DateTime(2000); // Set to old date initially
@@ -1310,101 +1310,106 @@ class DatabaseHelper {
     DateTime? endDate,
   }) async {
     try {
+      // Set default date range if not provided
       final fromDate = startDate ?? DateTime(2000);
       final toDate = endDate ?? DateTime.now();
-      final fromDateStr = fromDate.toIso8601String().split('T')[0];
-      final toDateStr = toDate.toIso8601String().split('T')[0];
+
+      final fromDateStr = fromDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = toDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
       debugPrint('Fetching pie chart data from $fromDateStr to $toDateStr');
 
+      // Find relevant archives within date range
       final archiveQuery = await _firestore.collection(collectionArchive)
           .where('date', isGreaterThanOrEqualTo: fromDateStr)
           .where('date', isLessThanOrEqualTo: toDateStr)
-          .orderBy('date')
+          .orderBy('date', descending: true)
           .get();
 
       debugPrint('Found ${archiveQuery.docs.length} archive records');
 
+      // If no archives in range, return empty results
       if (archiveQuery.docs.isEmpty) {
+        debugPrint('No archive data found, returning empty results');
         return {'purchases': [], 'sales': []};
       }
 
-      final Map<String, Map<String, dynamic>> currencyStats = {};
+      // Process purchase and sales data from archived statistics
+      final Map<String, Map<String, dynamic>> purchaseData = {};
+      final Map<String, Map<String, dynamic>> salesData = {};
 
-      // Process all archive documents
+      // Process all archive documents in the date range
       for (var doc in archiveQuery.docs) {
-        final data = doc.data();
-        if (!data.containsKey('currencies')) continue;
+        final archiveDoc = doc.data();
+        if (!archiveDoc.containsKey('currencies')) {
+          debugPrint('Archive record missing currencies data, skipping...');
+          continue;
+        }
 
-        final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
-        
+        // Process currencies data to extract purchase and sales information
+        final currenciesData = List<Map<String, dynamic>>.from(archiveDoc['currencies'] ?? []);
         for (var currency in currenciesData) {
           final currencyCode = currency['currency_code'] as String;
+          
+          // Skip SOM currency
           if (currencyCode == 'SOM') continue;
 
-          if (!currencyStats.containsKey(currencyCode)) {
-            currencyStats[currencyCode] = {
-              'currency': currencyCode,
-              'total_purchase_amount': 0.0,
-              'total_purchase_quantity': 0.0,
-              'total_sale_amount': 0.0,
-              'total_sale_quantity': 0.0,
-              'profit': 0.0,
-              'days_with_activity': 0,
-            };
+          // Extract purchase data
+          final totalPurchased = _safeDouble(currency['total_purchased']);
+          final totalPurchaseAmount = _safeDouble(currency['total_purchase_amount']);
+          
+          if (totalPurchased > 0) {
+            if (!purchaseData.containsKey(currencyCode)) {
+              purchaseData[currencyCode] = {
+                'currency': currencyCode,
+                'total_value': 0.0,
+                'count': 0,
+              };
+            }
+            purchaseData[currencyCode]!['total_value'] = 
+                _safeDouble(purchaseData[currencyCode]!['total_value']) + totalPurchaseAmount;
+            purchaseData[currencyCode]!['count'] = 
+                (purchaseData[currencyCode]!['count'] as int) + 1;
           }
-
-          final stats = currencyStats[currencyCode]!;
-          final purchaseAmount = _safeDouble(currency['total_purchase_amount']);
-          final purchaseQuantity = _safeDouble(currency['total_purchased']);
-          final saleAmount = _safeDouble(currency['total_sale_amount']);
-          final saleQuantity = _safeDouble(currency['total_sold']);
-          final profit = _safeDouble(currency['profit']);
-
-          stats['total_purchase_amount'] = _safeDouble(stats['total_purchase_amount']) + purchaseAmount;
-          stats['total_purchase_quantity'] = _safeDouble(stats['total_purchase_quantity']) + purchaseQuantity;
-          stats['total_sale_amount'] = _safeDouble(stats['total_sale_amount']) + saleAmount;
-          stats['total_sale_quantity'] = _safeDouble(stats['total_sale_quantity']) + saleQuantity;
-          stats['profit'] = _safeDouble(stats['profit']) + profit;
-
-          if (purchaseAmount > 0 || saleAmount > 0) {
-            stats['days_with_activity'] = (stats['days_with_activity'] as int) + 1;
+          
+          // Extract sales data
+          final totalSold = _safeDouble(currency['total_sold']);
+          final totalSaleAmount = _safeDouble(currency['total_sale_amount']);
+          
+          if (totalSold > 0) {
+            if (!salesData.containsKey(currencyCode)) {
+              salesData[currencyCode] = {
+                'currency': currencyCode,
+                'total_value': 0.0,
+                'count': 0,
+              };
+            }
+            salesData[currencyCode]!['total_value'] = 
+                _safeDouble(salesData[currencyCode]!['total_value']) + totalSaleAmount;
+            salesData[currencyCode]!['count'] = 
+                (salesData[currencyCode]!['count'] as int) + 1;
           }
         }
       }
 
-      // Convert to separate purchase and sale lists
-      final purchases = currencyStats.values
-          .where((stats) => _safeDouble(stats['total_purchase_amount']) > 0)
-          .map((stats) => {
-            'currency': stats['currency'],
-            'total_value': stats['total_purchase_amount'],
-            'quantity': stats['total_purchase_quantity'],
-            'days_with_activity': stats['days_with_activity'],
-          })
-          .toList()
-          ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
+      // Convert to lists and sort by total_value
+      final purchases = purchaseData.values.toList()
+        ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
-      final sales = currencyStats.values
-          .where((stats) => _safeDouble(stats['total_sale_amount']) > 0)
-          .map((stats) => {
-            'currency': stats['currency'],
-            'total_value': stats['total_sale_amount'],
-            'quantity': stats['total_sale_quantity'],
-            'days_with_activity': stats['days_with_activity'],
-          })
-          .toList()
-          ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
+      final sales = salesData.values.toList()
+        ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
       debugPrint('Processed ${purchases.length} purchase currencies and ${sales.length} sales currencies');
-      return {
-        'purchases': purchases,
-        'sales': sales,
-        'currency_stats': currencyStats.values.toList(),
-      };
+      debugPrint('Total documents processed: ${archiveQuery.docs.length}');
+
+      return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
-      return {'purchases': [], 'sales': [], 'currency_stats': []};
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      return {'purchases': [], 'sales': []};
     }
   }
 
@@ -1413,11 +1418,12 @@ class DatabaseHelper {
     required DateTime endDate,
   }) async {
     try {
-      final fromDateStr = startDate.toIso8601String().split('T')[0];
-      final toDateStr = endDate.toIso8601String().split('T')[0];
+      final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
       debugPrint('Fetching daily data from $fromDateStr to $toDateStr');
 
+      // Get all archive records in the date range
       final archiveQuery = await _firestore.collection(collectionArchive)
           .where('date', isGreaterThanOrEqualTo: fromDateStr)
           .where('date', isLessThanOrEqualTo: toDateStr)
@@ -1426,54 +1432,76 @@ class DatabaseHelper {
 
       debugPrint('Found ${archiveQuery.docs.length} archive records');
 
+      // Build daily data from archive records
       final List<Map<String, dynamic>> dailyData = [];
       
       for (var doc in archiveQuery.docs) {
         final data = doc.data();
         final date = data['date'] as String;
         
-        double dailyPurchaseTotal = 0.0;
-        double dailySaleTotal = 0.0;
-        double dailyProfitTotal = 0.0;
+        // Create daily data structure with default zeroes to ensure consistent format
+        final dayData = {
+          'day': date,  // Use ISO date format consistently: YYYY-MM-DD
+            'purchases': 0.0,
+            'sales': 0.0,
+            'profit': 0.0,
+            'deposits': 0.0,
+            'currencies': <String, Map<String, dynamic>>{},
+          };
         
+        // Process currency-specific data
         if (data.containsKey('currencies')) {
           final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
-          final Map<String, Map<String, dynamic>> currencyStats = {};
+          
+          double dailyPurchaseTotal = 0.0;
+          double dailySaleTotal = 0.0;
+          double dailyProfitTotal = 0.0;
           
           for (var currency in currenciesData) {
             final currencyCode = currency['currency_code'] as String;
+            
+            // Skip SOM for daily aggregates
             if (currencyCode == 'SOM') continue;
             
             final purchaseAmount = _safeDouble(currency['total_purchase_amount']);
-            final purchaseQuantity = _safeDouble(currency['total_purchased']);
             final saleAmount = _safeDouble(currency['total_sale_amount']);
-            final saleQuantity = _safeDouble(currency['total_sold']);
             final profit = _safeDouble(currency['profit']);
             
+            // Add to daily totals
             dailyPurchaseTotal += purchaseAmount;
             dailySaleTotal += saleAmount;
             dailyProfitTotal += profit;
             
-            currencyStats[currencyCode] = {
+            // Add currency-specific data
+            (dayData['currencies'] as Map)[currencyCode] = {
               'currency': currencyCode,
               'purchase_amount': purchaseAmount,
-              'purchase_quantity': purchaseQuantity,
+              'purchase_quantity': _safeDouble(currency['total_purchased']),
               'sale_amount': saleAmount,
-              'sale_quantity': saleQuantity,
-              'profit': profit,
+              'sale_quantity': _safeDouble(currency['total_sold']),
+              'count_purchase': 1, // Simplified since we don't have actual counts
+              'count_sale': 1,     // Simplified since we don't have actual counts
             };
           }
           
-          dailyData.add({
-            'day': date,
-            'purchases': dailyPurchaseTotal,
-            'sales': dailySaleTotal,
-            'profit': dailyProfitTotal,
-            'currencies': currencyStats,
-          });
+          // Set aggregated values
+          dayData['purchases'] = dailyPurchaseTotal;
+          dayData['sales'] = dailySaleTotal;
+          dayData['profit'] = dailyProfitTotal;
         }
+        
+        // Add summary data if available (overrides currency-specific calculations)
+        if (data.containsKey('summary')) {
+          final summary = data['summary'] as Map<String, dynamic>;
+          dayData['purchases'] = _safeDouble(summary['total_purchased']);
+          dayData['sales'] = _safeDouble(summary['total_sold']);
+          dayData['profit'] = _safeDouble(summary['total_profit']);
+        }
+        
+        dailyData.add(dayData);
       }
 
+      // Sort by date
       dailyData.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
       
       if (dailyData.isNotEmpty) {
@@ -1483,6 +1511,10 @@ class DatabaseHelper {
       return dailyData;
     } catch (e) {
       debugPrint('Error in getDailyData: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
@@ -1493,11 +1525,12 @@ class DatabaseHelper {
     required String currencyCode,
   }) async {
     try {
-      final fromDateStr = startDate.toIso8601String().split('T')[0];
-      final toDateStr = endDate.toIso8601String().split('T')[0];
+      final fromDateStr = startDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
+      final toDateStr = endDate.toIso8601String().split('T')[0]; // YYYY-MM-DD format
 
       debugPrint('Fetching daily data for currency $currencyCode from $fromDateStr to $toDateStr');
 
+      // Get all archive records in the date range
       final archiveQuery = await _firestore.collection(collectionArchive)
           .where('date', isGreaterThanOrEqualTo: fromDateStr)
           .where('date', isLessThanOrEqualTo: toDateStr)
@@ -1506,47 +1539,63 @@ class DatabaseHelper {
 
       debugPrint('Found ${archiveQuery.docs.length} archive records');
 
+      // Prepare daily data structure
       final List<Map<String, dynamic>> dailyData = [];
 
+      // Process each archive record
       for (var doc in archiveQuery.docs) {
         final data = doc.data();
         final date = data['date'] as String;
         
+        // Skip if archive doesn't have currencies data
         if (!data.containsKey('currencies')) continue;
         
         final currenciesData = List<Map<String, dynamic>>.from(data['currencies'] ?? []);
+        
+        // Find data for the requested currency
         final currencyData = currenciesData.firstWhere(
           (c) => c['currency_code'] == currencyCode,
           orElse: () => {},
         );
         
+        // Skip if currency not found in this archive
         if (currencyData.isEmpty) continue;
         
+        // Extract data for this currency with safe conversion
         final purchaseAmount = _safeDouble(currencyData['total_purchase_amount']);
         final purchaseQuantity = _safeDouble(currencyData['total_purchased']);
         final saleAmount = _safeDouble(currencyData['total_sale_amount']);
         final saleQuantity = _safeDouble(currencyData['total_sold']);
         final profit = _safeDouble(currencyData['profit']);
         
+        // Create daily entry with consistent format
         dailyData.add({
-          'day': date,
+          'day': date,  // Use ISO date format consistently: YYYY-MM-DD
           'purchases': purchaseAmount,
           'purchase_quantity': purchaseQuantity,
           'sales': saleAmount,
           'sale_quantity': saleQuantity,
           'profit': profit,
+          'deposits': 0.0, // Archive doesn't typically store deposit information
         });
       }
 
+      // Sort by date
       dailyData.sort((a, b) => (a['day'] as String).compareTo(b['day'] as String));
       
       if (dailyData.isNotEmpty) {
         debugPrint('First day data for $currencyCode: ${dailyData.first}');
+        } else {
+        debugPrint('No daily data found for currency $currencyCode');
       }
 
       return dailyData;
     } catch (e) {
       debugPrint('Error in getDailyDataByCurrency: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
       return [];
     }
   }
