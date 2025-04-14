@@ -76,16 +76,43 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Future<void> _loadCurrencies() async {
-    final currencies = await _dbHelper.getHistoryCurrencyCodes();
-    if (!mounted) return;
-    setState(() {
-      _availableCurrencies =
-          [_getTranslatedText('all_currencies')] +
-          currencies.where((c) => c != 'SOM').toList();
-      if (_availableCurrencies.isNotEmpty && _selectedCurrency == null) {
-        _selectedCurrency = _availableCurrencies.first;
+    try {
+      debugPrint("Starting to load currencies for dropdown...");
+      final currencies = await _dbHelper.getHistoryCurrencyCodes();
+      
+      debugPrint("Currencies loaded from database: $currencies");
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _availableCurrencies = [_getTranslatedText('all_currencies')] + 
+            currencies.where((c) => c != 'SOM').toList();
+        
+        debugPrint("Final _availableCurrencies list: $_availableCurrencies");
+        
+        // Make sure we have a selected currency
+        if (_availableCurrencies.isNotEmpty) {
+          if (_selectedCurrency == null || !_availableCurrencies.contains(_selectedCurrency)) {
+            _selectedCurrency = _availableCurrencies.first;
+            debugPrint("Selected currency set to: $_selectedCurrency");
+          }
+        } else {
+          // If no currencies available, at least have the "All Currencies" option
+          _availableCurrencies = [_getTranslatedText('all_currencies')];
+          _selectedCurrency = _getTranslatedText('all_currencies');
+          debugPrint("No currencies available, defaulting to 'All Currencies'");
+        }
+      });
+    } catch (e) {
+      debugPrint("Error loading currencies: $e");
+      // Set default values in case of error
+      if (mounted) {
+        setState(() {
+          _availableCurrencies = [_getTranslatedText('all_currencies')];
+          _selectedCurrency = _getTranslatedText('all_currencies');
+        });
       }
-    });
+    }
   }
 
   void _refreshData() {
@@ -534,6 +561,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ),
       );
     }
+    
+    // Log the current state of currencies
+    debugPrint("Building bar chart with currencies: $_availableCurrencies");
+    debugPrint("Selected currency: $_selectedCurrency");
 
     return Column(
       children: [
@@ -572,28 +603,43 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     child: DropdownButton<String>(
                       value: _selectedCurrency,
                       isExpanded: true,
+                      hint: Text(_getTranslatedText('all_currencies')),
                       icon: Icon(
                         Icons.arrow_drop_down,
                         color: Theme.of(context).primaryColor,
                         size: 28,
                       ),
-                      items: _availableCurrencies.map((currency) {
-                        return DropdownMenuItem(
-                          value: currency,
-                          child: Text(
-                            currency,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: currency == _getTranslatedText('all_currencies')
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              fontSize: 16,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      items: _availableCurrencies.isEmpty 
+                          ? [
+                              DropdownMenuItem(
+                                value: _getTranslatedText('all_currencies'),
+                                child: Text(
+                                  _getTranslatedText('all_currencies'),
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              )
+                            ]
+                          : _availableCurrencies.map((currency) {
+                              return DropdownMenuItem(
+                                value: currency,
+                                child: Text(
+                                  currency,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: currency == _getTranslatedText('all_currencies')
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                       onChanged: (value) {
+                        debugPrint("Currency changed to: $value");
                         setState(() {
-                          _selectedCurrency = value;
+                          _selectedCurrency = value ?? _getTranslatedText('all_currencies');
                           _refreshData();
                         });
                       },

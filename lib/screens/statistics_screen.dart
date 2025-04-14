@@ -64,14 +64,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         final stats = analytics['currency_stats'] as List<dynamic>;
 
         final currencyStats =
-            stats
-                .where(
-                  (item) =>
-                      item is Map<String, dynamic> &&
-                      item.containsKey('currency'),
-                )
-                .map((item) => item as Map<String, dynamic>)
-                .toList();
+        stats
+            .where(
+              (item) =>
+          item is Map<String, dynamic> &&
+              item.containsKey('currency'),
+        )
+            .map((item) => item as Map<String, dynamic>)
+            .toList();
 
         for (var stat in currencyStats) {
           if (stat['currency'] == 'SOM') {
@@ -82,7 +82,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             kassaValue += avgPurchaseRate * totalPurchased;
           }
         }
-        kassaValue+= somBalance;
+        kassaValue += somBalance;
 
         setState(() {
           _currencyStats = currencyStats;
@@ -97,7 +97,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           _isLoading = false;
         });
       }
-      
+
       // Debug print to check data
       debugPrint('Loaded ${_currencyStats.length} currency stats');
       if (_currencyStats.isNotEmpty) {
@@ -122,13 +122,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildSummaryCards(bool isTablet) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
     return Column(
       children: [
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors.blue.shade50.withOpacity(0.8),
+          color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors
+              .blue.shade50.withOpacity(0.8),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -139,7 +142,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700.withOpacity(0.9),
+                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue
+                        .shade700.withOpacity(0.9),
                   ),
                 ),
                 Text(
@@ -147,7 +151,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700.withOpacity(0.9),
+                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue
+                        .shade700.withOpacity(0.9),
                   ),
                 ),
               ],
@@ -158,18 +163,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           onTap: () => _showForeignCurrencyValueDetails(),
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: isDarkMode ? Colors.green.shade900.withOpacity(0.7) : Colors.green.shade50.withOpacity(0.8),
+            color: isDarkMode ? Colors.green.shade900.withOpacity(0.7) : Colors
+                .green.shade50.withOpacity(0.8),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _getTranslatedText('foreign_currency_value'),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _getTranslatedText('foreign_currency_value'),
                     style: TextStyle(
                       fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700.withOpacity(0.9),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.green.shade300 : Colors.green
+                          .shade700.withOpacity(0.9),
                     ),
                   ),
                   Text(
@@ -177,7 +184,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700.withOpacity(0.9),
+                      color: isDarkMode ? Colors.green.shade300 : Colors.green
+                          .shade700.withOpacity(0.9),
                     ),
                   ),
                 ],
@@ -187,7 +195,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ),
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors.indigo.shade50.withOpacity(0.8),
+          color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors
+              .indigo.shade50.withOpacity(0.8),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -198,7 +207,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.indigo.shade300 : Colors.indigo.shade700.withOpacity(0.9),
+                    color: isDarkMode ? Colors.indigo.shade300 : Colors.indigo
+                        .shade700.withOpacity(0.9),
                   ),
                 ),
                 Text(
@@ -206,9 +216,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: _totalProfit >= 0 
-                        ? (isDarkMode ? Colors.cyan.shade300 : Colors.cyan.shade700)
-                        : (isDarkMode ? Colors.pink.shade300 : Colors.pink.shade700),
+                    color: _totalProfit >= 0
+                        ? (isDarkMode ? Colors.cyan.shade300 : Colors.cyan
+                        .shade700)
+                        : (isDarkMode ? Colors.pink.shade300 : Colors.pink
+                        .shade700),
                   ),
                 ),
               ],
@@ -220,8 +232,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildStatRow(String label, String value, {Color? valueColor}) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -252,7 +266,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
+    final screenSize = MediaQuery
+        .of(context)
+        .size;
     final isTablet = screenSize.width >= 600;
     final isLandscape = screenSize.width > screenSize.height;
 
@@ -260,46 +276,48 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       body: RefreshIndicator(
         onRefresh: _loadCurrencyStats,
         child:
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 24, top: 16),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      isLandscape
-                          ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
-                          : _buildSummaryCards(
-                            isTablet,
-                          ), // Vertical cards for portrait mode
-                      // Always use table view with horizontal scrolling for small screens
-                      _buildScrollableTable(isTablet),
+        _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24, top: 16),
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              isLandscape
+                  ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
+                  : _buildSummaryCards(
+                isTablet,
+              ),
+              // Vertical cards for portrait mode
+              // Always use table view with horizontal scrolling for small screens
+              _buildScrollableTable(isTablet),
 
-                      // Profit Pie Chart Section
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                        child: Text(
-                          _getTranslatedText('profit_distribution'),
-                          style: TextStyle(
-                            fontSize: isTablet ? 20 : 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700.withOpacity(0.9),
-                          ),
-                        ),
-                      ),
-                      _buildProfitPieChart(),
-                    ],
+              // Profit Pie Chart Section
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                child: Text(
+                  _getTranslatedText('profit_distribution'),
+                  style: TextStyle(
+                    fontSize: isTablet ? 20 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700.withOpacity(0.9),
                   ),
                 ),
+              ),
+              _buildProfitPieChart(),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildScrollableTable(bool isTablet) {
     // Get currencies excluding SOM
-    final currenciesToDisplay = _currencyStats.where((stat) => stat['currency'] != 'SOM').toList();
-    
+    final currenciesToDisplay = _currencyStats.where((
+        stat) => stat['currency'] != 'SOM').toList();
+
     // Return a message if no data is available
     if (currenciesToDisplay.isEmpty) {
       return Padding(
@@ -319,7 +337,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         scrollDirection: Axis.horizontal,
         child: SizedBox(
           // Set width based on device, but always ensure there's space for the table
-          width: isTablet ? MediaQuery.of(context).size.width - 32 : 800,
+          width: isTablet ? MediaQuery
+              .of(context)
+              .size
+              .width - 32 : 800,
           child: _buildCurrencyTable(currenciesToDisplay),
         ),
       ),
@@ -327,332 +348,388 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildCurrencyTable(List<Map<String, dynamic>> currenciesToDisplay) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
 
     if (currenciesToDisplay.isEmpty) {
       return Center(
-          child: Text(
-            _getTranslatedText('no_data'),
-            style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
+        child: Text(
+          _getTranslatedText('no_data'),
+          style: TextStyle(
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
         ),
       );
     }
 
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Table Header
-          Container(
-            decoration: BoxDecoration(
-              color: isDarkMode 
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Table Header
+        Container(
+          decoration: BoxDecoration(
+            color: isDarkMode
                 ? Colors.blue.shade900.withOpacity(1.0)
                 : Colors.blue.shade800.withOpacity(1.0),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            child: Row(
-              children: [
-                _buildTableHeaderCell(
-                  _getTranslatedText('currency_code_header'),
-                  flex: 1,
-                ),
-                _buildTableHeaderCell(
-                  _getTranslatedText('current_balance'),
-                  flex: 2,
-                ),
-                _buildTableHeaderCell(
-                  _getTranslatedText('avg_purchase_rate'),
-                  flex: 2,
-                ),
-                _buildTableHeaderCell(
-                  _getTranslatedText('total_purchased'),
-                  flex: 2,
-                ),
-                _buildTableHeaderCell(
-                  _getTranslatedText('avg_sale_rate'),
-                  flex: 2,
-                ),
-                _buildTableHeaderCell(
-                  _getTranslatedText('total_sold'),
-                  flex: 2,
-                ),
-                _buildTableHeaderCell(_getTranslatedText('profit'), flex: 1),
-              ],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(8),
+              topRight: Radius.circular(8),
             ),
           ),
-          // Table Body
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Row(
+            children: [
+              _buildTableHeaderCell(
+                _getTranslatedText('currency_code_header'),
+                flex: 1,
               ),
-              color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+              _buildTableHeaderCell(
+                _getTranslatedText('current_balance'),
+                flex: 2,
+              ),
+              _buildTableHeaderCell(
+                _getTranslatedText('avg_purchase_rate'),
+                flex: 2,
+              ),
+              _buildTableHeaderCell(
+                _getTranslatedText('total_purchased'),
+                flex: 2,
+              ),
+              _buildTableHeaderCell(
+                _getTranslatedText('avg_sale_rate'),
+                flex: 2,
+              ),
+              _buildTableHeaderCell(
+                _getTranslatedText('total_sold'),
+                flex: 2,
+              ),
+              _buildTableHeaderCell(_getTranslatedText('profit'), flex: 1),
+            ],
+          ),
+        ),
+        // Table Body
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+                color: isDarkMode ? Colors.grey.shade800 : Colors.grey
+                    .shade300),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: currenciesToDisplay.length,
-              separatorBuilder:
-                  (context, index) =>
-                      Divider(height: 1, color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-              itemBuilder: (context, index) {
-                final stat = currenciesToDisplay[index];
-                final avgPurchaseRate =
-                    stat['avg_purchase_rate'] as double? ?? 0.0;
-                final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
-                final totalPurchased =
-                    stat['total_purchased'] as double? ?? 0.0;
-                final totalSold = stat['total_sold'] as double? ?? 0.0;
-                final currentQuantity =
-                    stat['current_quantity'] as double? ?? 0.0;
-                final profit = stat['profit'] as double? ?? 0.0;
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: currenciesToDisplay.length,
+            separatorBuilder:
+                (context, index) =>
+                Divider(height: 1,
+                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey
+                        .shade300),
+            itemBuilder: (context, index) {
+              final stat = currenciesToDisplay[index];
+              final avgPurchaseRate =
+                  stat['avg_purchase_rate'] as double? ?? 0.0;
+              final avgSaleRate = stat['avg_sale_rate'] as double? ?? 0.0;
+              final totalPurchased =
+                  stat['total_purchased'] as double? ?? 0.0;
+              final totalSold = stat['total_sold'] as double? ?? 0.0;
+              final currentQuantity =
+                  stat['current_quantity'] as double? ?? 0.0;
+              final profit = stat['profit'] as double? ?? 0.0;
 
-                return InkWell(
-                  onTap: () {
-                    // Show detailed stats for this currency on tap
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder:
-                          (context) => DraggableScrollableSheet(
-                            initialChildSize: 0.6,
-                            maxChildSize: 0.9,
-                            minChildSize: 0.4,
-                            builder:
-                                (_, controller) => Container(
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(20),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: ListView(
-                                    controller: controller,
-                                    children: [
-                                      Text(
-                                        '${stat['currency']} ${_getTranslatedText('statistics')}',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.white : Colors.black,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        _getTranslatedText('current_balance'),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildStatRow(
-                                        _getTranslatedText('amount_label'),
-                                        '${currentQuantity.toStringAsFixed(2)} ${stat['currency']}',
-                                      ),
-                                      Divider(height: 24, color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                                      Text(
-                                        _getTranslatedText('purchase_info'),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildStatRow(
-                                        _getTranslatedText('total_purchased'),
-                                        '${totalPurchased.toStringAsFixed(2)} ${stat['currency']}',
-                                      ),
-                                      _buildStatRow(
-                                        _getTranslatedText('avg_purchase_rate'),
-                                        avgPurchaseRate.toStringAsFixed(4),
-                                      ),
-                                      _buildStatRow(
-                                        _getTranslatedText('total_spent'),
-                                        '${(avgPurchaseRate * totalPurchased).toStringAsFixed(2)} SOM',
-                                      ),
-                                      Divider(height: 24, color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                                      Text(
-                                        _getTranslatedText('sale_info'),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildStatRow(
-                                        _getTranslatedText('total_sold'),
-                                        '${totalSold.toStringAsFixed(2)} ${stat['currency']}',
-                                      ),
-                                      _buildStatRow(
-                                        _getTranslatedText('avg_sale_rate'),
-                                        avgSaleRate.toStringAsFixed(4),
-                                      ),
-                                      _buildStatRow(
-                                        _getTranslatedText('total_earned'),
-                                        '${(avgSaleRate * totalSold).toStringAsFixed(2)} SOM',
-                                      ),
-                                      Divider(height: 24, color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                                      Text(
-                                        _getTranslatedText('profit'),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              profit >= 0
-                                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _buildStatRow(
-                                        _getTranslatedText('amount_label'),
-                                        formatProfit(profit),
-                                        valueColor:
-                                            profit >= 0
-                                                ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                                : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700),
-                                      ),
-                                    ],
+              return InkWell(
+                onTap: () {
+                  // Show detailed stats for this currency on tap
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder:
+                        (context) =>
+                        DraggableScrollableSheet(
+                          initialChildSize: 0.6,
+                          maxChildSize: 0.9,
+                          minChildSize: 0.4,
+                          builder:
+                              (_, controller) =>
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.grey.shade900
+                                      : Colors.white,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(20),
                                   ),
                                 ),
-                          ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 8,
-                    ),
-                    color: isDarkMode 
-                        ? (index % 2 == 0 ? Colors.grey.shade800 : Colors.grey.shade900)
-                        : (index % 2 == 0 ? Colors.grey.shade50 : Colors.white),
-                    child: Row(
-                      children: [
-                        _buildTableCell(
-                          stat['currency'].toString(),
-                          bold: true,
-                          color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                          flex: 1,
+                                padding: const EdgeInsets.all(16),
+                                child: ListView(
+                                  controller: controller,
+                                  children: [
+                                    Text(
+                                      '${stat['currency']} ${_getTranslatedText(
+                                          'statistics')}',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      _getTranslatedText('current_balance'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildStatRow(
+                                      _getTranslatedText('amount_label'),
+                                      '${currentQuantity.toStringAsFixed(
+                                          2)} ${stat['currency']}',
+                                    ),
+                                    Divider(height: 24,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade800
+                                            : Colors.grey.shade300),
+                                    Text(
+                                      _getTranslatedText('purchase_info'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildStatRow(
+                                      _getTranslatedText('total_purchased'),
+                                      '${totalPurchased.toStringAsFixed(
+                                          2)} ${stat['currency']}',
+                                    ),
+                                    _buildStatRow(
+                                      _getTranslatedText('avg_purchase_rate'),
+                                      avgPurchaseRate.toStringAsFixed(4),
+                                    ),
+                                    _buildStatRow(
+                                      _getTranslatedText('total_spent'),
+                                      '${(avgPurchaseRate * totalPurchased)
+                                          .toStringAsFixed(2)} SOM',
+                                    ),
+                                    Divider(height: 24,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade800
+                                            : Colors.grey.shade300),
+                                    Text(
+                                      _getTranslatedText('sale_info'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildStatRow(
+                                      _getTranslatedText('total_sold'),
+                                      '${totalSold.toStringAsFixed(
+                                          2)} ${stat['currency']}',
+                                    ),
+                                    _buildStatRow(
+                                      _getTranslatedText('avg_sale_rate'),
+                                      avgSaleRate.toStringAsFixed(4),
+                                    ),
+                                    _buildStatRow(
+                                      _getTranslatedText('total_earned'),
+                                      '${(avgSaleRate * totalSold)
+                                          .toStringAsFixed(2)} SOM',
+                                    ),
+                                    Divider(height: 24,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade800
+                                            : Colors.grey.shade300),
+                                    Text(
+                                      _getTranslatedText('profit'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                        profit >= 0
+                                            ? (isDarkMode ? Colors.green
+                                            .shade300 : Colors.green.shade700)
+                                            : (isDarkMode
+                                            ? Colors.red.shade300
+                                            : Colors.red.shade700),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildStatRow(
+                                      _getTranslatedText('amount_label'),
+                                      formatProfit(profit),
+                                      valueColor:
+                                      profit >= 0
+                                          ? (isDarkMode
+                                          ? Colors.green.shade300
+                                          : Colors.green.shade700)
+                                          : (isDarkMode
+                                          ? Colors.red.shade300
+                                          : Colors.red.shade700),
+                                    ),
+                                  ],
+                                ),
+                              ),
                         ),
-                        _buildTableCell(
-                          '${currentQuantity.toStringAsFixed(2)}',
-                          flex: 2,
-                          textColor: isDarkMode ? Colors.white : null,
-                        ),
-                        _buildTableCell(
-                          avgPurchaseRate.toStringAsFixed(4),
-                          flex: 2,
-                          textColor: isDarkMode ? Colors.white : null,
-                        ),
-                        _buildTableCell(
-                          '${totalPurchased.toStringAsFixed(2)}',
-                          flex: 2,
-                          textColor: isDarkMode ? Colors.white : null,
-                        ),
-                        _buildTableCell(
-                          avgSaleRate.toStringAsFixed(4),
-                          flex: 2,
-                          textColor: isDarkMode ? Colors.white : null,
-                        ),
-                        _buildTableCell(
-                          '${totalSold.toStringAsFixed(2)}',
-                          flex: 2,
-                          textColor: isDarkMode ? Colors.white : null,
-                        ),
-                        _buildTableCell(
-                          formatProfit(profit),
-                          bold: true,
-                          color:
-                              profit >= 0
-                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700),
-                          flex: 1,
-                        ),
-                      ],
-                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 8,
                   ),
-                );
-              },
+                  color: isDarkMode
+                      ? (index % 2 == 0 ? Colors.grey.shade800 : Colors.grey
+                      .shade900)
+                      : (index % 2 == 0 ? Colors.grey.shade50 : Colors.white),
+                  child: Row(
+                    children: [
+                      _buildTableCell(
+                        stat['currency'].toString(),
+                        bold: true,
+                        color: isDarkMode ? Colors.blue.shade300 : Colors.blue
+                            .shade700,
+                        flex: 1,
+                      ),
+                      _buildTableCell(
+                        '${currentQuantity.toStringAsFixed(2)}',
+                        flex: 2,
+                        textColor: isDarkMode ? Colors.white : null,
+                      ),
+                      _buildTableCell(
+                        avgPurchaseRate.toStringAsFixed(4),
+                        flex: 2,
+                        textColor: isDarkMode ? Colors.white : null,
+                      ),
+                      _buildTableCell(
+                        '${totalPurchased.toStringAsFixed(2)}',
+                        flex: 2,
+                        textColor: isDarkMode ? Colors.white : null,
+                      ),
+                      _buildTableCell(
+                        avgSaleRate.toStringAsFixed(4),
+                        flex: 2,
+                        textColor: isDarkMode ? Colors.white : null,
+                      ),
+                      _buildTableCell(
+                        '${totalSold.toStringAsFixed(2)}',
+                        flex: 2,
+                        textColor: isDarkMode ? Colors.white : null,
+                      ),
+                      _buildTableCell(
+                        formatProfit(profit),
+                        bold: true,
+                        color:
+                        profit >= 0
+                            ? (isDarkMode ? Colors.green.shade300 : Colors.green
+                            .shade700)
+                            : (isDarkMode ? Colors.red.shade300 : Colors.red
+                            .shade700),
+                        flex: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Table Footer with totals
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.blue.shade900.withOpacity(0.3) : Colors
+                .blue.shade50,
+            border: Border(
+              left: BorderSide(
+                  color: isDarkMode ? Colors.grey.shade800 : Colors.grey
+                      .shade300),
+              right: BorderSide(
+                  color: isDarkMode ? Colors.grey.shade800 : Colors.grey
+                      .shade300),
+              bottom: BorderSide(
+                  color: isDarkMode ? Colors.grey.shade800 : Colors.grey
+                      .shade300),
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(8),
+              bottomRight: Radius.circular(8),
             ),
           ),
-          // Table Footer with totals
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            decoration: BoxDecoration(
-              color: isDarkMode ? Colors.blue.shade900.withOpacity(0.3) : Colors.blue.shade50,
-              border: Border(
-                left: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                right: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                bottom: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
+          child: Row(
+            children: [
+              _buildTableCell(
+                _getTranslatedText('total'),
+                bold: true,
+                flex: 1,
+                textColor: isDarkMode ? Colors.white : null,
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
+              _buildTableCell(
+                _calculateTotal(currenciesToDisplay, 'current_quantity')
+                    .toStringAsFixed(2),
+                bold: true,
+                flex: 2,
+                textColor: isDarkMode ? Colors.white : null,
               ),
-            ),
-            child: Row(
-              children: [
-                _buildTableCell(
-                  _getTranslatedText('total'),
-                  bold: true,
-                  flex: 1,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
-                _calculateTotal(currenciesToDisplay, 'current_quantity').toStringAsFixed(2),
-                  bold: true,
-                  flex: 2,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
-                  "-", // Avg purchase rate doesn't have a meaningful total
-                  bold: true,
-                  flex: 2,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
-                _calculateTotal(currenciesToDisplay, 'total_purchased').toStringAsFixed(2),
-                  bold: true,
-                  flex: 2,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
-                  "-", // Avg sale rate doesn't have a meaningful total
-                  bold: true,
-                  flex: 2,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
-                _calculateTotal(currenciesToDisplay, 'total_sold').toStringAsFixed(2),
-                  bold: true,
-                  flex: 2,
-                  textColor: isDarkMode ? Colors.white : null,
-                ),
-                _buildTableCell(
+              _buildTableCell(
+                "-", // Avg purchase rate doesn't have a meaningful total
+                bold: true,
+                flex: 2,
+                textColor: isDarkMode ? Colors.white : null,
+              ),
+              _buildTableCell(
+                _calculateTotal(currenciesToDisplay, 'total_purchased')
+                    .toStringAsFixed(2),
+                bold: true,
+                flex: 2,
+                textColor: isDarkMode ? Colors.white : null,
+              ),
+              _buildTableCell(
+                "-", // Avg sale rate doesn't have a meaningful total
+                bold: true,
+                flex: 2,
+                textColor: isDarkMode ? Colors.white : null,
+              ),
+              _buildTableCell(
+                _calculateTotal(currenciesToDisplay, 'total_sold')
+                    .toStringAsFixed(2),
+                bold: true,
+                flex: 2,
+                textColor: isDarkMode ? Colors.white : null,
+              ),
+              _buildTableCell(
                 formatProfit(_calculateTotal(currenciesToDisplay, 'profit')),
-                  bold: true,
-                  color:
-                    _calculateTotal(currenciesToDisplay, 'profit') >= 0
-                          ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                          : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700),
-                  flex: 1,
-                ),
-              ],
-            ),
+                bold: true,
+                color:
+                _calculateTotal(currenciesToDisplay, 'profit') >= 0
+                    ? (isDarkMode ? Colors.green.shade300 : Colors.green
+                    .shade700)
+                    : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700),
+                flex: 1,
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
     );
   }
 
@@ -671,8 +748,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildTableCell(
-    String text, {
+  Widget _buildTableCell(String text, {
     bool bold = false,
     Color? color,
     Color? textColor,
@@ -694,18 +770,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   double _calculateTotal(List<Map<String, dynamic>> stats, String field) {
-    return stats.fold(0.0, (sum, stat) => sum + (stat[field] as double? ?? 0.0));
+    return stats.fold(
+        0.0, (sum, stat) => sum + (stat[field] as double? ?? 0.0));
   }
 
   Widget _buildLandscapeSummaryCards() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
     return Row(
       children: [
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
-            color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors.blue.shade50.withOpacity(0.8),
+            color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors
+                .blue.shade50.withOpacity(0.8),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -716,7 +796,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700.withOpacity(0.9),
+                      color: isDarkMode ? Colors.blue.shade300 : Colors.blue
+                          .shade700.withOpacity(0.9),
                     ),
                   ),
                   Text(
@@ -724,7 +805,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700.withOpacity(0.9),
+                      color: isDarkMode ? Colors.blue.shade300 : Colors.blue
+                          .shade700.withOpacity(0.9),
                     ),
                   ),
                 ],
@@ -737,7 +819,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             onTap: () => _showForeignCurrencyValueDetails(),
             child: Card(
               margin: const EdgeInsets.all(8),
-              color: isDarkMode ? Colors.green.shade900.withOpacity(0.7) : Colors.green.shade50.withOpacity(0.8),
+              color: isDarkMode
+                  ? Colors.green.shade900.withOpacity(0.7)
+                  : Colors.green.shade50.withOpacity(0.8),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -750,13 +834,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700.withOpacity(0.9),
+                            color: isDarkMode ? Colors.green.shade300 : Colors
+                                .green.shade700.withOpacity(0.9),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Icon(
                           Icons.info_outline,
-                          color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700.withOpacity(0.9),
+                          color: isDarkMode ? Colors.green.shade300 : Colors
+                              .green.shade700.withOpacity(0.9),
                           size: 20,
                         ),
                       ],
@@ -766,7 +852,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700.withOpacity(0.9),
+                        color: isDarkMode ? Colors.green.shade300 : Colors.green
+                            .shade700.withOpacity(0.9),
                       ),
                     ),
                   ],
@@ -778,7 +865,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
-            color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors.indigo.shade50.withOpacity(0.8),
+            color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors
+                .indigo.shade50.withOpacity(0.8),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -789,17 +877,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.indigo.shade300 : Colors.indigo.shade700.withOpacity(0.9),
+                      color: isDarkMode ? Colors.indigo.shade300 : Colors.indigo
+                          .shade700.withOpacity(0.9),
                     ),
                   ),
                   Text(
                     '${formatProfit(_totalProfit)} SOM',
                     style: TextStyle(
-                      fontSize: 16, 
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: _totalProfit >= 0 
-                          ? (isDarkMode ? Colors.cyan.shade300 : Colors.cyan.shade700)
-                          : (isDarkMode ? Colors.pink.shade300 : Colors.pink.shade700),
+                      color: _totalProfit >= 0
+                          ? (isDarkMode ? Colors.cyan.shade300 : Colors.cyan
+                          .shade700)
+                          : (isDarkMode ? Colors.pink.shade300 : Colors.pink
+                          .shade700),
                     ),
                   ),
                 ],
@@ -812,14 +903,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   void _showForeignCurrencyValueDetails() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
     // Get currencies excluding SOM, with non-zero purchased amount
-    final currencies = _currencyStats.where((stat) => 
-      stat['currency'] != 'SOM' && 
-      (stat['total_purchased'] as double? ?? 0.0) > 0
+    final currencies = _currencyStats.where((stat) =>
+    stat['currency'] != 'SOM' &&
+        (stat['total_purchased'] as double? ?? 0.0) > 0
     ).toList();
-    
+
     if (currencies.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -829,211 +922,247 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       );
       return;
     }
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        builder: (_, controller) => Container(
-          decoration: BoxDecoration(
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _getTranslatedText('foreign_currency_value_breakdown'),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              // Table headers
-              Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode 
-                      ? Colors.green.shade900.withOpacity(0.9)
-                      : Colors.green.shade700.withOpacity(0.9),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    topRight: Radius.circular(8),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                child: Row(
-                  children: [
-                    _buildTableHeaderCell(
-                      _getTranslatedText('currency_code_header'),
-                      flex: 1,
-                    ),
-                    _buildTableHeaderCell(
-                      _getTranslatedText('total_purchased'),
-                      flex: 2,
-                    ),
-                    _buildTableHeaderCell(
-                      _getTranslatedText('avg_purchase_rate'),
-                      flex: 2,
-                    ),
-                    _buildTableHeaderCell(
-                      _getTranslatedText('total_value'),
-                      flex: 2,
-                    ),
-                  ],
-                ),
-              ),
-              // Table body
-              Expanded(
-                child: Container(
+      builder: (context) =>
+          DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            maxChildSize: 0.9,
+            minChildSize: 0.4,
+            builder: (_, controller) =>
+                Container(
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300
+                    color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
                     ),
                   ),
-                  child: ListView.separated(
-                    controller: controller,
-                    shrinkWrap: true,
-                    itemCount: currencies.length,
-                    separatorBuilder: (context, index) => 
-                      Divider(
-                        height: 1, 
-                        color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300
-                      ),
-                    itemBuilder: (context, index) {
-                      final currency = currencies[index];
-                      final code = currency['currency'] as String;
-                      final totalPurchased = currency['total_purchased'] as double? ?? 0.0;
-                      final avgPurchaseRate = currency['avg_purchase_rate'] as double? ?? 0.0;
-                      final totalValue = totalPurchased * avgPurchaseRate;
-                      
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12, 
-                          horizontal: 8,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _getTranslatedText('foreign_currency_value_breakdown'),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
-                        color: isDarkMode
-                            ? (index % 2 == 0 ? Colors.grey.shade800 : Colors.grey.shade900)
-                            : (index % 2 == 0 ? Colors.grey.shade50 : Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      // Table headers
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.green.shade900.withOpacity(0.9)
+                              : Colors.green.shade700.withOpacity(0.9),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            topRight: Radius.circular(8),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
                         child: Row(
                           children: [
-                            _buildTableCell(
-                              code,
-                              bold: true,
-                              color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700,
+                            _buildTableHeaderCell(
+                              _getTranslatedText('currency_code_header'),
                               flex: 1,
                             ),
-                            _buildTableCell(
-                              totalPurchased.toStringAsFixed(2),
+                            _buildTableHeaderCell(
+                              _getTranslatedText('total_purchased'),
                               flex: 2,
-                              textColor: isDarkMode ? Colors.white : null,
                             ),
-                            _buildTableCell(
-                              avgPurchaseRate.toStringAsFixed(4),
+                            _buildTableHeaderCell(
+                              _getTranslatedText('avg_purchase_rate'),
                               flex: 2,
-                              textColor: isDarkMode ? Colors.white : null,
                             ),
-                            _buildTableCell(
-                              totalValue.toStringAsFixed(2),
-                              bold: true,
+                            _buildTableHeaderCell(
+                              _getTranslatedText('total_value'),
                               flex: 2,
-                              textColor: isDarkMode ? Colors.white : null,
                             ),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                      // Table body
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: isDarkMode
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade300
+                            ),
+                          ),
+                          child: ListView.separated(
+                            controller: controller,
+                            shrinkWrap: true,
+                            itemCount: currencies.length,
+                            separatorBuilder: (context, index) =>
+                                Divider(
+                                    height: 1,
+                                    color: isDarkMode
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300
+                                ),
+                            itemBuilder: (context, index) {
+                              final currency = currencies[index];
+                              final code = currency['currency'] as String;
+                              final totalPurchased = currency['total_purchased'] as double? ??
+                                  0.0;
+                              final avgPurchaseRate = currency['avg_purchase_rate'] as double? ??
+                                  0.0;
+                              final totalValue = totalPurchased *
+                                  avgPurchaseRate;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 8,
+                                ),
+                                color: isDarkMode
+                                    ? (index % 2 == 0
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade900)
+                                    : (index % 2 == 0
+                                    ? Colors.grey.shade50
+                                    : Colors.white),
+                                child: Row(
+                                  children: [
+                                    _buildTableCell(
+                                      code,
+                                      bold: true,
+                                      color: isDarkMode
+                                          ? Colors.green.shade300
+                                          : Colors.green.shade700,
+                                      flex: 1,
+                                    ),
+                                    _buildTableCell(
+                                      totalPurchased.toStringAsFixed(2),
+                                      flex: 2,
+                                      textColor: isDarkMode
+                                          ? Colors.white
+                                          : null,
+                                    ),
+                                    _buildTableCell(
+                                      avgPurchaseRate.toStringAsFixed(4),
+                                      flex: 2,
+                                      textColor: isDarkMode
+                                          ? Colors.white
+                                          : null,
+                                    ),
+                                    _buildTableCell(
+                                      totalValue.toStringAsFixed(2),
+                                      bold: true,
+                                      flex: 2,
+                                      textColor: isDarkMode
+                                          ? Colors.white
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // Table footer with total
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.green.shade900.withOpacity(0.3)
+                              : Colors.green.shade50,
+                          border: Border(
+                            left: BorderSide(color: isDarkMode
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade300),
+                            right: BorderSide(color: isDarkMode
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade300),
+                            bottom: BorderSide(color: isDarkMode
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade300),
+                          ),
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildTableCell(
+                              _getTranslatedText('total'),
+                              bold: true,
+                              flex: 1,
+                              textColor: isDarkMode ? Colors.white : null,
+                            ),
+                            _buildTableCell(
+                              _calculateTotal(currencies, 'total_purchased')
+                                  .toStringAsFixed(2),
+                              bold: true,
+                              flex: 2,
+                              textColor: isDarkMode ? Colors.white : null,
+                            ),
+                            _buildTableCell(
+                              "-", // Average doesn't have a meaningful total
+                              bold: true,
+                              flex: 2,
+                              textColor: isDarkMode ? Colors.white : null,
+                            ),
+                            _buildTableCell(
+                              _kassaValue.toStringAsFixed(2),
+                              bold: true,
+                              color: isDarkMode ? Colors.green.shade300 : Colors
+                                  .green.shade700,
+                              flex: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              // Table footer with total
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                decoration: BoxDecoration(
-                  color: isDarkMode 
-                      ? Colors.green.shade900.withOpacity(0.3)
-                      : Colors.green.shade50,
-                  border: Border(
-                    left: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                    right: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                    bottom: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    _buildTableCell(
-                      _getTranslatedText('total'),
-                      bold: true,
-                      flex: 1,
-                      textColor: isDarkMode ? Colors.white : null,
-                    ),
-                    _buildTableCell(
-                      _calculateTotal(currencies, 'total_purchased').toStringAsFixed(2),
-                      bold: true,
-                      flex: 2,
-                      textColor: isDarkMode ? Colors.white : null,
-                    ),
-                    _buildTableCell(
-                      "-", // Average doesn't have a meaningful total
-                      bold: true,
-                      flex: 2,
-                      textColor: isDarkMode ? Colors.white : null,
-                    ),
-                    _buildTableCell(
-                      _kassaValue.toStringAsFixed(2),
-                      bold: true,
-                      color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700,
-                      flex: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
-        ),
-      ),
     );
   }
 
   Widget _buildProfitPieChart() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    final isDarkMode = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
     // Get currencies excluding SOM, with non-zero profit
     final currenciesWithProfit = _currencyStats
-        .where((stat) => 
-            stat['currency'] != 'SOM' && 
-            ((stat['profit'] as double? ?? 0.0).abs() > 0.01)) // Only include if profit is not near-zero
+        .where((stat) =>
+    stat['currency'] != 'SOM' &&
+        ((stat['profit'] as double? ?? 0.0).abs() >
+            0.01)) // Only include if profit is not near-zero
         .toList();
-    
+
     if (currenciesWithProfit.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Center(
           child: Text(
             _getTranslatedText('no_profit_data'),
-            style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
+            style: TextStyle(
+                color: isDarkMode ? Colors.grey.shade400 : Colors.grey
+                    .shade600),
           ),
         ),
       );
     }
 
     // Sort by profit value (absolute) for better visualization
-    currenciesWithProfit.sort((a, b) => 
+    currenciesWithProfit.sort((a, b) =>
         (b['profit'] as double).abs().compareTo((a['profit'] as double).abs()));
-    
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1050,22 +1179,33 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             spacing: 16,
             runSpacing: 8,
             alignment: WrapAlignment.center,
-            children: currenciesWithProfit.asMap().entries.map((entry) {
+            children: currenciesWithProfit
+                .asMap()
+                .entries
+                .map((entry) {
               final index = entry.key;
               final currency = entry.value;
               final profit = currency['profit'] as double;
               final isPositive = profit >= 0;
-              
+
               // Assign a color based on index and profit sign
               final hue = 120 + (index * 50) % 240;
-              final color = profit >= 0 
+              final color = profit >= 0
                   ? (isDarkMode
-                      ? HSLColor.fromAHSL(1.0, hue.toDouble(), 0.8, 0.3).toColor().withOpacity(0.9)
-                      : HSLColor.fromAHSL(1.0, hue.toDouble(), 0.7, 0.5).toColor().withOpacity(0.9))
+                  ? HSLColor
+                  .fromAHSL(1.0, hue.toDouble(), 0.8, 0.3)
+                  .toColor()
+                  .withOpacity(0.9)
+                  : HSLColor
+                  .fromAHSL(1.0, hue.toDouble(), 0.7, 0.5)
+                  .toColor()
+                  .withOpacity(0.9))
                   : (isDarkMode
-                      ? HSLColor.fromAHSL(1.0, 0.0, 0.8, 0.3).toColor().withOpacity(0.9)
-                      : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(0.9)); // Red for negative
-                  
+                  ? HSLColor.fromAHSL(1.0, 0.0, 0.8, 0.3).toColor().withOpacity(
+                  0.9)
+                  : HSLColor.fromAHSL(1.0, 0.0, 0.7, 0.5).toColor().withOpacity(
+                  0.9)); // Red for negative
+
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1083,9 +1223,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: isPositive 
-                          ? (isDarkMode ? Colors.cyan.shade300 : Colors.green.shade800)
-                          : (isDarkMode ? Colors.pink.shade300 : Colors.red.shade800),
+                      color: isPositive
+                          ? (isDarkMode ? Colors.cyan.shade300 : Colors.green
+                          .shade800)
+                          : (isDarkMode ? Colors.pink.shade300 : Colors.red
+                          .shade800),
                     ),
                   ),
                 ],
@@ -1115,7 +1257,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ),
     );
   }
-
+}
 
 class _ProfitPieChart extends StatelessWidget {
   final List<Map<String, dynamic>> currencies;
