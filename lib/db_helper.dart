@@ -1324,7 +1324,7 @@ class DatabaseHelper {
           .where('date', isGreaterThanOrEqualTo: fromDateStr)
           .where('date', isLessThanOrEqualTo: toDateStr)
           .orderBy('date', descending: true)
-              .get();
+          .get();
 
       debugPrint('Found ${archiveQuery.docs.length} archive records');
 
@@ -1338,43 +1338,57 @@ class DatabaseHelper {
       final Map<String, Map<String, dynamic>> purchaseData = {};
       final Map<String, Map<String, dynamic>> salesData = {};
 
-      // Use the most recent archive record in the date range
-      final archiveDoc = archiveQuery.docs.first.data();
-      if (!archiveDoc.containsKey('currencies')) {
-        debugPrint('Archive record missing currencies data');
-        return {'purchases': [], 'sales': []};
-      }
-
-      // Process currencies data to extract purchase and sales information
-      final currenciesData = List<Map<String, dynamic>>.from(archiveDoc['currencies'] ?? []);
-      for (var currency in currenciesData) {
-        final currencyCode = currency['currency_code'] as String;
-        
-        // Skip SOM currency
-        if (currencyCode == 'SOM') continue;
-
-        // Extract purchase data
-        final totalPurchased = _safeDouble(currency['total_purchased']);
-        final totalPurchaseAmount = _safeDouble(currency['total_purchase_amount']);
-        
-        if (totalPurchased > 0) {
-            purchaseData[currencyCode] = {
-              'currency': currencyCode,
-            'total_value': totalPurchaseAmount,
-            'count': 1, // Simplified count since we're aggregating from archive
-          };
+      // Process all archive documents in the date range
+      for (var doc in archiveQuery.docs) {
+        final archiveDoc = doc.data();
+        if (!archiveDoc.containsKey('currencies')) {
+          debugPrint('Archive record missing currencies data, skipping...');
+          continue;
         }
-        
-        // Extract sales data
-        final totalSold = _safeDouble(currency['total_sold']);
-        final totalSaleAmount = _safeDouble(currency['total_sale_amount']);
-        
-        if (totalSold > 0) {
-            salesData[currencyCode] = {
-              'currency': currencyCode,
-            'total_value': totalSaleAmount,
-            'count': 1, // Simplified count since we're aggregating from archive
-            };
+
+        // Process currencies data to extract purchase and sales information
+        final currenciesData = List<Map<String, dynamic>>.from(archiveDoc['currencies'] ?? []);
+        for (var currency in currenciesData) {
+          final currencyCode = currency['currency_code'] as String;
+          
+          // Skip SOM currency
+          if (currencyCode == 'SOM') continue;
+
+          // Extract purchase data
+          final totalPurchased = _safeDouble(currency['total_purchased']);
+          final totalPurchaseAmount = _safeDouble(currency['total_purchase_amount']);
+          
+          if (totalPurchased > 0) {
+            if (!purchaseData.containsKey(currencyCode)) {
+              purchaseData[currencyCode] = {
+                'currency': currencyCode,
+                'total_value': 0.0,
+                'count': 0,
+              };
+            }
+            purchaseData[currencyCode]!['total_value'] = 
+                _safeDouble(purchaseData[currencyCode]!['total_value']) + totalPurchaseAmount;
+            purchaseData[currencyCode]!['count'] = 
+                (purchaseData[currencyCode]!['count'] as int) + 1;
+          }
+          
+          // Extract sales data
+          final totalSold = _safeDouble(currency['total_sold']);
+          final totalSaleAmount = _safeDouble(currency['total_sale_amount']);
+          
+          if (totalSold > 0) {
+            if (!salesData.containsKey(currencyCode)) {
+              salesData[currencyCode] = {
+                'currency': currencyCode,
+                'total_value': 0.0,
+                'count': 0,
+              };
+            }
+            salesData[currencyCode]!['total_value'] = 
+                _safeDouble(salesData[currencyCode]!['total_value']) + totalSaleAmount;
+            salesData[currencyCode]!['count'] = 
+                (salesData[currencyCode]!['count'] as int) + 1;
+          }
         }
       }
 
@@ -1386,6 +1400,7 @@ class DatabaseHelper {
         ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
       debugPrint('Processed ${purchases.length} purchase currencies and ${sales.length} sales currencies');
+      debugPrint('Total documents processed: ${archiveQuery.docs.length}');
 
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
