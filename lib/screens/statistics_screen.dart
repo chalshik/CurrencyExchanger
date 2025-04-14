@@ -84,6 +84,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             kassaValue += avgPurchaseRate * totalPurchased;
           }
         }
+        kassaValue+= somBalance;
 
         setState(() {
           _currencyStats = currencyStats;

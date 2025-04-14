@@ -1047,25 +1047,37 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
   }
 
   Widget _buildNumpad() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       children: [
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: isDarkMode 
+                    ? Colors.black.withOpacity(0.3) 
+                    : Colors.grey.shade200,
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),
             ],
-            border: Border.all(color: Colors.grey.shade300),
-            gradient: LinearGradient(
-              colors: [Colors.grey.shade50, Colors.grey.shade100],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+            border: Border.all(
+              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300
             ),
+            gradient: isDarkMode
+                ? LinearGradient(
+                    colors: [Colors.grey.shade900, Colors.grey.shade800],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  )
+                : LinearGradient(
+                    colors: [Colors.grey.shade50, Colors.grey.shade100],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
           ),
           padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.symmetric(vertical: 8),
@@ -1085,7 +1097,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '⌫',
                     isFunction: true,
-                    color: Colors.blue.shade300.withOpacity(0.8),
+                    color: isDarkMode 
+                        ? Colors.blue.shade700
+                        : Colors.blue.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1102,7 +1116,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     'C',
                     isFunction: true,
-                    color: Colors.orange.shade300.withOpacity(0.8),
+                    color: isDarkMode
+                        ? Colors.orange.shade700
+                        : Colors.orange.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1119,7 +1135,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '⇄',
                     isFunction: true,
-                    color: Colors.red.shade300.withOpacity(0.8),
+                    color: isDarkMode
+                        ? Colors.red.shade700
+                        : Colors.red.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1136,7 +1154,9 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   _buildNumpadButton(
                     '↵',
                     isFunction: true,
-                    color: Colors.green.shade300.withOpacity(0.8),
+                    color: isDarkMode
+                        ? Colors.green.shade700
+                        : Colors.green.shade300.withOpacity(0.8),
                   ),
                 ],
               ),
@@ -1153,21 +1173,33 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     bool isFunction = false,
     Color? color,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       width: 70,
       height: 70,
       decoration: BoxDecoration(
-        color: isFunction ? color : Colors.white,
+        color: isFunction 
+            ? color 
+            : isDarkMode 
+                ? Colors.grey.shade800 
+                : Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade300.withOpacity(0.5),
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.shade300.withOpacity(0.5),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
         ],
         border: Border.all(
-          color: isFunction ? Colors.transparent : Colors.grey.shade300,
+          color: isFunction 
+              ? Colors.transparent 
+              : isDarkMode 
+                  ? Colors.grey.shade700 
+                  : Colors.grey.shade300,
           width: 1,
         ),
       ),
@@ -1180,7 +1212,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: isFunction ? Colors.white : Colors.black87,
+              color: isFunction 
+                  ? Colors.white 
+                  : isDarkMode 
+                      ? Colors.white 
+                      : Colors.black87,
             ),
           ),
         ),
