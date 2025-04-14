@@ -226,5 +226,8 @@
   "exit_confirmation": "Are you sure you want to exit the app?",
   "exit": "Exit",
   "distribution": "Distribution",
-  "bar_chart": "Bar Chart"
+  "bar_chart": "Bar Chart",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "monthly": "Monthly"
 } 

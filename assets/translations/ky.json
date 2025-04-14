@@ -224,5 +224,8 @@
   "exit_confirmation": "Колдонмодон чыгууну каалайсызбы?",
   "exit": "Чыгуу",
   "distribution": "Бөлүштүрүү",
-  "bar_chart": "Диаграмма"
+  "bar_chart": "Диаграмма",
+  "daily": "Күндүк",
+  "weekly": "Жумалык",
+  "monthly": "Айлык"
 } 

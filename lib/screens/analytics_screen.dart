@@ -99,15 +99,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         children: [
           // Chart type selector
           _buildChartTypeSelector(),
-          // Date range display
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              '${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedStartDate)} '
-              '- ${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedEndDate)}',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          ),
           // Main chart area
           Expanded(
             child: FutureBuilder<dynamic>(
@@ -157,25 +148,98 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   Widget _buildChartTypeSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
         children: [
-          // Pie chart button
-          _buildChartTypeButton(
-            type: ChartType.distribution,
-            icon: Icons.pie_chart,
-            label: _getTranslatedText('distribution'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pie chart button
+              _buildChartTypeButton(
+                type: ChartType.distribution,
+                icon: Icons.pie_chart,
+                label: _getTranslatedText('distribution'),
+              ),
+              const SizedBox(width: 12),
+              // Bar chart button
+              _buildChartTypeButton(
+                type: ChartType.bar,
+                icon: Icons.bar_chart,
+                label: _getTranslatedText('bar_chart'),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Bar chart button
-          _buildChartTypeButton(
-            type: ChartType.bar,
-            icon: Icons.bar_chart,
-            label: _getTranslatedText('bar_chart'),
+          const SizedBox(height: 8),
+          // Date range picker
+          InkWell(
+            onTap: () => _showDateRangePicker(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.grey.shade700 
+                      : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade800
+                    : Colors.grey.shade50,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: Theme.of(context).primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedStartDate)} '
+                    '- ${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedEndDate)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showDateRangePicker() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: _selectedStartDate,
+        end: _selectedEndDate,
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).primaryColor,
+              onPrimary: Colors.white,
+              surface: Theme.of(context).cardColor,
+              onSurface: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedStartDate = picked.start;
+        _selectedEndDate = picked.end;
+        _refreshData();
+      });
+    }
   }
 
   Widget _buildChartTypeButton({

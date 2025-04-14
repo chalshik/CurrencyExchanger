@@ -21,7 +21,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   double _kassaValue = 0.0;
   bool _isLoading = false;
   late TabController _tabController;
-  DateTime _startDate = DateTime.now().subtract(Duration(days: 7));
+  DateTime _startDate = DateTime.now().subtract(Duration(days: 30));
   DateTime _endDate = DateTime.now();
 
   // Translation helper method
@@ -270,6 +270,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Date Range Selector
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: _buildDatePicker(),
+                      ),
                       isLandscape
                           ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
                           : _buildSummaryCards(
@@ -814,6 +819,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   void _showForeignCurrencyValueDetails() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     // Get currencies excluding SOM, with non-zero purchased amount
     final currencies = _currencyStats.where((stat) => 
       stat['currency'] != 'SOM' && 
@@ -839,9 +846,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         maxChildSize: 0.9,
         minChildSize: 0.4,
         builder: (_, controller) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+            borderRadius: const BorderRadius.vertical(
               top: Radius.circular(20),
             ),
           ),
@@ -851,9 +858,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             children: [
               Text(
                 _getTranslatedText('foreign_currency_value_breakdown'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -861,7 +869,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               // Table headers
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.green.shade700.withOpacity(0.9),
+                  color: isDarkMode 
+                      ? Colors.green.shade900.withOpacity(0.9)
+                      : Colors.green.shade700.withOpacity(0.9),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(8),
                     topRight: Radius.circular(8),
@@ -893,14 +903,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300
+                    ),
                   ),
                   child: ListView.separated(
                     controller: controller,
                     shrinkWrap: true,
                     itemCount: currencies.length,
                     separatorBuilder: (context, index) => 
-                      Divider(height: 1, color: Colors.grey.shade300),
+                      Divider(
+                        height: 1, 
+                        color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300
+                      ),
                     itemBuilder: (context, index) {
                       final currency = currencies[index];
                       final code = currency['currency'] as String;
@@ -913,27 +928,32 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                           vertical: 12, 
                           horizontal: 8,
                         ),
-                        color: index % 2 == 0 ? Colors.grey.shade50 : Colors.white,
+                        color: isDarkMode
+                            ? (index % 2 == 0 ? Colors.grey.shade800 : Colors.grey.shade900)
+                            : (index % 2 == 0 ? Colors.grey.shade50 : Colors.white),
                         child: Row(
                           children: [
                             _buildTableCell(
                               code,
                               bold: true,
-                              color: Colors.green.shade700,
+                              color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700,
                               flex: 1,
                             ),
                             _buildTableCell(
                               totalPurchased.toStringAsFixed(2),
                               flex: 2,
+                              textColor: isDarkMode ? Colors.white : null,
                             ),
                             _buildTableCell(
                               avgPurchaseRate.toStringAsFixed(4),
                               flex: 2,
+                              textColor: isDarkMode ? Colors.white : null,
                             ),
                             _buildTableCell(
                               totalValue.toStringAsFixed(2),
                               bold: true,
                               flex: 2,
+                              textColor: isDarkMode ? Colors.white : null,
                             ),
                           ],
                         ),
@@ -946,11 +966,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: isDarkMode 
+                      ? Colors.green.shade900.withOpacity(0.3)
+                      : Colors.green.shade50,
                   border: Border(
-                    left: BorderSide(color: Colors.grey.shade300),
-                    right: BorderSide(color: Colors.grey.shade300),
-                    bottom: BorderSide(color: Colors.grey.shade300),
+                    left: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
+                    right: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
+                    bottom: BorderSide(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
                   ),
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(8),
@@ -963,21 +985,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                       _getTranslatedText('total'),
                       bold: true,
                       flex: 1,
+                      textColor: isDarkMode ? Colors.white : null,
                     ),
                     _buildTableCell(
                       _calculateTotal(currencies, 'total_purchased').toStringAsFixed(2),
                       bold: true,
                       flex: 2,
+                      textColor: isDarkMode ? Colors.white : null,
                     ),
                     _buildTableCell(
                       "-", // Average doesn't have a meaningful total
                       bold: true,
                       flex: 2,
+                      textColor: isDarkMode ? Colors.white : null,
                     ),
                     _buildTableCell(
                       _kassaValue.toStringAsFixed(2),
                       bold: true,
-                      color: Colors.green.shade700,
+                      color: isDarkMode ? Colors.green.shade300 : Colors.green.shade700,
                       flex: 2,
                     ),
                   ],
@@ -1100,43 +1125,80 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   // Soften date picker button
   Widget _buildDatePicker() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => _showDateRangePicker(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade100.withOpacity(0.8),
-              foregroundColor: Colors.blue.shade700.withOpacity(0.9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700.withOpacity(0.9),
-                ),
-              ),
-            ),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return InkWell(
+      onTap: () => _showDateRangePicker(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDarkMode ? Colors.blue.shade700 : Colors.blue.shade300,
+            width: 1.5,
           ),
+          color: isDarkMode 
+              ? Colors.blue.shade900.withOpacity(0.3) 
+              : Colors.blue.shade50.withOpacity(0.8),
         ),
-      ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.date_range,
+                  size: 20,
+                  color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _getTranslatedText('date_range'),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.blue.shade800,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   // Add this method to handle date range picking
   void _showDateRangePicker() {
-    // Implement date range picker logic
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: isDarkMode ? Colors.blue.shade700 : Colors.blue.shade600,
+              onPrimary: Colors.white,
+              surface: isDarkMode ? Colors.grey.shade900 : Colors.white,
+              onSurface: isDarkMode ? Colors.white : Colors.black,
+            ),
+            dialogBackgroundColor: isDarkMode ? Colors.grey.shade900 : Colors.white,
+          ),
+          child: child!,
+        );
+      },
     ).then((dateRange) {
       if (dateRange != null) {
         setState(() {

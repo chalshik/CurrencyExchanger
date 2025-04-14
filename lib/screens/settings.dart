@@ -420,41 +420,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 obscureText: true,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: 'user',
-                decoration: InputDecoration(
-                  labelText: _getTranslatedText('role'),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'user',
-                    child: Text(
-                      _getTranslatedText('user'),
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'admin',
-                    child: Text(
-                      _getTranslatedText('admin'),
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    _roleController.text = value;
-                  }
-                },
-              ),
             ],
           ),
           actions: [
@@ -486,7 +451,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final newUser = UserModel(
                       username: _usernameController.text,
                       password: _passwordController.text,
-                      role: _roleController.text,
+                      role: 'user', // Always set role to 'user'
                     );
 
                     await _dbHelper.createUser(newUser);
@@ -1213,9 +1178,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       )
                       : ListView.builder(
-                        itemCount: _users.length,
+                        itemCount: _users.where((user) => user.role != 'admin').length,
                         itemBuilder: (context, index) {
-                          final user = _users[index];
+                          // Filter out admin users and get the user at the current index
+                          final user = _users.where((user) => user.role != 'admin').elementAt(index);
                           return Card(
                             margin: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -1230,16 +1196,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 horizontal: 16,
                                 vertical: 8,
                               ),
-                              leading: CircleAvatar(
+                              leading: const CircleAvatar(
                                 radius: 24,
-                                backgroundColor:
-                                    user.role == 'admin'
-                                        ? Colors.orange
-                                        : Colors.blue,
+                                backgroundColor: Colors.blue,
                                 child: Icon(
-                                  user.role == 'admin'
-                                      ? Icons.admin_panel_settings
-                                      : Icons.person,
+                                  Icons.person,
                                   color: Colors.white,
                                   size: 28,
                                 ),
@@ -1254,7 +1215,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Text(
-                                  '${_getTranslatedText('role')}: ${_getTranslatedText(user.role)}\n'
                                   '${_getTranslatedText('created')}: ${DateFormat('dd-MM-yy').format(user.createdAt)}',
                                   style: const TextStyle(fontSize: 14),
                                 ),
