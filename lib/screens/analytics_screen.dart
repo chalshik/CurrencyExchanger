@@ -160,57 +160,87 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Pie chart icon for distribution
-          Material(
-            color:
-                _selectedChartType == ChartType.distribution
-                    ? Theme.of(context).primaryColor.withOpacity(0.2)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap:
-                  () => setState(
-                    () => _selectedChartType = ChartType.distribution,
-                  ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(
-                  Icons.pie_chart,
-                  size: 24,
-                  color:
-                      _selectedChartType == ChartType.distribution
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey,
-                ),
-              ),
-            ),
+          // Pie chart button
+          _buildChartTypeButton(
+            type: ChartType.distribution,
+            icon: Icons.pie_chart,
+            label: _getTranslatedText('distribution'),
           ),
-          const SizedBox(width: 16),
-          // Bar chart icon
-          Material(
-            color:
-                _selectedChartType == ChartType.bar
-                    ? Theme.of(context).primaryColor.withOpacity(0.2)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => setState(() => _selectedChartType = ChartType.bar),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(
-                  Icons.bar_chart,
-                  size: 24,
-                  color:
-                      _selectedChartType == ChartType.bar
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey,
-                ),
-              ),
-            ),
+          const SizedBox(width: 12),
+          // Bar chart button
+          _buildChartTypeButton(
+            type: ChartType.bar,
+            icon: Icons.bar_chart,
+            label: _getTranslatedText('bar_chart'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChartTypeButton({
+    required ChartType type,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _selectedChartType == type;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return InkWell(
+      onTap: () => setState(() => _selectedChartType = type),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 120,
+        height: 48,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: isDarkMode
+                      ? [Colors.blue.shade700, Colors.blue.shade900]
+                      : [Colors.blue.shade400, Colors.blue.shade600],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected 
+              ? null 
+              : isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: isDarkMode
+                        ? Colors.black.withOpacity(0.5)
+                        : Colors.blue.shade200.withOpacity(0.5),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? Colors.white
+                  : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -445,95 +475,137 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       children: [
         // Top section with selectors
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color:
-                        Theme.of(context).dividerTheme.color ??
-                        Colors.transparent,
+              // Currency selector - enlarged and styled
+              Expanded(
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey.shade700 
+                          : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade50,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black.withOpacity(0.3)
+                            : Colors.grey.shade200.withOpacity(0.5),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButton<String>(
-                  value: _selectedCurrency,
-                  underline: const SizedBox(),
-                  isDense: true,
-                  items:
-                      _availableCurrencies.map((currency) {
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedCurrency,
+                      isExpanded: true,
+                      icon: Icon(
+                        Icons.arrow_drop_down,
+                        color: Theme.of(context).primaryColor,
+                        size: 28,
+                      ),
+                      items: _availableCurrencies.map((currency) {
                         return DropdownMenuItem(
                           value: currency,
                           child: Text(
                             currency,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.copyWith(
-                              fontWeight:
-                                  currency ==
-                                          _getTranslatedText('all_currencies')
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: currency == _getTranslatedText('all_currencies')
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontSize: 16,
                             ),
                           ),
                         );
                       }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCurrency = value;
-                      _refreshData();
-                    });
-                  },
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCurrency = value;
+                          _refreshData();
+                        });
+                      },
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
-              // New date aggregation selector
-              
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color:
-                        Theme.of(context).dividerTheme.color ??
-                        Colors.transparent,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: DropdownButton<DateAggregation>(
-                  value: _dateAggregation,
-                  underline: const SizedBox(),
-                  isDense: true,
-                  items: DateAggregation.values.map((agg) {
-                    String label;
-                    switch (agg) {
-                      case DateAggregation.day:
-                        label = _getTranslatedText('daily');
-                        break;
-                      case DateAggregation.week:
-                        label = _getTranslatedText('weekly');
-                        break;
-                      case DateAggregation.month:
-                        label = _getTranslatedText('monthly');
-                        break;
-                    }
-                    return DropdownMenuItem(
-                      value: agg,
-                      child: Text(
-                        label,
-                        style: Theme.of(context).textTheme.bodyMedium,
+              const SizedBox(width: 16),
+              // Date aggregation selector - enlarged and styled
+              Expanded(
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.grey.shade700 
+                          : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade50,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black.withOpacity(0.3)
+                            : Colors.grey.shade200.withOpacity(0.5),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _dateAggregation = value;
-                        _refreshData();
-                      });
-                    }
-                  },
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<DateAggregation>(
+                      value: _dateAggregation,
+                      isExpanded: true,
+                      icon: Icon(
+                        Icons.calendar_month,
+                        color: Theme.of(context).primaryColor,
+                        size: 24,
+                      ),
+                      items: DateAggregation.values.map((agg) {
+                        String label;
+                        switch (agg) {
+                          case DateAggregation.day:
+                            label = _getTranslatedText('daily');
+                            break;
+                          case DateAggregation.week:
+                            label = _getTranslatedText('weekly');
+                            break;
+                          case DateAggregation.month:
+                            label = _getTranslatedText('monthly');
+                            break;
+                        }
+                        return DropdownMenuItem(
+                          value: agg,
+                          child: Text(
+                            label,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 16,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _dateAggregation = value;
+                            _refreshData();
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -740,6 +812,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       (sum, item) => sum + (item[valueKey] as double),
     );
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 6,
@@ -827,53 +901,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     vertical: 12,
                     horizontal: 16,
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        isProfit
-                            ? (total >= 0
-                                ? Icons.trending_up
-                                : Icons.trending_down)
-                            : Icons.currency_exchange,
-                        color:
-                            isProfit
-                                ? (total >= 0
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700)
-                                : Colors.blue.shade700,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        isProfit
-                            ? (total >= 0
-                                ? _getTranslatedText('net_profit', {
-                                  'amount': NumberFormat.currency(
-                                    symbol: 'SOM ',
-                                    decimalDigits: 2,
-                                  ).format(total.abs()),
-                                })
-                                : _getTranslatedText('net_loss', {
-                                  'amount': NumberFormat.currency(
-                                    symbol: 'SOM ',
-                                    decimalDigits: 2,
-                                  ).format(total.abs()),
-                                }))
-                            : _getTranslatedText('total_formatted', {
-                              'amount': NumberFormat.currency(
-                                symbol: 'SOM ',
-                                decimalDigits: 2,
-                              ).format(total),
-                            }),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(
-                          color:
-                              isProfit
-                                  ? (total >= 0 ? Colors.green : Colors.red)
-                                  : Colors.blue,
+                        _getTranslatedText('total'),
+                        style: TextStyle(
+                          color: isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade700,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        NumberFormat.currency(
+                          symbol: 'SOM ',
+                          decimalDigits: 2,
+                        ).format(total.abs()),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isProfit
+                              ? (total >= 0
+                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
+                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700))
+                              : (isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700),
                         ),
                       ),
                     ],
@@ -1121,6 +1175,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         );
 
     debugPrint("\nDisplay total: $displayTotal");
+    
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -1243,55 +1299,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     vertical: 12,
                     horizontal: 16,
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        isProfit
-                            ? (displayTotal >= 0
-                                ? Icons.trending_up
-                                : Icons.trending_down)
-                            : Icons.currency_exchange,
-                        color:
-                            isProfit
-                                ? (displayTotal >= 0
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700)
-                                : Colors.blue.shade700,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        isProfit
-                            ? (displayTotal >= 0
-                                ? _getTranslatedText('net_profit', {
-                                  'amount': NumberFormat.currency(
-                                    symbol: 'SOM ',
-                                    decimalDigits: 2,
-                                  ).format(displayTotal.abs()),
-                                })
-                                : _getTranslatedText('net_loss', {
-                                  'amount': NumberFormat.currency(
-                                    symbol: 'SOM ',
-                                    decimalDigits: 2,
-                                  ).format(displayTotal.abs()),
-                                }))
-                            : _getTranslatedText('total_formatted', {
-                              'amount': NumberFormat.currency(
-                                symbol: 'SOM ',
-                                decimalDigits: 2,
-                              ).format(displayTotal),
-                            }),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(
-                          color:
-                              isProfit
-                                  ? (displayTotal >= 0
-                                      ? Colors.green
-                                      : Colors.red)
-                                  : Colors.blue,
+                        _getTranslatedText('total'),
+                        style: TextStyle(
+                          color: isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade700,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        NumberFormat.currency(
+                          symbol: 'SOM ',
+                          decimalDigits: 2,
+                        ).format(isProfit && displayTotal < 0 ? displayTotal.abs() : displayTotal),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isProfit
+                              ? (displayTotal >= 0
+                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
+                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700))
+                              : (isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700),
                         ),
                       ),
                     ],

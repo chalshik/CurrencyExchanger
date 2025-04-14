@@ -224,5 +224,7 @@
   "backup_before_reset": "Backup before reset",
   "exit_app": "Exit App",
   "exit_confirmation": "Are you sure you want to exit the app?",
-  "exit": "Exit"
+  "exit": "Exit",
+  "distribution": "Distribution",
+  "bar_chart": "Bar Chart"
 } 

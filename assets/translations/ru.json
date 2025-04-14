@@ -217,11 +217,13 @@
   "transaction_updated": "Транзакция успешно обновлена",
   "add_currency": "Добавить валюту",
   "profit_distribution": "Распределение прибыли",
-  "transaction_successful": "Транзакция успешно выполнена",
-  "transaction_failed": "Транзакция не выполнена",
-  "invalid_quantity": "Неверное количество",
-  "backup_before_reset": "Сохранить резервную копию перед сбросом",
-  "exit_app": "Выход из приложения",
+  "transaction_successful": "Транзакция успешна",
+  "transaction_failed": "Ошибка транзакции",
+  "invalid_quantity": "Недопустимое количество",
+  "backup_before_reset": "Резервное копирование перед сбросом",
+  "exit_app": "Выйти из приложения",
   "exit_confirmation": "Вы уверены, что хотите выйти из приложения?",
-  "exit": "Выйти"
+  "exit": "Выйти",
+  "distribution": "Распределение",
+  "bar_chart": "Гистограмма"
 } 
