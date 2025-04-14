@@ -216,74 +216,86 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: Column(
-          children: [
-            // Main content in center
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // App logo/icon
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade700.withOpacity(0.1),
-                        shape: BoxShape.circle,
+    // Wrap with Theme to force light theme for splash screen
+    return Theme(
+      // Force light theme data
+      data: ThemeData.light().copyWith(
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: ColorScheme.light(
+          primary: Colors.blue.shade700,
+          secondary: Colors.blue.shade700,
+        ),
+      ),
+      child: Scaffold(
+        body: Container(
+          color: Colors.white, // Force white background
+          child: Column(
+            children: [
+              // Main content in center
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // App logo/icon
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade700.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.currency_exchange,
+                          size: 100,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.currency_exchange,
-                        size: 100,
-                        color: Colors.blue.shade700,
+                      const SizedBox(height: 32),
+
+                      // App name
+                      Text(
+                        "Currency Exchanger",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // "By" and logo at bottom
+              Container(
+                margin: const EdgeInsets.only(bottom: 32),
+                child: Column(
+                  children: [
+                    // "BY" text
+                    Text(
+                      "BY",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                        color: Colors.black87, // Force dark text color
                       ),
                     ),
-                    const SizedBox(height: 32),
 
-                    // App name
-                    Text(
-                      "Currency Exchanger",
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
-                      ),
+                    const SizedBox(height: 16),
+
+                    // User logo
+                    Image.asset(
+                      'assets/images/logo.png',
+                      width: 250,
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                   ],
                 ),
               ),
-            ),
-
-            // "By" and logo at bottom
-            Container(
-              margin: const EdgeInsets.only(bottom: 32),
-              child: Column(
-                children: [
-                  // "BY" text
-                  Text(
-                    "BY",
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // User logo
-                  Image.asset(
-                    'assets/images/logo.png',
-                    width: 250,
-                    height: 80,
-                    fit: BoxFit.contain,
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
