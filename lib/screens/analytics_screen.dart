@@ -205,61 +205,70 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildChartTypeSelector() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Pie chart button
-              _buildChartTypeButton(
-                type: ChartType.distribution,
-                icon: Icons.pie_chart,
-                label: _getTranslatedText('distribution'),
-              ),
-              const SizedBox(width: 12),
-              // Bar chart button
-              _buildChartTypeButton(
-                type: ChartType.bar,
-                icon: Icons.bar_chart,
-                label: _getTranslatedText('bar_chart'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Date range picker
+          // Chart type toggle button
           InkWell(
-            onTap: () => _showDateRangePicker(),
+            onTap: () => setState(() => _selectedChartType = _selectedChartType == ChartType.distribution ? ChartType.bar : ChartType.distribution),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                shape: BoxShape.circle,
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
                 border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark 
-                      ? Colors.grey.shade700 
-                      : Colors.grey.shade300,
+                  color: Theme.of(context).primaryColor.withOpacity(0.5),
                   width: 1.5,
                 ),
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey.shade800
-                    : Colors.grey.shade50,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: Theme.of(context).primaryColor,
-                    size: 20,
+              child: Icon(
+                _selectedChartType == ChartType.distribution ? Icons.pie_chart : Icons.bar_chart,
+                color: Theme.of(context).primaryColor,
+                size: 24,
+              ),
+            ),
+          ),
+          
+          // Date range picker
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 16.0),
+              child: InkWell(
+                onTap: () => _showDateRangePicker(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
+                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedStartDate)} '
-                    '- ${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedEndDate)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        color: Theme.of(context).primaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedStartDate)} '
+                          '- ${DateFormat('MMM d, y', Provider.of<LanguageProvider>(context).currentLocale.languageCode).format(_selectedEndDate)}',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -301,72 +310,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     }
   }
 
-  Widget _buildChartTypeButton({
-    required ChartType type,
-    required IconData icon,
-    required String label,
-  }) {
-    final isSelected = _selectedChartType == type;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return InkWell(
-      onTap: () => setState(() => _selectedChartType = type),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 120,
-        height: 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: isDarkMode
-                      ? [Colors.blue.shade700, Colors.blue.shade900]
-                      : [Colors.blue.shade400, Colors.blue.shade600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isSelected 
-              ? null 
-              : isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: isDarkMode
-                        ? Colors.black.withOpacity(0.5)
-                        : Colors.blue.shade200.withOpacity(0.5),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? Colors.white
-                  : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.white
-                    : isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<dynamic> _getChartData() async {
     switch (_selectedChartType) {
@@ -923,39 +866,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       );
     }
 
-    String title;
     String valueKey;
     Color color;
-    IconData icon;
     bool isProfit;
 
     switch (activeTab) {
       case 'purchases':
-        title = _getTranslatedText('daily_purchases');
         valueKey = 'purchases';
         color = Colors.blue;
-        icon = Icons.shopping_cart;
         isProfit = false;
         break;
       case 'sales':
-        title = _getTranslatedText('daily_sales');
         valueKey = 'sales';
         color = Colors.orange;
-        icon = Icons.sell;
         isProfit = false;
         break;
       case 'profit':
-        title = _getTranslatedText('daily_profit');
         valueKey = 'profit';
         color = Colors.green;
-        icon = Icons.trending_up;
         isProfit = true;
         break;
       default:
-        title = _getTranslatedText('daily_data');
         valueKey = 'profit';
         color = Colors.blue;
-        icon = Icons.bar_chart;
         isProfit = false;
     }
 
@@ -1009,21 +942,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
+            
             Expanded(
               child: SfCartesianChart(
                 primaryXAxis: CategoryAxis(
-                  title: AxisTitle(text: _getTranslatedText('date')),
                 ),
                 primaryYAxis: NumericAxis(
-                  title: AxisTitle(text: _getTranslatedText('amount_som')),
+                  
                 ),
                 tooltipBehavior: TooltipBehavior(enable: true),
                 series: <CartesianSeries>[
@@ -1079,29 +1004,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _getTranslatedText('total'),
+                        NumberFormat.currency(
+                          symbol: 'SOM ',
+                          decimalDigits: 2,
+                        ).format(total.abs()),
                         style: TextStyle(
                           color: isDarkMode
                               ? Colors.grey.shade300
                               : Colors.grey.shade700,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        NumberFormat.currency(
-                          symbol: 'SOM ',
-                          decimalDigits: 2,
-                        ).format(total.abs()),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isProfit
-                              ? (total >= 0
-                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700))
-                              : (isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700),
                         ),
                       ),
                     ],
@@ -1477,29 +1389,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _getTranslatedText('total'),
+                        NumberFormat.currency(
+                          symbol: 'SOM ',
+                          decimalDigits: 2,
+                        ).format(isProfit && displayTotal < 0 ? displayTotal.abs() : displayTotal),
                         style: TextStyle(
                           color: isDarkMode
                               ? Colors.grey.shade300
                               : Colors.grey.shade700,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        NumberFormat.currency(
-                          symbol: 'SOM ',
-                          decimalDigits: 2,
-                        ).format(isProfit && displayTotal < 0 ? displayTotal.abs() : displayTotal),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isProfit
-                              ? (displayTotal >= 0
-                                  ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-                                  : (isDarkMode ? Colors.red.shade300 : Colors.red.shade700))
-                              : (isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700),
                         ),
                       ),
                     ],

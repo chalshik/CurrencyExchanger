@@ -502,18 +502,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete currency $code?'),
+            title: Text(_getTranslatedText('confirm_delete_currency', {'code': code})),
+            content: Text(_getTranslatedText('confirm_delete_currency_message', {'code': code})),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text(_getTranslatedText('cancel')),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.red),
+                child: Text(
+                  _getTranslatedText('delete'),
+                  style: const TextStyle(color: Colors.red),
                 ),
               ),
             ],
@@ -526,10 +526,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _loadCurrencies();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Currency $code deleted')));
+        ).showSnackBar(SnackBar(content: Text(_getTranslatedText('currency_deleted', {'code': code}))));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting currency: ${e.toString()}')),
+          SnackBar(content: Text(_getTranslatedText('error_deleting_currency', {'code': code}))),
         );
       }
     }
@@ -543,18 +543,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Confirm Delete'),
-            content: Text('Are you sure you want to delete user $username?'),
+            title: Text(_getTranslatedText('confirm_delete')),
+            content: Text(_getTranslatedText('confirm_delete_user', {'username': username})),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text(_getTranslatedText('cancel')),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.red),
+                child: Text(
+                  _getTranslatedText('delete'),
+                  style: const TextStyle(color: Colors.red),
                 ),
               ),
             ],
@@ -567,10 +567,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _loadUsers();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('User $username deleted')));
+        ).showSnackBar(SnackBar(content: Text(_getTranslatedText('user_deleted', {'username': username}))));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting user: ${e.toString()}')),
+          SnackBar(content: Text('${_getTranslatedText('error')}: ${e.toString()}')),
         );
       }
     }
