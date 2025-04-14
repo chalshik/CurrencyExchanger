@@ -78,15 +78,47 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   Future<void> _loadCurrencies() async {
     try {
       debugPrint("Starting to load currencies for dropdown...");
-      final currencies = await _dbHelper.getHistoryCurrencyCodes();
       
-      debugPrint("Currencies loaded from database: $currencies");
+      // Get currencies from history
+      final historyCurrencies = await _dbHelper.getHistoryCurrencyCodes();
+      
+      // IMPORTANT FIX: Also get all currencies from the database
+      final allCurrencies = await _dbHelper.getAllCurrencies();
+      final allCurrencyCodes = allCurrencies.map((c) => c.code!).toList();
+      
+      // Combine both lists to ensure we have all currencies
+      final Set<String> combinedCurrencies = Set<String>.from(historyCurrencies);
+      combinedCurrencies.addAll(allCurrencyCodes);
+      
+      // ADDITIONAL FIX: Also try to get currency codes from chart data
+      try {
+        final chartData = await _dbHelper.getDailyData(
+          startDate: _selectedStartDate,
+          endDate: _selectedEndDate,
+        );
+        
+        if (chartData.isNotEmpty) {
+          for (var day in chartData) {
+            if (day.containsKey('currencies') && day['currencies'] is Map<String, dynamic>) {
+              final currencies = day['currencies'] as Map<String, dynamic>;
+              combinedCurrencies.addAll(currencies.keys);
+              debugPrint("Found currencies in chart data: ${currencies.keys.toList()}");
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error loading currencies from chart data: $e");
+      }
+      
+      debugPrint("All currencies from database: $allCurrencyCodes");
+      debugPrint("History currencies: $historyCurrencies");
+      debugPrint("Combined currencies: $combinedCurrencies");
       
       if (!mounted) return;
       
       setState(() {
         _availableCurrencies = [_getTranslatedText('all_currencies')] + 
-            currencies.where((c) => c != 'SOM').toList();
+            combinedCurrencies.where((c) => c != 'SOM').toList()..sort();
         
         debugPrint("Final _availableCurrencies list: $_availableCurrencies");
         
@@ -560,6 +592,38 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           style: const TextStyle(fontSize: 18),
         ),
       );
+    }
+    
+    // Extract currency codes from the data if available
+    try {
+      Set<String> extractedCurrencies = {};
+      for (var day in dailyData) {
+        if (day.containsKey('currencies') && day['currencies'] is Map<String, dynamic>) {
+          final currencies = day['currencies'] as Map<String, dynamic>;
+          extractedCurrencies.addAll(currencies.keys);
+          debugPrint("Found currencies in daily data: ${currencies.keys.toList()}");
+        }
+      }
+      
+      // Update available currencies if we found new ones
+      if (extractedCurrencies.isNotEmpty) {
+        final Set<String> updatedCurrencies = Set<String>.from(_availableCurrencies);
+        extractedCurrencies.where((code) => code != 'SOM').forEach((code) {
+          if (!updatedCurrencies.contains(code)) {
+            updatedCurrencies.add(code);
+          }
+        });
+        
+        if (updatedCurrencies.length > _availableCurrencies.length) {
+          setState(() {
+            _availableCurrencies = [_getTranslatedText('all_currencies')] + 
+                updatedCurrencies.where((c) => c != _getTranslatedText('all_currencies')).toList()..sort();
+            debugPrint("Updated _availableCurrencies: $_availableCurrencies");
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error extracting currency codes from daily data: $e");
     }
     
     // Log the current state of currencies
