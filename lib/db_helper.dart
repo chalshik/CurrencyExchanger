@@ -307,16 +307,6 @@ class DatabaseHelper {
     try {
       debugPrint('Starting data reset process...');
       
-      // First, create a backup of the current statistics
-      debugPrint('Creating backup before reset...');
-      final backupSuccess = await backupStatistics();
-      if (backupSuccess) {
-        debugPrint('Backup created successfully before reset');
-      } else {
-        debugPrint('Warning: Failed to create backup before reset');
-        // Continue with reset even if backup fails
-      }
-      
       // Clear history collection
       debugPrint('Clearing transaction history...');
       await _firestore.collection(collectionHistory).get().then((
