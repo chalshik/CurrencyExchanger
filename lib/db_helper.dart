@@ -13,6 +13,11 @@ class DatabaseHelper {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isInitialized = false;
+  
+  // Add cache for currencies
+  static List<CurrencyModel> _currenciesCache = [];
+  static DateTime _lastCurrenciesLoadTime = DateTime(2000); // Set to old date initially
+  static bool _currenciesCacheDirty = true; // Flag to indicate if cache needs refresh
 
   // Private constructor
   DatabaseHelper._init();
@@ -22,6 +27,24 @@ class DatabaseHelper {
   static const String collectionHistory = 'history';
   static const String collectionUsers = 'users';
   static const String collectionArchive = 'archive'; // New collection for statistics archives
+
+  // Add method to mark cache as dirty (call this when currencies are modified)
+  void invalidateCurrenciesCache() {
+    _currenciesCacheDirty = true;
+  }
+
+  // Method to check if cache needs refresh
+  bool shouldRefreshCurrenciesCache() {
+    // If cache is marked dirty, it needs refresh
+    if (_currenciesCacheDirty) return true;
+    
+    // If cache is empty, it needs refresh
+    if (_currenciesCache.isEmpty) return true;
+    
+    // If last load time is more than 5 minutes ago, refresh for safety
+    final cacheAge = DateTime.now().difference(_lastCurrenciesLoadTime);
+    return cacheAge.inMinutes > 5;
+  }
 
   Future<void> initialize() async {
     if (!_isInitialized) {
@@ -1210,7 +1233,7 @@ class DatabaseHelper {
       final toDate = endDate ?? DateTime.now();
 
       // Get profitable currencies data
-      final profitData = await getMostProfitableCurrencies(
+      final profitData = await getStat(
         startDate: fromDate,
         endDate: toDate,
         limit: 1000, // High limit to get all currencies
@@ -1311,7 +1334,7 @@ class DatabaseHelper {
           .where('date', isGreaterThanOrEqualTo: fromDateStr)
           .where('date', isLessThanOrEqualTo: toDateStr)
           .orderBy('date', descending: true)
-          .get();
+              .get();
 
       debugPrint('Found ${archiveQuery.docs.length} archive records');
 
@@ -1345,8 +1368,8 @@ class DatabaseHelper {
         final totalPurchaseAmount = _safeDouble(currency['total_purchase_amount']);
         
         if (totalPurchased > 0) {
-          purchaseData[currencyCode] = {
-            'currency': currencyCode,
+            purchaseData[currencyCode] = {
+              'currency': currencyCode,
             'total_value': totalPurchaseAmount,
             'count': 1, // Simplified count since we're aggregating from archive
           };
@@ -1357,11 +1380,11 @@ class DatabaseHelper {
         final totalSaleAmount = _safeDouble(currency['total_sale_amount']);
         
         if (totalSold > 0) {
-          salesData[currencyCode] = {
-            'currency': currencyCode,
+            salesData[currencyCode] = {
+              'currency': currencyCode,
             'total_value': totalSaleAmount,
             'count': 1, // Simplified count since we're aggregating from archive
-          };
+            };
         }
       }
 
@@ -1373,7 +1396,7 @@ class DatabaseHelper {
         ..sort((a, b) => (_safeDouble(b['total_value']) - _safeDouble(a['total_value'])).toInt());
 
       debugPrint('Processed ${purchases.length} purchase currencies and ${sales.length} sales currencies');
-      
+
       return {'purchases': purchases, 'sales': sales};
     } catch (e) {
       debugPrint('Error in getEnhancedPieChartData: $e');
@@ -1414,12 +1437,12 @@ class DatabaseHelper {
         // Create daily data structure with default zeroes to ensure consistent format
         final dayData = {
           'day': date,  // Use ISO date format consistently: YYYY-MM-DD
-          'purchases': 0.0,
-          'sales': 0.0,
-          'profit': 0.0,
-          'deposits': 0.0,
-          'currencies': <String, Map<String, dynamic>>{},
-        };
+            'purchases': 0.0,
+            'sales': 0.0,
+            'profit': 0.0,
+            'deposits': 0.0,
+            'currencies': <String, Map<String, dynamic>>{},
+          };
         
         // Process currency-specific data
         if (data.containsKey('currencies')) {
@@ -1557,7 +1580,7 @@ class DatabaseHelper {
       
       if (dailyData.isNotEmpty) {
         debugPrint('First day data for $currencyCode: ${dailyData.first}');
-      } else {
+        } else {
         debugPrint('No daily data found for currency $currencyCode');
       }
 
@@ -2537,6 +2560,150 @@ class DatabaseHelper {
       return profitData;
     } catch (e) {
       debugPrint('Error in getMostProfitableCurrencies: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getStat({
+    required DateTime startDate,
+    required DateTime endDate,
+    int limit = 5,
+  }) async {
+    try {
+      final fromDateStr = startDate.toIso8601String();
+      final toDateStr = endDate.toIso8601String();
+
+      debugPrint('Fetching currency statistics from $fromDateStr to $toDateStr from history collection');
+
+      // Query the history collection directly instead of archive
+      final historyQuery = await _firestore.collection(collectionHistory)
+          .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
+          .where('created_at', isLessThanOrEqualTo: toDateStr)
+          .get();
+      
+      debugPrint('Found ${historyQuery.docs.length} history entries for calculation');
+      
+      // Maps to track statistics by currency
+      final Map<String, Map<String, dynamic>> currencyStats = {};
+      
+      // Process each history entry
+      for (var doc in historyQuery.docs) {
+        final data = doc.data();
+        final currencyCode = data['currency_code'] as String;
+        final operationType = data['operation_type'] as String;
+        final rate = _safeDouble(data['rate']);
+        final quantity = _safeDouble(data['quantity']);
+        final total = _safeDouble(data['total']);
+        
+        // Skip SOM for direct calculations
+        if (currencyCode == 'SOM') continue;
+        
+        // Initialize currency stats if needed
+        if (!currencyStats.containsKey(currencyCode)) {
+          currencyStats[currencyCode] = {
+            'purchase_count': 0,
+            'sale_count': 0,
+            'total_purchased': 0.0,
+            'total_purchase_amount': 0.0,
+            'total_sold': 0.0,
+            'total_sale_amount': 0.0,
+          };
+        }
+        
+        // Aggregate data based on operation type
+        if (operationType == 'Buy' || operationType == 'Purchase') {
+          currencyStats[currencyCode]!['purchase_count'] = (currencyStats[currencyCode]!['purchase_count'] ?? 0) + 1;
+          currencyStats[currencyCode]!['total_purchased'] = (currencyStats[currencyCode]!['total_purchased'] ?? 0.0) + quantity;
+          currencyStats[currencyCode]!['total_purchase_amount'] = (currencyStats[currencyCode]!['total_purchase_amount'] ?? 0.0) + total;
+        } else if (operationType == 'Sell' || operationType == 'Sale') {
+          currencyStats[currencyCode]!['sale_count'] = (currencyStats[currencyCode]!['sale_count'] ?? 0) + 1;
+          currencyStats[currencyCode]!['total_sold'] = (currencyStats[currencyCode]!['total_sold'] ?? 0.0) + quantity;
+          currencyStats[currencyCode]!['total_sale_amount'] = (currencyStats[currencyCode]!['total_sale_amount'] ?? 0.0) + total;
+        }
+      }
+
+      // Convert to format needed for the UI
+      final List<Map<String, dynamic>> resultData = [];
+      
+      // Get current currencies for display
+      final currencies = await getAllCurrencies();
+      
+      for (var currency in currencies) {
+        final currencyCode = currency.code!;
+        
+        // Skip SOM
+        if (currencyCode == 'SOM') continue;
+        
+        // Get stats or initialize with zeros if no transactions found
+        final stats = currencyStats[currencyCode] ?? {
+          'purchase_count': 0,
+          'sale_count': 0,
+          'total_purchased': 0.0,
+          'total_purchase_amount': 0.0,
+          'total_sold': 0.0,
+          'total_sale_amount': 0.0,
+        };
+        
+        // Calculate averages and profit
+        final totalPurchased = _safeDouble(stats['total_purchased']);
+        final totalPurchaseAmount = _safeDouble(stats['total_purchase_amount']);
+        final totalSold = _safeDouble(stats['total_sold']);
+        final totalSaleAmount = _safeDouble(stats['total_sale_amount']);
+        
+        final avgPurchaseRate = totalPurchased > 0 ? totalPurchaseAmount / totalPurchased : 0.0;
+        final avgSaleRate = totalSold > 0 ? totalSaleAmount / totalSold : 0.0;
+        
+        // Calculate cost of sold units (using average purchase rate)
+        final costOfSold = totalSold * avgPurchaseRate;
+        
+        // Profit = (Sale amount) - (Cost of units sold)
+        final profit = totalSaleAmount - costOfSold;
+        
+        resultData.add({
+          'currency_code': currencyCode,
+          'amount': profit,
+          'avg_purchase_rate': avgPurchaseRate,
+          'avg_sale_rate': avgSaleRate,
+          'total_purchased': totalPurchased,
+          'total_sold': totalSold,
+          'cost_of_sold': costOfSold,
+          'total_purchase_amount': totalPurchaseAmount,
+          'total_sale_amount': totalSaleAmount,
+          'purchase_count': stats['purchase_count'] ?? 0,
+          'sale_count': stats['sale_count'] ?? 0,
+        });
+        
+        // Debug output
+        debugPrint('History Stats - ${currencyCode}: ' +
+            'avgPurchase=$avgPurchaseRate, ' +
+            'avgSale=$avgSaleRate, ' +
+            'totalPurchased=$totalPurchased, ' +
+            'totalSold=$totalSold, ' +
+            'purchaseAmount=$totalPurchaseAmount, ' +
+            'saleAmount=$totalSaleAmount, ' +
+            'profit=$profit'
+        );
+      }
+
+      // Sort by profit and limit
+      resultData.sort((a, b) => (_safeDouble(b['amount']) - _safeDouble(a['amount'])).toInt());
+      
+      debugPrint('Found ${resultData.length} currencies with data from history');
+      if (resultData.isNotEmpty) {
+        debugPrint('Most profitable: ${resultData.first['currency_code']}, profit: ${resultData.first['amount']}');
+      }
+
+      if (limit > 0 && resultData.length > limit) {
+        return resultData.sublist(0, limit);
+      }
+
+      return resultData;
+    } catch (e) {
+      debugPrint('Error in getStat: $e');
       if (e is FirebaseException) {
         debugPrint('Firebase error code: ${e.code}');
         debugPrint('Firebase error message: ${e.message}');
