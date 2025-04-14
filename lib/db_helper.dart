@@ -2359,13 +2359,10 @@ class DatabaseHelper {
         'som_balance': _getSomBalanceFromAnalytics(analytics),
       };
       
-      // Create a document ID with date for easy retrieval
-      final docId = 'stats_${dateStr}';
+      // Create a new document with auto-generated ID and timestamp
+      final docRef = await _firestore.collection(collectionArchive).add(archiveDocument);
       
-      // Save to Firestore
-      await _firestore.collection(collectionArchive).doc(docId).set(archiveDocument);
-      
-      debugPrint('Statistics backup created successfully: $docId');
+      debugPrint('Statistics backup created successfully with ID: ${docRef.id}');
       return true;
     } catch (e) {
       debugPrint('Error creating statistics backup: $e');
