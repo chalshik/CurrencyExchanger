@@ -21,8 +21,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   double _kassaValue = 0.0;
   bool _isLoading = false;
   late TabController _tabController;
-  DateTime _startDate = DateTime.now().subtract(Duration(days: 7));
-  DateTime _endDate = DateTime.now();
 
   // Translation helper method
   String _getTranslatedText(String key, [Map<String, String>? params]) {
@@ -1118,57 +1116,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  // Soften date picker button
-  Widget _buildDatePicker() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => _showDateRangePicker(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade100.withOpacity(0.8),
-              foregroundColor: Colors.blue.shade700.withOpacity(0.9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700.withOpacity(0.9),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Add this method to handle date range picking
-  void _showDateRangePicker() {
-    // Implement date range picker logic
-    showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-    ).then((dateRange) {
-      if (dateRange != null) {
-        setState(() {
-          _startDate = dateRange.start;
-          _endDate = dateRange.end;
-          // Refresh data with new date range
-          _loadCurrencyStats();
-        });
-      }
-    });
-  }
-}
 
 class _ProfitPieChart extends StatelessWidget {
   final List<Map<String, dynamic>> currencies;
