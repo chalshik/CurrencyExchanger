@@ -69,8 +69,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final now = DateTime.now();
     if (!mounted) return;
     setState(() {
-      // Always use week range
-      _selectedStartDate = now.subtract(const Duration(days: 7));
+      // Set default to last 30 days
+      _selectedStartDate = now.subtract(const Duration(days: 30));
       _selectedEndDate = now;
     });
   }

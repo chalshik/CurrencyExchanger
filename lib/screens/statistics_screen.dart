@@ -21,7 +21,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   double _kassaValue = 0.0;
   bool _isLoading = false;
   late TabController _tabController;
-  DateTime _startDate = DateTime.now().subtract(Duration(days: 30));
+  DateTime _startDate = DateTime.now().subtract(Duration(days: 7));
   DateTime _endDate = DateTime.now();
 
   // Translation helper method
@@ -270,11 +270,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Date Range Selector
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        child: _buildDatePicker(),
-                      ),
                       isLandscape
                           ? _buildLandscapeSummaryCards() // Horizontal cards for landscape mode
                           : _buildSummaryCards(
@@ -1125,80 +1120,43 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   // Soften date picker button
   Widget _buildDatePicker() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return InkWell(
-      onTap: () => _showDateRangePicker(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDarkMode ? Colors.blue.shade700 : Colors.blue.shade300,
-            width: 1.5,
-          ),
-          color: isDarkMode 
-              ? Colors.blue.shade900.withOpacity(0.3) 
-              : Colors.blue.shade50.withOpacity(0.8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.date_range,
-                  size: 20,
-                  color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _getTranslatedText('date_range'),
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade700,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.blue.shade800,
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => _showDateRangePicker(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade100.withOpacity(0.8),
+              foregroundColor: Colors.blue.shade700.withOpacity(0.9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-          ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                '${DateFormat('dd/MM/yyyy').format(_startDate)} - ${DateFormat('dd/MM/yyyy').format(_endDate)}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700.withOpacity(0.9),
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   // Add this method to handle date range picking
   void _showDateRangePicker() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    // Implement date range picker logic
     showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: isDarkMode ? Colors.blue.shade700 : Colors.blue.shade600,
-              onPrimary: Colors.white,
-              surface: isDarkMode ? Colors.grey.shade900 : Colors.white,
-              onSurface: isDarkMode ? Colors.white : Colors.black,
-            ),
-            dialogBackgroundColor: isDarkMode ? Colors.grey.shade900 : Colors.white,
-          ),
-          child: child!,
-        );
-      },
     ).then((dateRange) {
       if (dateRange != null) {
         setState(() {
