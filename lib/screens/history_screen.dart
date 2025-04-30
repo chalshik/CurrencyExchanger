@@ -219,11 +219,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         // Update was successful
         debugPrint('Entry updated successfully');
         if (mounted) {
-          // Pop dialog only if context is still valid and safe to pop
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_getTranslatedText("transaction_updated")),
@@ -273,250 +268,277 @@ class _HistoryScreenState extends State<HistoryScreen> {
     DateTime selectedDate = initialDate;
 
     final bool isDeposit = entry.operationType == 'Deposit';
+    
+    // Define isSubmitting variable outside StatefulBuilder
+    bool isProcessing = false;
 
     await showDialog(
       context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: Text(_getTranslatedText("edit_transaction")),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        onTap: () async {
-                          final TimeOfDay? time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.fromDateTime(selectedDate),
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (builderContext, setBuilderState) {
+          return AlertDialog(
+            title: Text(_getTranslatedText("edit_transaction")),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () async {
+                      final TimeOfDay? time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(selectedDate),
+                      );
+                      if (time != null) {
+                        setBuilderState(() {
+                          selectedDate = DateTime(
+                            selectedDate.year,
+                            selectedDate.month,
+                            selectedDate.day,
+                            time.hour,
+                            time.minute,
                           );
-                          if (time != null) {
-                            setState(() {
-                              selectedDate = DateTime(
-                                selectedDate.year,
-                                selectedDate.month,
-                                selectedDate.day,
-                                time.hour,
-                                time.minute,
-                              );
-                              _editDateController.text = DateFormat(
-                                'HH:mm',
-                              ).format(selectedDate);
-                            });
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("time"),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(_editDateController.text),
-                              const Icon(Icons.access_time),
-                            ],
-                          ),
-                        ),
+                          _editDateController.text = DateFormat(
+                            'HH:mm',
+                          ).format(selectedDate);
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("time"),
                       ),
-                      const SizedBox(height: 16),
-                      if (!isDeposit) ...[
-                        DropdownButtonFormField<String>(
-                          value: _editOperationType,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("type"),
-                          ),
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: 'Purchase',
-                              child: Text(_getTranslatedText('purchase')),
-                            ),
-                            DropdownMenuItem<String>(
-                              value: 'Sale',
-                              child: Text(_getTranslatedText('sale')),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _editOperationType = value;
-                            });
-                          },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_editDateController.text),
+                          const Icon(Icons.access_time),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (!isDeposit) ...[
+                    DropdownButtonFormField<String>(
+                      value: _editOperationType,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("type"),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: 'Purchase',
+                          child: Text(_getTranslatedText('purchase')),
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: _editCurrencyCode,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("currency"),
-                          ),
-                          items:
-                              _currencyCodes.map((code) {
-                                return DropdownMenuItem<String>(
-                                  value: code,
-                                  child: Text(code),
-                                );
-                              }).toList(),
-                          onChanged:
-                              isDeposit
-                                  ? null
-                                  : (value) {
-                                    setState(() {
-                                      _editCurrencyCode = value;
-                                    });
-                                  },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _editQuantityController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("amount_label"),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _editRateController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("rate"),
-                          ),
-                          keyboardType: TextInputType.number,
-                          readOnly: isDeposit,
-                        ),
-                      ] else ...[
-                        TextFormField(
-                          controller: _editQuantityController,
-                          decoration: InputDecoration(
-                            labelText: _getTranslatedText("amount_label"),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "${_getTranslatedText("currency")}: ${entry.currencyCode}",
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        DropdownMenuItem<String>(
+                          value: 'Sale',
+                          child: Text(_getTranslatedText('sale')),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                actions: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(_getTranslatedText("cancel")),
+                      onChanged: (value) {
+                        setBuilderState(() {
+                          _editOperationType = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _editCurrencyCode,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("currency"),
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          gradient: LinearGradient(
-                            colors: Theme.of(context).brightness == Brightness.dark
-                                ? [const Color(0xFF1A1A1A), const Color(0xFF0D47A1)]
-                                : [Colors.blue.shade400, Colors.blue.shade700],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            try {
-                              // Create new history model with edited values
-                              final quantity =
-                                  double.tryParse(
-                                    _editQuantityController.text,
-                                  ) ??
-                                  entry.quantity;
-                              final rate =
-                                  double.tryParse(_editRateController.text) ??
-                                  entry.rate;
-                              final total = quantity * rate;
+                      items:
+                          _currencyCodes.map((code) {
+                            return DropdownMenuItem<String>(
+                              value: code,
+                              child: Text(code),
+                            );
+                          }).toList(),
+                      onChanged:
+                          isDeposit
+                              ? null
+                              : (value) {
+                                setBuilderState(() {
+                                  _editCurrencyCode = value;
+                                });
+                              },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _editQuantityController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("amount_label"),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _editRateController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("rate"),
+                      ),
+                      keyboardType: TextInputType.number,
+                      readOnly: isDeposit,
+                    ),
+                  ] else ...[
+                    TextFormField(
+                      controller: _editQuantityController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText("amount_label"),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "${_getTranslatedText("type")}: ${_getTranslatedText("deposit")}",
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "${_getTranslatedText("currency")}: ${entry.currencyCode}",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(_getTranslatedText("cancel")),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        colors: Theme.of(context).brightness == Brightness.dark
+                            ? [const Color(0xFF1A1A1A), const Color(0xFF0D47A1)]
+                            : [Colors.blue.shade400, Colors.blue.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: isProcessing 
+                        ? null // Disable button if already processing
+                        : () {
+                          // Set processing flag to true and update UI
+                          setBuilderState(() {
+                            isProcessing = true;
+                          });
+                          
+                          try {
+                            // Create new history model with edited values
+                            final quantity =
+                                double.tryParse(
+                                  _editQuantityController.text,
+                                ) ??
+                                entry.quantity;
+                            final rate =
+                                double.tryParse(_editRateController.text) ??
+                                entry.rate;
+                            final total = quantity * rate;
 
-                              // Create a new DateTime with the same date but updated time
-                              final timeStr = _editDateController.text;
-                              DateTime updatedDate;
-                              try {
-                                final timeParts = timeStr.split(':');
-                                if (timeParts.length == 2) {
-                                  final hour = int.parse(timeParts[0]);
-                                  final minute = int.parse(timeParts[1]);
-                                  updatedDate = DateTime(
-                                    entry.createdAt.year,
-                                    entry.createdAt.month,
-                                    entry.createdAt.day,
-                                    hour,
-                                    minute,
-                                  );
-                                } else {
-                                  updatedDate = entry.createdAt;
-                                }
-                              } catch (e) {
-                                debugPrint('Time parsing failed: $e');
+                            // Create a new DateTime with the same date but updated time
+                            final timeStr = _editDateController.text;
+                            DateTime updatedDate;
+                            try {
+                              final timeParts = timeStr.split(':');
+                              if (timeParts.length == 2) {
+                                final hour = int.parse(timeParts[0]);
+                                final minute = int.parse(timeParts[1]);
+                                updatedDate = DateTime(
+                                  entry.createdAt.year,
+                                  entry.createdAt.month,
+                                  entry.createdAt.day,
+                                  hour,
+                                  minute,
+                                );
+                              } else {
                                 updatedDate = entry.createdAt;
                               }
-
-                              // Create updated history model
-                              final updatedEntry = HistoryModel(
-                                id: entry.id,
-                                currencyCode:
-                                    _editCurrencyCode ?? entry.currencyCode,
-                                operationType:
-                                    _editOperationType ?? entry.operationType,
-                                rate: rate,
-                                quantity: quantity,
-                                total: total,
-                                createdAt: updatedDate,
-                                username: entry.username,
-                              );
-
-                              // Save the edited entry
-                              debugPrint(
-                                'Saving updated entry with ID: ${entry.id}',
-                              );
-                              _saveEditedEntry(entry, updatedEntry);
                             } catch (e) {
-                              debugPrint('Error in edit dialog: $e');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '${_getTranslatedText("error")}: $e',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                              debugPrint('Time parsing failed: $e');
+                              updatedDate = entry.createdAt;
                             }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            minimumSize: Size(50, 36),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            _getTranslatedText("apply"),
-                            style: TextStyle(color: Colors.white),
-                          ),
+
+                            // Create updated history model
+                            final updatedEntry = HistoryModel(
+                              id: entry.id,
+                              currencyCode:
+                                  _editCurrencyCode ?? entry.currencyCode,
+                              operationType:
+                                  _editOperationType ?? entry.operationType,
+                              rate: rate,
+                              quantity: quantity,
+                              total: total,
+                              createdAt: updatedDate,
+                              username: entry.username,
+                            );
+
+                            // Save the edited entry with processing flag reference
+                            debugPrint(
+                              'Saving updated entry with ID: ${entry.id}',
+                            );
+                            
+                            // Close dialog and update with new entry
+                            Navigator.of(dialogContext).pop();
+                            _saveEditedEntry(entry, updatedEntry);
+                            
+                          } catch (e) {
+                            // On error, re-enable the button
+                            setBuilderState(() {
+                              isProcessing = false;
+                            });
+                            debugPrint('Error in edit dialog: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${_getTranslatedText("error")}: $e',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
+                        minimumSize: Size(50, 36),
+                        elevation: 0,
                       ),
-                    ],
+                      child: isProcessing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                        _getTranslatedText("apply"),
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
