@@ -359,7 +359,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
         children: [
           // Date display at the top with numpad toggle on the right (only for tablet)
           Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
                 // Left spacer that expands to push the date to the center
@@ -371,7 +371,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   child: Text(
                     currentDate,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -391,34 +391,34 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
 
           // Currency selection always at the top
           _buildCurrencySelection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Operation type buttons (Purchase/Sale)
           _buildOperationButtons(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Amount input
           _buildAmountInput(isTablet),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Exchange rate input
           _buildExchangeRateInput(isTablet),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Total sum display
           _buildTotalDisplay(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // Finish button
           _buildFinishButton(),
 
           // Numpad (only for tablet)
           if (isTablet && _isNumpadVisible) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildNumpad(),
           ],
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Recent transaction history
           _buildTransactionHistorySection(),
@@ -432,7 +432,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     
     return Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
@@ -466,7 +466,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           Text(
             '${_totalSum.toStringAsFixed(2)} SOM',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade700,
             ),
@@ -481,7 +481,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
-      height: 54,
+      height: 50,
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
@@ -509,7 +509,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -522,14 +522,14 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Text(
                     _getTranslatedText('processing'),
                     style: const TextStyle(
@@ -543,7 +543,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
             : Text(
                 _getTranslatedText('finish'),
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
                 ),
@@ -565,13 +565,13 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     
-    // Always show 4 currencies per row
-    final int currenciesPerRow = 4;
+    // Always show 5 currencies per row for smaller tablet
+    final int currenciesPerRow = 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -601,15 +601,15 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: currenciesPerRow,
-              childAspectRatio: 2.8,
+              childAspectRatio: 2.5,
               crossAxisSpacing: 4,
-              mainAxisSpacing: 8,
+              mainAxisSpacing: 6,
             ),
             itemCount: allCurrencies.length,
             itemBuilder: (context, index) {
@@ -677,7 +677,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: isTablet ? 15 : 13,
+                        fontSize: isTablet ? 14 : 13,
                         fontWeight: FontWeight.bold,
                         color: isDarkMode 
                             ? Colors.white
@@ -751,7 +751,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             ? Colors.white
                             : Colors.black87,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -759,14 +759,14 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   child: Text(
                     _getTranslatedText('purchase'),
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -815,7 +815,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                             ? Colors.white
                             : Colors.black87,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -823,7 +823,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   child: Text(
                     _getTranslatedText('sale'),
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1025,18 +1025,18 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
       },
       icon: Icon(
         _isNumpadVisible ? Icons.keyboard_hide : Icons.keyboard,
-        size: 20,
+        size: 18,
       ),
       label: Text(
         _isNumpadVisible
             ? _getTranslatedText('hide_numpad')
             : _getTranslatedText('show_numpad'),
-        style: const TextStyle(fontSize: 14),
+        style: const TextStyle(fontSize: 13),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blue.shade50,
         foregroundColor: Colors.blue.shade700,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1079,8 +1079,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                     end: Alignment.bottomCenter,
                   ),
           ),
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1089,11 +1089,11 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildNumpadButton('7'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('8'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('9'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton(
                     '⌫',
                     isFunction: true,
@@ -1103,16 +1103,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildNumpadButton('4'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('5'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('6'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton(
                     'C',
                     isFunction: true,
@@ -1122,16 +1122,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildNumpadButton('1'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('2'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('3'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton(
                     '⇄',
                     isFunction: true,
@@ -1141,16 +1141,16 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildNumpadButton('.'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('0'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton('00'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _buildNumpadButton(
                     '↵',
                     isFunction: true,
@@ -1176,8 +1176,8 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
-      width: 70,
-      height: 70,
+      width: 60,
+      height: 60,
       decoration: BoxDecoration(
         color: isFunction 
             ? color 
@@ -1210,7 +1210,7 @@ class _CurrencyConverterCoreState extends State<CurrencyConverterCore> {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: isFunction 
                   ? Colors.white 
@@ -2231,7 +2231,7 @@ class _TabletCurrencyConverterLayoutState
 
   Widget _buildPortraitLayout() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
       child: _pages[_selectedIndex],
     );
   }

@@ -129,11 +129,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     return Column(
       children: [
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors
               .blue.shade50.withOpacity(0.8),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -162,11 +162,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         InkWell(
           onTap: () => _showForeignCurrencyValueDetails(),
           child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             color: isDarkMode ? Colors.green.shade900.withOpacity(0.7) : Colors
                 .green.shade50.withOpacity(0.8),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -194,11 +194,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           ),
         ),
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors
               .indigo.shade50.withOpacity(0.8),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -279,7 +279,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 24, top: 16),
+          padding: const EdgeInsets.only(bottom: 20, top: 12),
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -295,7 +295,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
               // Profit Pie Chart Section
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
                 child: Text(
                   _getTranslatedText('profit_distribution'),
                   style: TextStyle(
@@ -331,16 +331,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       );
     }
 
+    // Calculate the optimal width for the table based on screen size
+    final screenWidth = MediaQuery.of(context).size.width;
+    // For 8.7 inch tablet, ensure the width is slightly less than screenWidth to fit all columns
+    final tableWidth = (isTablet ? screenWidth - 32 : 750).toDouble();
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          // Set width based on device, but always ensure there's space for the table
-          width: isTablet ? MediaQuery
-              .of(context)
-              .size
-              .width - 32 : 800,
+          width: tableWidth,
           child: _buildCurrencyTable(currenciesToDisplay),
         ),
       ),
@@ -376,7 +377,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               topRight: Radius.circular(8),
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
             children: [
               _buildTableHeaderCell(
@@ -385,23 +386,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               ),
               _buildTableHeaderCell(
                 _getTranslatedText('current_balance'),
-                flex: 2,
+                flex: 1,
               ),
               _buildTableHeaderCell(
                 _getTranslatedText('avg_purchase_rate'),
-                flex: 2,
+                flex: 1,
               ),
               _buildTableHeaderCell(
                 _getTranslatedText('total_purchased'),
-                flex: 2,
+                flex: 1,
               ),
               _buildTableHeaderCell(
                 _getTranslatedText('avg_sale_rate'),
-                flex: 2,
+                flex: 1,
               ),
               _buildTableHeaderCell(
                 _getTranslatedText('total_sold'),
-                flex: 2,
+                flex: 1,
               ),
               _buildTableHeaderCell(_getTranslatedText('profit'), flex: 1),
             ],
@@ -480,7 +481,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: 14),
                                     Text(
                                       _getTranslatedText('current_balance'),
                                       style: TextStyle(
@@ -491,13 +492,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                             : Colors.blue.shade700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     _buildStatRow(
                                       _getTranslatedText('amount_label'),
                                       '${currentQuantity.toStringAsFixed(
                                           2)} ${stat['currency']}',
                                     ),
-                                    Divider(height: 24,
+                                    Divider(height: 20,
                                         color: isDarkMode
                                             ? Colors.grey.shade800
                                             : Colors.grey.shade300),
@@ -511,7 +512,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                             : Colors.blue.shade700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     _buildStatRow(
                                       _getTranslatedText('total_purchased'),
                                       '${totalPurchased.toStringAsFixed(
@@ -526,7 +527,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                       '${(avgPurchaseRate * totalPurchased)
                                           .toStringAsFixed(2)} SOM',
                                     ),
-                                    Divider(height: 24,
+                                    Divider(height: 20,
                                         color: isDarkMode
                                             ? Colors.grey.shade800
                                             : Colors.grey.shade300),
@@ -540,7 +541,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                             : Colors.blue.shade700,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     _buildStatRow(
                                       _getTranslatedText('total_sold'),
                                       '${totalSold.toStringAsFixed(
@@ -555,7 +556,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                       '${(avgSaleRate * totalSold)
                                           .toStringAsFixed(2)} SOM',
                                     ),
-                                    Divider(height: 24,
+                                    Divider(height: 20,
                                         color: isDarkMode
                                             ? Colors.grey.shade800
                                             : Colors.grey.shade300),
@@ -573,7 +574,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                             : Colors.red.shade700),
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     _buildStatRow(
                                       _getTranslatedText('amount_label'),
                                       formatProfit(profit),
@@ -594,7 +595,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    vertical: 12,
+                    vertical: 10,
                     horizontal: 8,
                   ),
                   color: isDarkMode
@@ -612,27 +613,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                       ),
                       _buildTableCell(
                         '${currentQuantity.toStringAsFixed(2)}',
-                        flex: 2,
+                        flex: 1,
                         textColor: isDarkMode ? Colors.white : null,
                       ),
                       _buildTableCell(
                         avgPurchaseRate.toStringAsFixed(4),
-                        flex: 2,
+                        flex: 1,
                         textColor: isDarkMode ? Colors.white : null,
                       ),
                       _buildTableCell(
                         '${totalPurchased.toStringAsFixed(2)}',
-                        flex: 2,
+                        flex: 1,
                         textColor: isDarkMode ? Colors.white : null,
                       ),
                       _buildTableCell(
                         avgSaleRate.toStringAsFixed(4),
-                        flex: 2,
+                        flex: 1,
                         textColor: isDarkMode ? Colors.white : null,
                       ),
                       _buildTableCell(
                         '${totalSold.toStringAsFixed(2)}',
-                        flex: 2,
+                        flex: 1,
                         textColor: isDarkMode ? Colors.white : null,
                       ),
                       _buildTableCell(
@@ -655,7 +656,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ),
         // Table Footer with totals
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           decoration: BoxDecoration(
             color: isDarkMode ? Colors.blue.shade900.withOpacity(0.3) : Colors
                 .blue.shade50,
@@ -687,33 +688,33 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                 _calculateTotal(currenciesToDisplay, 'current_quantity')
                     .toStringAsFixed(2),
                 bold: true,
-                flex: 2,
+                flex: 1,
                 textColor: isDarkMode ? Colors.white : null,
               ),
               _buildTableCell(
                 "-", // Avg purchase rate doesn't have a meaningful total
                 bold: true,
-                flex: 2,
+                flex: 1,
                 textColor: isDarkMode ? Colors.white : null,
               ),
               _buildTableCell(
                 _calculateTotal(currenciesToDisplay, 'total_purchased')
                     .toStringAsFixed(2),
                 bold: true,
-                flex: 2,
+                flex: 1,
                 textColor: isDarkMode ? Colors.white : null,
               ),
               _buildTableCell(
                 "-", // Avg sale rate doesn't have a meaningful total
                 bold: true,
-                flex: 2,
+                flex: 1,
                 textColor: isDarkMode ? Colors.white : null,
               ),
               _buildTableCell(
                 _calculateTotal(currenciesToDisplay, 'total_sold')
                     .toStringAsFixed(2),
                 bold: true,
-                flex: 2,
+                flex: 1,
                 textColor: isDarkMode ? Colors.white : null,
               ),
               _buildTableCell(
@@ -741,7 +742,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          fontSize: 14,
+          fontSize: 11,
         ),
         textAlign: TextAlign.center,
       ),
@@ -762,9 +763,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         style: TextStyle(
           fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           color: color ?? textColor,
-          fontSize: 14,
+          fontSize: 11,
         ),
         textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -783,11 +785,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       children: [
         Expanded(
           child: Card(
-            margin: const EdgeInsets.all(8),
+            margin: const EdgeInsets.all(6),
             color: isDarkMode ? Colors.blue.shade900.withOpacity(0.7) : Colors
                 .blue.shade50.withOpacity(0.8),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -818,12 +820,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           child: InkWell(
             onTap: () => _showForeignCurrencyValueDetails(),
             child: Card(
-              margin: const EdgeInsets.all(8),
+              margin: const EdgeInsets.all(6),
               color: isDarkMode
                   ? Colors.green.shade900.withOpacity(0.7)
                   : Colors.green.shade50.withOpacity(0.8),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -838,12 +840,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                 .green.shade700.withOpacity(0.9),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Icon(
                           Icons.info_outline,
                           color: isDarkMode ? Colors.green.shade300 : Colors
                               .green.shade700.withOpacity(0.9),
-                          size: 20,
+                          size: 18,
                         ),
                       ],
                     ),
@@ -864,11 +866,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ),
         Expanded(
           child: Card(
-            margin: const EdgeInsets.all(8),
+            margin: const EdgeInsets.all(6),
             color: isDarkMode ? Colors.indigo.shade900.withOpacity(0.8) : Colors
                 .indigo.shade50.withOpacity(0.8),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1164,20 +1166,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         (b['profit'] as double).abs().compareTo((a['profit'] as double).abs()));
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         children: [
           SizedBox(
-            height: 250,
+            height: 230,
             child: _ProfitPieChart(
               currencies: currenciesWithProfit,
               isDarkMode: isDarkMode,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 16,
-            runSpacing: 8,
+            spacing: 14,
+            runSpacing: 6,
             alignment: WrapAlignment.center,
             children: currenciesWithProfit
                 .asMap()
@@ -1210,8 +1212,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 16,
-                    height: 16,
+                    width: 14,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
@@ -1221,7 +1223,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   Text(
                     '${currency['currency']}: ${formatProfit(profit)}',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: isPositive
                           ? (isDarkMode ? Colors.cyan.shade300 : Colors.green
