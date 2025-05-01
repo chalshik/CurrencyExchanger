@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 class UserModel {
-  final String? id; // Firestore document ID
+  final String? id;  // Firestore document ID
   final String? uid; // Firebase Auth UID
   final String username;
   final String password;
-  final String role;
+  final String role;  // "superadmin", "admin", or "user"
   final DateTime createdAt;
-  final String? companyId;
+  final String? companyId;  // Reference to parent company
   final String? companyName;
 
   UserModel({
@@ -42,16 +42,15 @@ class UserModel {
       username: data['username'] ?? '',
       password: data['password'] ?? '',
       role: data['role'] ?? 'user',
-      createdAt:
-          data['created_at'] != null
-              ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
-              : DateTime.now(),
+      createdAt: data['created_at'] != null 
+          ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
+          : DateTime.now(),
       companyId: data['company_id'] as String?,
       companyName: data['company_name'] as String?,
     );
   }
 
-  // Optional: update fields
+  // Create a copy with some updated fields
   UserModel copyWith({
     String? id,
     String? uid,
@@ -73,4 +72,13 @@ class UserModel {
       companyName: companyName ?? this.companyName,
     );
   }
+
+  // Check if user is a superadmin
+  bool get isSuperAdmin => role == 'superadmin';
+  
+  // Check if user is a company admin
+  bool get isCompanyAdmin => role == 'admin';
+  
+  // Check if user belongs to a company
+  bool get hasCompany => companyId != null;
 }

@@ -7,25 +7,61 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isAdmin() {
+    function isSuperAdmin() {
       return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/a) &&
-        get(/databases/$(database)/documents/users/a).data.role == 'admin';
+        exists(/databases/$(database)/documents/superadmins/$(request.auth.uid));
+    }
+    
+    function isCompanyAdmin(companyId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isCompanyUser(companyId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid));
+    }
+    
+    function isCompanyOwner(companyId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/companies/$(companyId)) &&
+        get(/databases/$(database)/documents/companies/$(companyId)).data.owner_id == request.auth.uid;
     }
 
-    // Users collection rules
-    match /users/{userId} {
-      allow read, write: if true;
+    // Superadmins collection rules
+    match /superadmins/{superadminId} {
+      allow read: if isSuperAdmin();
+      allow write: if isSuperAdmin();
     }
 
-    // Currencies collection rules
-    match /currencies/{currencyId} {
-      allow read, write: if true;
-    }
+    // Companies collection and subcollections rules
+    match /companies/{companyId} {
+      allow read: if isSuperAdmin() || isCompanyUser(companyId);
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || isCompanyOwner(companyId);
+      allow delete: if isSuperAdmin();
 
-    // History collection rules
-    match /history/{historyId} {
-      allow read, write: if true;
+      // Users subcollection rules
+      match /users/{userId} {
+        allow read: if isSuperAdmin() || isCompanyUser(companyId);
+        allow create: if isSuperAdmin() || isCompanyAdmin(companyId);
+        allow update: if isSuperAdmin() || isCompanyAdmin(companyId) || (isAuthenticated() && userId == request.auth.uid);
+        allow delete: if isSuperAdmin() || isCompanyAdmin(companyId);
+      }
+
+      // Currencies subcollection rules
+      match /currencies/{currencyId} {
+        allow read: if isSuperAdmin() || isCompanyUser(companyId);
+        allow write: if isSuperAdmin() || isCompanyAdmin(companyId);
+      }
+
+      // History subcollection rules
+      match /history/{historyId} {
+        allow read: if isSuperAdmin() || isCompanyUser(companyId);
+        allow create: if isSuperAdmin() || isCompanyUser(companyId);
+        allow update, delete: if isSuperAdmin() || isCompanyAdmin(companyId);
+      }
     }
   }
 } 

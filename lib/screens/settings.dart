@@ -116,7 +116,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadCurrencies() async {
     try {
-      final currencies = await _dbHelper.getAllCurrencies();
+      List<CurrencyModel> currencies;
+      
+      // Get currencies from the appropriate collection based on user context
+      if (currentUser?.companyId != null) {
+        // For company users, get currencies from the company collection
+        currencies = await _dbHelper.getAllCurrencies(companyId: currentUser!.companyId);
+        debugPrint('Loaded ${currencies.length} currencies from company ${currentUser!.companyId}');
+      } else {
+        // Fallback to root currencies collection for legacy support
+        currencies = await _dbHelper.getAllCurrencies();
+        debugPrint('WARNING: Loading currencies from root collection (legacy)');
+      }
+      
       if (!mounted) return;
       setState(() {
         // Ensure proper quantity parsing for all currencies
@@ -143,7 +155,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadUsers() async {
     try {
-      final users = await _dbHelper.getAllUsers();
+      List<UserModel> users;
+      if (currentUser?.companyId != null) {
+        // For company users, get users from the company
+        users = await _dbHelper.getCompanyUsers(currentUser!.companyId!);
+        debugPrint('Loaded ${users.length} users from company ${currentUser!.companyId}');
+      } else if (currentUser?.role == 'superadmin') {
+        // For superadmins, get root users
+        users = await _dbHelper.getAllUsers();
+        debugPrint('Loaded ${users.length} users as superadmin');
+      } else {
+        // Fallback to root users for legacy support
+        users = await _dbHelper.getAllUsers();
+        debugPrint('WARNING: Loading users from root collection (legacy)');
+      }
+      
       if (!mounted) return;
       setState(() {
         _users = users;
@@ -318,11 +344,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 if (_newCurrencyCodeController.text.isNotEmpty) {
                   try {
+                    final currencyCode = _newCurrencyCodeController.text.toUpperCase();
                     final newCurrency = CurrencyModel(
-                      code: _newCurrencyCodeController.text.toUpperCase(),
+                      code: currencyCode,
                     );
 
-                    await _dbHelper.insertCurrency(newCurrency);
+                    if (currentUser?.companyId != null) {
+                      // Add currency to company-specific collection
+                      await _dbHelper.insertCurrency(
+                        newCurrency, 
+                        companyId: currentUser!.companyId
+                      );
+                      debugPrint('Added currency $currencyCode to company ${currentUser!.companyId}');
+                    } else {
+                      // Fallback to root collection (legacy)
+                      await _dbHelper.insertCurrency(newCurrency);
+                      debugPrint('WARNING: Added currency $currencyCode to root collection (legacy)');
+                    }
+                    
                     await _loadCurrencies();
                     Navigator.pop(context);
                   } catch (e) {
@@ -435,26 +474,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (_usernameController.text.isNotEmpty &&
                     _passwordController.text.isNotEmpty) {
                   try {
-                    // Check if username already exists
-                    final exists = await _dbHelper.usernameExists(
-                      _usernameController.text,
-                    );
-                    if (exists) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(_getTranslatedText('username_exists')),
-                        ),
+                    final username = _usernameController.text;
+                    final password = _passwordController.text;
+                    
+                    if (currentUser?.companyId != null) {
+                      // Check if username exists in the company
+                      final exists = await _dbHelper.companyUsernameExists(
+                        currentUser!.companyId!,
+                        username,
                       );
-                      return;
+                      
+                      if (exists) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(_getTranslatedText('username_exists')),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Create user in the company
+                      await _dbHelper.createCompanyUser(
+                        currentUser!.companyId!,
+                        username,
+                        password,
+                        'user', // Always create regular users
+                      );
+                      debugPrint('Created user in company ${currentUser!.companyId}');
+                    } else {
+                      // Check if username exists in root collection (legacy)
+                      final exists = await _dbHelper.usernameExists(username);
+                      
+                      if (exists) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(_getTranslatedText('username_exists')),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Create user in root collection (legacy)
+                      final newUser = UserModel(
+                        username: username,
+                        password: password,
+                        role: 'user',
+                      );
+                      
+                      await _dbHelper.createUser(newUser);
+                      debugPrint('WARNING: Created user in root collection (legacy)');
                     }
-
-                    final newUser = UserModel(
-                      username: _usernameController.text,
-                      password: _passwordController.text,
-                      role: 'user', // Always set role to 'user'
-                    );
-
-                    await _dbHelper.createUser(newUser);
+                    
                     await _loadUsers();
                     Navigator.pop(context);
 
@@ -522,7 +592,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await _dbHelper.deleteCurrency(id.toString());
+        if (currentUser?.companyId != null) {
+          // Delete from company-specific collection
+          await _dbHelper.deleteCurrency(code, companyId: currentUser!.companyId);
+          debugPrint('Deleted currency $code from company ${currentUser!.companyId}');
+        } else {
+          // Fallback to root collection (legacy)
+          await _dbHelper.deleteCurrency(code);
+          debugPrint('WARNING: Deleted currency $code from root collection (legacy)');
+        }
+        
         await _loadCurrencies();
         ScaffoldMessenger.of(
           context,
@@ -563,7 +642,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await _dbHelper.deleteUser(id);
+        if (currentUser?.companyId != null) {
+          // Delete from company-specific collection
+          await _dbHelper.deleteUser(id, companyId: currentUser!.companyId);
+          debugPrint('Deleted user $username from company ${currentUser!.companyId}');
+        } else {
+          // Fallback to root collection (legacy)
+          await _dbHelper.deleteUser(id);
+          debugPrint('WARNING: Deleted user $username from root collection (legacy)');
+        }
+        
         await _loadUsers();
         ScaffoldMessenger.of(
           context,
@@ -1484,10 +1572,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       if (fileName.contains('history')) {
-        // Get history data
+        // Get history data with company ID if available
         final historyData = await _dbHelper.getFilteredHistoryByDate(
           startDate: _startDate!,
           endDate: _endDate!,
+          companyId: currentUser?.companyId, // Pass the company ID if available
         );
 
         // Create PDF content for history
@@ -1533,10 +1622,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       } else {
-        // Get analytics data
+        // Get analytics data with company ID if available
         final analyticsData = await _dbHelper.calculateAnalytics(
           startDate: _startDate,
           endDate: _endDate,
+          companyId: currentUser?.companyId, // Pass the company ID if available
         );
 
         // Create PDF content for statistics
@@ -1808,7 +1898,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // If confirmed, delete the currency
     if (confirmed == true && mounted) {
       try {
-        await _dbHelper.deleteCurrency(currency.code!);
+        await _deleteCurrency(currency.id, currency.code!);
         _loadCurrencies(); // Refresh the list
 
         ScaffoldMessenger.of(context).showSnackBar(

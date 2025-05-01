@@ -138,12 +138,22 @@ class DatabaseHelper {
   // CURRENCY CRUD OPERATIONS
   // ========================
 
-  Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency) async {
+  Future<CurrencyModel> createOrUpdateCurrency(CurrencyModel currency, {String? companyId}) async {
     try {
-      // Reference to the currency document by its code
-      DocumentReference currencyRef = _firestore
+      // If companyId is provided, use the company-specific currencies collection
+      DocumentReference currencyRef;
+      if (companyId != null) {
+        currencyRef = _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .doc(currency.code);
+      } else {
+        // Fallback to the root collection (legacy support)
+        currencyRef = _firestore
           .collection(collectionCurrencies)
           .doc(currency.code);
+      }
 
       // Check if the document exists by fetching it
       DocumentSnapshot snapshot = await currencyRef.get();
@@ -171,12 +181,27 @@ class DatabaseHelper {
   }
 
   // Get currency by code (this method is now inside the DatabaseHelper class)
-  Future<CurrencyModel?> getCurrency(String code) async {
+  Future<CurrencyModel?> getCurrency(String code, {String? companyId}) async {
     try {
-      final doc =
-          await _firestore.collection(collectionCurrencies).doc(code).get();
+      DocumentSnapshot doc;
+      if (companyId != null) {
+        // Get from company-specific collection
+        doc = await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .doc(code)
+            .get();
+      } else {
+        // Fallback to root collection (legacy support)
+        doc = await _firestore
+            .collection(collectionCurrencies)
+            .doc(code)
+            .get();
+      }
+      
       if (doc.exists && doc.data() != null) {
-        return CurrencyModel.fromFirestore(doc.data()!, doc.id);
+        return CurrencyModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
       }
       return null;
     } catch (e) {
@@ -185,12 +210,22 @@ class DatabaseHelper {
     }
   }
 
-  Future<void> insertCurrency(CurrencyModel currency) async {
+  Future<void> insertCurrency(CurrencyModel currency, {String? companyId}) async {
     try {
       // Reference to the currency document by its code
-      DocumentReference currencyRef = _firestore
+      DocumentReference currencyRef;
+      if (companyId != null) {
+        currencyRef = _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .doc(currency.code);
+      } else {
+        // Fallback to root collection (legacy support)
+        currencyRef = _firestore
           .collection(collectionCurrencies)
           .doc(currency.code);
+      }
 
       // Prepare data with default values for all fields except code
       final Map<String, dynamic> currencyData = {
@@ -210,12 +245,22 @@ class DatabaseHelper {
   }
 
   // Delete currency by code
-  Future<void> deleteCurrency(String code) async {
+  Future<void> deleteCurrency(String code, {String? companyId}) async {
     try {
       // Reference to the currency document by its code
-      DocumentReference currencyRef = _firestore
+      DocumentReference currencyRef;
+      if (companyId != null) {
+        currencyRef = _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .doc(code);
+      } else {
+        // Fallback to root collection (legacy support)
+        currencyRef = _firestore
           .collection(collectionCurrencies)
           .doc(code);
+      }
 
       // Delete the currency document
       await currencyRef.delete();
@@ -225,15 +270,27 @@ class DatabaseHelper {
     }
   }
 
-  Future<List<CurrencyModel>> getAllCurrencies() async {
+  Future<List<CurrencyModel>> getAllCurrencies({String? companyId}) async {
     try {
-      // Get all currencies from Firestore
-      final snapshot = await _firestore.collection(collectionCurrencies).get();
+      QuerySnapshot snapshot;
+      
+      if (companyId != null) {
+        // Get currencies from company-specific collection
+        snapshot = await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .get();
+      } else {
+        // Fallback to root collection (legacy support)
+        snapshot = await _firestore
+            .collection(collectionCurrencies)
+            .get();
+      }
 
       // Convert Firestore documents to CurrencyModel objects
-      final currencies =
-          snapshot.docs
-              .map((doc) => CurrencyModel.fromFirestore(doc.data(), doc.id))
+      final currencies = snapshot.docs
+          .map((doc) => CurrencyModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
               .toList();
 
       return currencies;
@@ -244,12 +301,22 @@ class DatabaseHelper {
   }
 
   // Update currency
-  Future<void> updateCurrency(CurrencyModel currency) async {
+  Future<void> updateCurrency(CurrencyModel currency, {String? companyId}) async {
     try {
       // Reference to the currency document by its code
-      DocumentReference currencyRef = _firestore
+      DocumentReference currencyRef;
+      if (companyId != null) {
+        currencyRef = _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('currencies')
+            .doc(currency.code);
+      } else {
+        // Fallback to root collection (legacy support)
+        currencyRef = _firestore
           .collection(collectionCurrencies)
           .doc(currency.code);
+      }
 
       // Update the currency document with the new data
       await currencyRef.update(currency.toMap());
@@ -262,9 +329,16 @@ class DatabaseHelper {
   Future<void> updateCurrencyQuantity(
     String currencyCode,
     double newQuantity,
+    {String? companyId}
   ) async {
     try {
-      final currencyRef = _firestore.collection('currencies').doc(currencyCode);
+      final currencyRef = companyId != null 
+          ? _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('currencies')
+              .doc(currencyCode)
+          : _firestore.collection('currencies').doc(currencyCode);
 
       // Use transaction to ensure atomic updates
       await _firestore.runTransaction((transaction) async {
@@ -344,12 +418,19 @@ class DatabaseHelper {
     }
   }
 
-  // Get summary of all currency balances
-  Future<Map<String, dynamic>> getCurrencySummary() async {
+  // Get summary of currency holdings
+  Future<Map<String, dynamic>> getCurrencySummary({String? companyId}) async {
     try {
       // Get SOM balance
-      final somDoc =
-          await _firestore.collection(collectionCurrencies).doc('SOM').get();
+      final somDoc = companyId != null
+          ? await _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('currencies')
+              .doc('SOM')
+              .get()
+          : await _firestore.collection(collectionCurrencies).doc('SOM').get();
+              
       double somBalance = 0.0;
       if (somDoc.exists) {
         somBalance = somDoc.data()?['quantity'] ?? 0.0;
@@ -357,8 +438,14 @@ class DatabaseHelper {
 
       // Get other currencies
       final otherCurrencies = <String, dynamic>{};
-      final currenciesSnapshot =
-          await _firestore.collection(collectionCurrencies).get();
+      final currenciesSnapshot = companyId != null
+          ? await _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('currencies')
+              .get()
+          : await _firestore.collection(collectionCurrencies).get();
+              
       for (var doc in currenciesSnapshot.docs) {
         if (doc.id != 'SOM') {
           otherCurrencies[doc.id] = {
@@ -487,14 +574,24 @@ class DatabaseHelper {
     required String operationType,
     required double rate,
     required double quantity,
+    required String? companyId,
   }) async {
     try {
-      // Reference to the SOM and foreign currency documents
+      if (companyId == null) {
+        throw Exception('Company ID is required for currency exchange operations');
+      }
+
+      // Reference to the SOM and foreign currency documents within the company
       DocumentReference somRef = _firestore
-          .collection(collectionCurrencies)
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('currencies')
           .doc('SOM');
+      
       DocumentReference currencyRef = _firestore
-          .collection(collectionCurrencies)
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('currencies')
           .doc(currencyCode);
 
       // Start a Firestore transaction
@@ -502,7 +599,7 @@ class DatabaseHelper {
         // Get current SOM document
         DocumentSnapshot somSnapshot = await transaction.get(somRef);
         if (!somSnapshot.exists) {
-          throw Exception('SOM currency not found');
+          throw Exception('SOM currency not found in company');
         }
         final somData = somSnapshot.data() as Map<String, dynamic>;
 
@@ -571,15 +668,23 @@ class DatabaseHelper {
           });
         }
 
-        // Record the transaction in history
-        await transaction.set(_firestore.collection(collectionHistory).doc(), {
+        // Record the transaction in company's history
+        await transaction.set(
+          _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('history')
+              .doc(), 
+          {
           'currency_code': currencyCode,
           'operation_type': operationType,
           'rate': rate,
           'quantity': quantity,
           'total': totalSom,
           'created_at': DateTime.now().toIso8601String(),
-        });
+            'username': currentUser?.username ?? 'unknown',
+          }
+        );
       });
     } catch (e) {
       debugPrint('Error in performCurrencyExchange: $e');
@@ -597,18 +702,38 @@ class DatabaseHelper {
     DateTime? endDate,
     String? currencyCode,
     String? operationType,
+    String? companyId,
   }) async {
     try {
       debugPrint('Getting filtered history...');
       debugPrint(
-        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}',
+        'Current user: ${currentUser?.username}, Role: ${currentUser?.role}, Company: ${companyId ?? "None"}',
       );
 
-      // Start with a query on the history collection
-      Query query = _firestore.collection(collectionHistory);
+      // If no company ID is provided but user has one, use that
+      final useCompanyId = companyId ?? currentUser?.companyId;
+      
+      // Start with a query on the appropriate history collection
+      Query query;
+      
+      if (useCompanyId != null) {
+        // Use company-specific history collection
+        query = _firestore
+            .collection(collectionCompanies)
+            .doc(useCompanyId)
+            .collection('history');
+            
+        debugPrint('Using company-specific history collection for company: $useCompanyId');
+      } else {
+        // Fallback to root history collection (legacy support)
+        query = _firestore.collection(collectionHistory);
+        debugPrint('WARNING: Using root history collection (legacy). Consider migrating to company-based structure.');
+      }
 
-      // If current user is not admin, filter by username first
-      if (currentUser != null && currentUser!.role != 'admin') {
+      // If current user is not admin or superadmin, filter by username first
+      if (currentUser != null && 
+          currentUser!.role != 'admin' && 
+          currentUser!.role != 'superadmin') {
         debugPrint('Filtering by username: ${currentUser!.username}');
         query = query.where('username', isEqualTo: currentUser!.username);
       }
@@ -628,48 +753,31 @@ class DatabaseHelper {
         );
       }
 
-      // Add currency code filter if provided
+      // Filter by currency code if provided
       if (currencyCode != null && currencyCode.isNotEmpty) {
         query = query.where('currency_code', isEqualTo: currencyCode);
       }
 
-      // Add operation type filter if provided
+      // Filter by operation type if provided
       if (operationType != null && operationType.isNotEmpty) {
         query = query.where('operation_type', isEqualTo: operationType);
       }
 
-      // Order by created_at in descending order
-      query = query.orderBy('created_at', descending: true);
+      // Execute the query and get the results
+      final querySnapshot = await query
+          .orderBy('created_at', descending: true)
+          .get();
 
-      // Execute the query
-      final querySnapshot = await query.get();
-      debugPrint('Found ${querySnapshot.docs.length} history documents');
+      debugPrint('Found ${querySnapshot.docs.length} history entries');
 
-      // Convert Firestore documents to HistoryModel objects
-      final historyEntries =
-          querySnapshot.docs
-              .map(
-                (doc) => HistoryModel.fromFirestore(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
+      // Convert the query results to HistoryModel objects
+      final historyEntries = querySnapshot.docs
+          .map((doc) => HistoryModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
               .toList();
-
-      // Debug output to verify the entries
-      for (var entry in historyEntries) {
-        debugPrint(
-          'History entry: ${entry.currencyCode}, ${entry.operationType}, ${entry.username}',
-        );
-      }
 
       return historyEntries;
     } catch (e) {
       debugPrint('Error in getFilteredHistoryByDate: $e');
-      if (e is FirebaseException) {
-        debugPrint('Firebase error code: ${e.code}');
-        debugPrint('Firebase error message: ${e.message}');
-      }
       return [];
     }
   }
@@ -1219,6 +1327,7 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> calculateAnalytics({
     DateTime? startDate,
     DateTime? endDate,
+    String? companyId,
   }) async {
     try {
       // Set default date range if not provided
@@ -1230,10 +1339,11 @@ class DatabaseHelper {
         startDate: fromDate,
         endDate: toDate,
         limit: 1000, // High limit to get all currencies
+        companyId: companyId, // Pass company ID to get company-specific data
       );
 
-      // Get all currencies
-      final currencies = await getAllCurrencies();
+      // Get all currencies for the company
+      final currencies = await getAllCurrencies(companyId: companyId);
 
       // Combine data
       final currencyStats = <Map<String, dynamic>>[];
@@ -1637,7 +1747,7 @@ class DatabaseHelper {
     try {
       debugPrint('Attempting login for username: $username');
 
-      // Special case for admin user
+      // Special case for admin user (maintain this for backward compatibility)
       if (username == 'a' && password == 'a') {
         debugPrint('Admin credentials detected');
 
@@ -1728,44 +1838,9 @@ class DatabaseHelper {
         debugPrint('Error checking superadmins collection: $e');
       }
 
-      // If not found in superadmins, check regular users collection
-      debugPrint('Not found in superadmins, checking users collection...');
-      final querySnapshot = await _firestore
-              .collection(collectionUsers)
-              .where('username', isEqualTo: username)
-              .where('password', isEqualTo: password)
-              .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final userData = querySnapshot.docs.first.data();
-        debugPrint('User found in Firestore');
-
-        // Sign in with Firebase Auth
-        try {
-          await _auth.signInWithEmailAndPassword(
-            email: '${username}@currencychanger.com',
-            password: password,
-          );
-          debugPrint('User signed in with Firebase Auth');
-        } catch (e) {
-          if (e is FirebaseException && e.code == 'user-not-found') {
-            // Create the user in Firebase Auth
-            await _auth.createUserWithEmailAndPassword(
-              email: '${username}@currencychanger.com',
-              password: password,
-            );
-            debugPrint('User created in Firebase Auth');
-          } else {
-            debugPrint('Error signing in with Firebase Auth: $e');
-          }
-        }
-
-        return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
-      }
-
-      // If not found in root collections, check users in all companies
-      debugPrint('Not found in root collections, checking company users collections...');
-      
+      // Check users in all companies (this should be the primary user source now)
+      debugPrint('Checking users in companies...');
+      try {
       // Get all companies
       final companiesSnapshot = await _firestore.collection(collectionCompanies).get();
       
@@ -1788,7 +1863,7 @@ class DatabaseHelper {
           
           debugPrint('Found user in company $companyId: ${userData.toString()}');
           
-          // Sign in with Firebase Auth - using the correct email format for company users
+            // Sign in with Firebase Auth
           try {
             // Get the sanitized username and company name that were used to create the email
             final sanitizedUsername = username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -1808,13 +1883,53 @@ class DatabaseHelper {
             // We'll continue anyway since we found the user in Firestore
           }
           
-          // Return a UserModel with additional company information
+            // Return a UserModel with company information
           return UserModel.fromFirestore(userData, userDoc.id)
               .copyWith(
                 companyId: companyId, 
                 companyName: companyDoc.data()['name'] as String,
               );
         }
+        }
+      } catch (e) {
+        debugPrint('Error checking company users: $e');
+      }
+
+      // If not found in companies or superadmins, check legacy users collection as fallback
+      debugPrint('Not found in companies, checking legacy users collection as fallback...');
+      final querySnapshot = await _firestore
+          .collection(collectionUsers)
+          .where('username', isEqualTo: username)
+          .where('password', isEqualTo: password)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final userData = querySnapshot.docs.first.data();
+        debugPrint('User found in legacy Firestore collection');
+
+        // Sign in with Firebase Auth
+        try {
+          await _auth.signInWithEmailAndPassword(
+            email: '${username}@currencychanger.com',
+            password: password,
+          );
+          debugPrint('User signed in with Firebase Auth');
+        } catch (e) {
+          if (e is FirebaseException && e.code == 'user-not-found') {
+            // Create the user in Firebase Auth
+            await _auth.createUserWithEmailAndPassword(
+              email: '${username}@currencychanger.com',
+              password: password,
+            );
+            debugPrint('User created in Firebase Auth');
+          } else {
+            debugPrint('Error signing in with Firebase Auth: $e');
+          }
+        }
+
+        // Consider migrating this user to a company in the future
+        debugPrint('WARNING: User found in legacy collection. Consider migrating to company-based structure.');
+        return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
       }
 
       debugPrint('Authentication failed - No matching user found in any collection');
@@ -1836,7 +1951,7 @@ class DatabaseHelper {
 
       // Convert Firestore documents to UserModel objects
       return querySnapshot.docs
-          .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
+          .map((doc) => UserModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
     } catch (e) {
       debugPrint('Error in getAllUsers: $e');
@@ -1845,16 +1960,75 @@ class DatabaseHelper {
   }
 
   /// Create new user
-  Future<String> createUser(UserModel user) async {
+  Future<String> createUser(UserModel user, {String? companyId}) async {
     try {
-      debugPrint('Creating new user: ${user.username}');
+      debugPrint('Creating new user: ${user.username}${companyId != null ? " in company $companyId" : ""}');
 
       // Validate username
       if (user.username.isEmpty) {
         throw Exception('Username cannot be empty');
       }
 
-      // Check if username already exists
+      // If we're creating a user within a company
+      if (companyId != null) {
+        // Check if username already exists in this company
+        final exists = await companyUsernameExists(companyId, user.username);
+        if (exists) {
+          throw Exception('Username already exists in this company');
+        }
+
+        // Generate a document ID based on username
+        final docId = user.username.toLowerCase().replaceAll(' ', '_');
+        
+        // Create Firebase Auth user
+        UserCredential? credential;
+        try {
+          // Create a valid email address by removing special characters and ensuring proper format
+          final sanitizedUsername = user.username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          
+          // Get company data to create the email domain
+          final companyDoc = await _firestore.collection(collectionCompanies).doc(companyId).get();
+          if (!companyDoc.exists) {
+            throw Exception('Company not found');
+          }
+          
+          final companyName = companyDoc.data()?['name'] as String;
+          final sanitizedCompanyName = companyName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+          final emailAddress = '${sanitizedUsername}@${sanitizedCompanyName}.com';
+          
+          debugPrint('Creating Firebase Auth user with email: $emailAddress');
+          
+          credential = await _auth.createUserWithEmailAndPassword(
+            email: emailAddress,
+            password: user.password,
+          );
+          debugPrint('User created in Firebase Auth with UID: ${credential.user?.uid}');
+        } catch (e) {
+          debugPrint('Error creating user in Firebase Auth: $e');
+          // We'll continue and just create the Firestore user
+        }
+
+        // Add the user to the company's users collection
+        await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('users')
+            .doc(docId)
+            .set({
+          'username': user.username,
+          'password': user.password,
+          'role': user.role,
+          'company_id': companyId,
+          'auth_uid': credential?.user?.uid,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+
+        debugPrint('Company user created successfully with ID: $docId');
+        return docId;
+      } 
+      // Non-company user case (legacy support)
+      else {
+        // Check if username already exists in root users collection
       final exists = await usernameExists(user.username);
       if (exists) {
         throw Exception('Username already exists');
@@ -1896,20 +2070,79 @@ class DatabaseHelper {
 
       debugPrint('User created successfully with ID: $docId');
       return docId;
+      }
     } catch (e) {
       debugPrint('Error in createUser: $e');
       rethrow;
     }
   }
 
-  /// Update user
-  Future<bool> updateUser(UserModel user) async {
+  /// Check if a username already exists in a company
+  Future<bool> companyUsernameExists(String companyId, String username) async {
     try {
-      // Update the user document in Firestore
+      // Query Firestore for a user with the given username in the company
+      final querySnapshot = await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error in companyUsernameExists: $e');
+      return false;
+    }
+  }
+
+  /// Get all users in a company
+  Future<List<UserModel>> getCompanyUsers(String companyId) async {
+    try {
+      // Get all users from the company's users collection
+      final querySnapshot = await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('users')
+          .get();
+
+      // Convert Firestore documents to UserModel objects
+      return querySnapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            // Add company ID to the user data
+            data['company_id'] = companyId;
+            // Create user model from the document data
+            return UserModel.fromFirestore(data, doc.id);
+          })
+          .toList();
+    } catch (e) {
+      debugPrint('Error in getCompanyUsers: $e');
+      return [];
+    }
+  }
+
+  /// Update user
+  Future<bool> updateUser(UserModel user, {String? companyId}) async {
+    try {
+      if (companyId != null && user.id != null) {
+        // Update user in company collection
+        await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('users')
+            .doc(user.id)
+            .update({
+          'username': user.username,
+          'password': user.password,
+          'role': user.role,
+        });
+      } else {
+        // Update user in root collection
       await _firestore
           .collection(collectionUsers)
           .doc(user.id)
           .update(user.toMap());
+      }
 
       return true;
     } catch (e) {
@@ -1919,10 +2152,23 @@ class DatabaseHelper {
   }
 
   /// Delete user
-  Future<bool> deleteUser(String id) async {
+  Future<bool> deleteUser(String id, {String? companyId}) async {
     try {
-      // Delete the user document from Firestore
-      await _firestore.collection(collectionUsers).doc(id).delete();
+      if (companyId != null) {
+        // Delete user from company collection
+        await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('users')
+            .doc(id)
+            .delete();
+      } else {
+        // Delete user from root collection
+        await _firestore
+            .collection(collectionUsers)
+            .doc(id)
+            .delete();
+      }
 
       return true;
     } catch (e) {
@@ -2307,11 +2553,18 @@ class DatabaseHelper {
   }
 
   // Add history entry
-  Future<bool> addHistoryEntry(HistoryModel historyEntry) async {
+  Future<bool> addHistoryEntry(HistoryModel historyEntry, {String? companyId}) async {
     try {
       // Create a new document with auto-generated ID
-      DocumentReference historyRef =
-          _firestore.collection(collectionHistory).doc();
+      DocumentReference historyRef = companyId != null
+          ? _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('history')
+              .doc()
+          : _firestore
+              .collection(collectionHistory)
+              .doc();
 
       // Convert history entry to map
       Map<String, dynamic> historyData = historyEntry.toMap();
@@ -2664,27 +2917,41 @@ class DatabaseHelper {
     required DateTime startDate,
     required DateTime endDate,
     int limit = 5,
+    String? companyId,
   }) async {
     try {
       final fromDateStr = startDate.toIso8601String();
       final toDateStr = endDate.toIso8601String();
 
-      debugPrint('Fetching currency statistics from $fromDateStr to $toDateStr from history collection');
+      debugPrint('Fetching currency statistics from $fromDateStr to $toDateStr');
 
-      // Query the history collection directly instead of archive
-      final historyQuery = await _firestore.collection(collectionHistory)
+      // Query the appropriate history collection based on companyId
+      Query historyQuery;
+      if (companyId != null) {
+        debugPrint('Querying company-specific history collection for company: $companyId');
+        historyQuery = _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('history')
           .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
-          .where('created_at', isLessThanOrEqualTo: toDateStr)
-          .get();
+            .where('created_at', isLessThanOrEqualTo: toDateStr);
+      } else {
+        debugPrint('Querying root history collection (legacy)');
+        historyQuery = _firestore
+            .collection(collectionHistory)
+            .where('created_at', isGreaterThanOrEqualTo: fromDateStr)
+            .where('created_at', isLessThanOrEqualTo: toDateStr);
+      }
       
-      debugPrint('Found ${historyQuery.docs.length} history entries for calculation');
+      final historySnapshot = await historyQuery.get();
+      debugPrint('Found ${historySnapshot.docs.length} history entries for calculation');
       
       // Maps to track statistics by currency
       final Map<String, Map<String, dynamic>> currencyStats = {};
       
       // Process each history entry
-      for (var doc in historyQuery.docs) {
-        final data = doc.data();
+      for (var doc in historySnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
         final currencyCode = data['currency_code'] as String;
         final operationType = data['operation_type'] as String;
         final rate = _safeDouble(data['rate']);
@@ -2721,8 +2988,8 @@ class DatabaseHelper {
       // Convert to format needed for the UI
       final List<Map<String, dynamic>> resultData = [];
       
-      // Get current currencies for display
-      final currencies = await getAllCurrencies();
+      // Get current currencies for display (from the appropriate collection)
+      final currencies = await getAllCurrencies(companyId: companyId);
       
       for (var currency in currencies) {
         final currencyCode = currency.code!;
@@ -3075,6 +3342,172 @@ class DatabaseHelper {
     } catch (e) {
       debugPrint('Error deleting company: $e');
       return false;
+    }
+  }
+
+  Future<void> processHistoryTransaction(
+    HistoryModel entry,
+    Transaction transaction,
+    {String? companyId}
+  ) async {
+    try {
+      final operationType = entry.operationType;
+      final currencyCode = entry.currencyCode;
+      final quantity = entry.quantity;
+      final total = entry.total;
+
+      // Get references to the affected currency documents
+      final currencyRef = companyId != null
+          ? _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('currencies')
+              .doc(currencyCode)
+          : _firestore
+              .collection(collectionCurrencies)
+              .doc(currencyCode);
+              
+      final somRef = companyId != null
+          ? _firestore
+              .collection(collectionCompanies)
+              .doc(companyId)
+              .collection('currencies')
+              .doc('SOM')
+          : _firestore
+              .collection(collectionCurrencies)
+              .doc('SOM');
+
+      // Get current data for the affected currencies
+      final currencyDoc = await transaction.get(currencyRef);
+      final somDoc = await transaction.get(somRef);
+
+      if (!currencyDoc.exists || !somDoc.exists) {
+        throw Exception('Currency documents not found');
+      }
+
+      final currencyData = currencyDoc.data() as Map<String, dynamic>;
+      final somData = somDoc.data() as Map<String, dynamic>;
+
+      double currencyQuantity = currencyData['quantity'] ?? 0.0;
+      double somQuantity = somData['quantity'] ?? 0.0;
+
+      switch (operationType) {
+        case 'Purchase':
+          // For a purchase: decrease currency quantity and increase SOM
+          currencyQuantity -= quantity;
+          somQuantity += total; // Add back the SOM spent
+          break;
+        case 'Sale':
+          // For a sale: increase currency quantity and decrease SOM
+          currencyQuantity += quantity;
+          somQuantity -= total; // Remove the SOM received
+          break;
+        case 'Deposit':
+          // For a deposit of SOM, just decrease SOM balance
+          if (currencyCode == 'SOM') {
+            somQuantity -= quantity;
+          }
+          break;
+      }
+
+      // Ensure quantities don't go negative
+      currencyQuantity = currencyQuantity < 0 ? 0 : currencyQuantity;
+      somQuantity = somQuantity < 0 ? 0 : somQuantity;
+
+      // Update the currency quantities
+      transaction.update(currencyRef, {
+        'quantity': currencyQuantity,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      transaction.update(somRef, {
+        'quantity': somQuantity,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Error in processHistoryTransaction: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a new user within a company (to be called by company admins)
+  Future<String> createCompanyUser(
+    String companyId,
+    String username,
+    String password,
+    String role, // Should be 'user' or 'admin'
+  ) async {
+    try {
+      debugPrint('Creating new user $username in company $companyId with role $role');
+      
+      // Validate inputs
+      if (username.isEmpty) {
+        throw Exception('Username cannot be empty');
+      }
+      if (password.isEmpty) {
+        throw Exception('Password cannot be empty');
+      }
+      if (role != 'user' && role != 'admin') {
+        throw Exception('Role must be either "user" or "admin"');
+      }
+      
+      // Check if username already exists in this company
+      final exists = await companyUsernameExists(companyId, username);
+      if (exists) {
+        throw Exception('Username already exists in this company');
+      }
+      
+      // Generate a document ID based on username
+      final docId = username.toLowerCase().replaceAll(' ', '_');
+      
+      // Get company data to create the email domain
+      final companyDoc = await _firestore.collection(collectionCompanies).doc(companyId).get();
+      if (!companyDoc.exists) {
+        throw Exception('Company not found');
+      }
+      
+      final companyName = companyDoc.data()?['name'] as String;
+      
+      // Create Firebase Auth user
+      UserCredential? credential;
+      try {
+        // Create a valid email address by removing special characters and ensuring proper format
+        final sanitizedUsername = username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        final sanitizedCompanyName = companyName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        final emailAddress = '${sanitizedUsername}@${sanitizedCompanyName}.com';
+        
+        debugPrint('Creating Firebase Auth user with email: $emailAddress');
+        
+        credential = await _auth.createUserWithEmailAndPassword(
+          email: emailAddress,
+          password: password,
+        );
+        debugPrint('User created in Firebase Auth with UID: ${credential.user?.uid}');
+      } catch (e) {
+        debugPrint('Error creating user in Firebase Auth: $e');
+        // We'll continue and just create the Firestore user
+      }
+      
+      // Add the user to the company's users collection
+      await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('users')
+          .doc(docId)
+          .set({
+        'username': username,
+        'password': password,
+        'role': role,
+        'company_id': companyId,
+        'auth_uid': credential?.user?.uid,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      
+      debugPrint('Company user created successfully with ID: $docId');
+      return docId;
+    } catch (e) {
+      debugPrint('Error in createCompanyUser: $e');
+      rethrow;
     }
   }
 }

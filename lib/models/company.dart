@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 class CompanyModel {
-  final String? id; // Firestore document ID
+  final String? id;  // Firestore document ID
   final String name;
-  final String? ownerId;
+  final String? ownerId;  // UID of admin who owns the company
   final DateTime createdAt;
 
   CompanyModel({
@@ -28,10 +28,9 @@ class CompanyModel {
       id: id,
       name: data['name'] ?? '',
       ownerId: data['owner_id'],
-      createdAt:
-          data['created_at'] != null
-              ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
-              : DateTime.now(),
+      createdAt: data['created_at'] != null 
+          ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 
