@@ -7,6 +7,8 @@ class UserModel {
   final String password;
   final String role;
   final DateTime createdAt;
+  final String? companyId;
+  final String? companyName;
 
   UserModel({
     this.id,
@@ -15,6 +17,8 @@ class UserModel {
     required this.password,
     this.role = 'user',
     DateTime? createdAt,
+    this.companyId,
+    this.companyName,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Convert a UserModel to Firestore map
@@ -25,6 +29,8 @@ class UserModel {
       'role': role,
       'created_at': createdAt.toIso8601String(),
       if (uid != null) 'uid': uid,
+      if (companyId != null) 'company_id': companyId,
+      if (companyName != null) 'company_name': companyName,
     };
   }
 
@@ -40,6 +46,8 @@ class UserModel {
           data['created_at'] != null
               ? DateTime.tryParse(data['created_at']) ?? DateTime.now()
               : DateTime.now(),
+      companyId: data['company_id'] as String?,
+      companyName: data['company_name'] as String?,
     );
   }
 
@@ -51,6 +59,8 @@ class UserModel {
     String? password,
     String? role,
     DateTime? createdAt,
+    String? companyId,
+    String? companyName,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -59,6 +69,8 @@ class UserModel {
       password: password ?? this.password,
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
+      companyId: companyId ?? this.companyId,
+      companyName: companyName ?? this.companyName,
     );
   }
 }

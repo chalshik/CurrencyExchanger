@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "443400179726",
-    "project_id": "currencyexchanger-f16aa",
-    "storage_bucket": "currencyexchanger-f16aa.firebasestorage.app"
+    "project_number": "901574184111",
+    "project_id": "currencyexchanger-b4fa9",
+    "storage_bucket": "currencyexchanger-b4fa9.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:443400179726:android:233b540c1219b46b116c5f",
+        "mobilesdk_app_id": "1:901574184111:android:dc270092e0b6c43ccb985a",
         "android_client_info": {
-          "package_name": "com.example.currency_changer"
+          "package_name": "com.bozzat.currencyexchanger"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD4CeXvt0Oee1lb0A-6HwVWgWPqPTSrRcw"
+          "current_key": "AIzaSyDfMmFq2RhTq7JJs6mf-L1HH4JPkBjeOq0"
         }
       ],
       "services": {

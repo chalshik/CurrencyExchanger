@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/currency_exchanger.dart';
+import 'screens/superadmin_screen.dart';
 import 'providers/language_provider.dart';
 import 'providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -179,14 +180,28 @@ class _SplashScreenState extends State<SplashScreen> {
           if (user != null) {
             // Set the current user (using the global variable from login_screen.dart)
             currentUser = user;
-
-            // Navigate directly to the main app
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ResponsiveCurrencyConverter(),
-              ),
-            );
+            
+            debugPrint('Auto-login successful, user role: ${user.role}');
+            
+            // Check user role and navigate accordingly
+            if (user.role == 'superadmin') {
+              debugPrint('Navigating to SuperadminScreen');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SuperadminScreen(),
+                ),
+              );
+            } else {
+              // Navigate directly to the main app for admin and regular users
+              debugPrint('Navigating to ResponsiveCurrencyConverter');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ResponsiveCurrencyConverter(),
+                ),
+              );
+            }
             return;
           }
         }

@@ -1,4 +1,4 @@
-package com.example.currency_changer
+package com.bozzat.currencyexchanger
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -6,6 +6,7 @@ import '../models/currency.dart';
 import '../models/history.dart';
 import '../models/user.dart';
 import '../screens/login_screen.dart';
+import '../models/company.dart';
 
 class DatabaseHelper {
   // Singleton instance
@@ -27,6 +28,8 @@ class DatabaseHelper {
   static const String collectionHistory = 'history';
   static const String collectionUsers = 'users';
   static const String collectionArchive = 'archive'; // New collection for statistics archives
+  static const String collectionSuperadmins = 'superadmins';
+  static const String collectionCompanies = 'companies'; // Root collection for tenant companies
 
   // Add method to mark cache as dirty (call this when currencies are modified)
   void invalidateCurrenciesCache() {
@@ -1625,6 +1628,7 @@ class DatabaseHelper {
   // USER OPERATIONS
   // =====================
 
+
   /// Get user by username and password (for login)
   Future<UserModel?> getUserByCredentials(
     String username,
@@ -1677,9 +1681,56 @@ class DatabaseHelper {
         return UserModel(id: 'a', username: 'a', password: 'a', role: 'admin');
       }
 
-      // For non-admin users, check Firestore
-      final querySnapshot =
-          await _firestore
+      // Check superadmins collection first
+      debugPrint('Checking superadmins collection: ${collectionSuperadmins}');
+      try {
+        final superadminSnapshot = await _firestore
+            .collection(collectionSuperadmins)
+            .where('username', isEqualTo: username)
+            .where('password', isEqualTo: password)
+            .get();
+
+        debugPrint('Superadmins query complete. Documents found: ${superadminSnapshot.docs.length}');
+        
+        if (superadminSnapshot.docs.isNotEmpty) {
+          final userData = superadminSnapshot.docs.first.data();
+          debugPrint('Superadmin found in Firestore: ${userData.toString()}');
+
+          // Sign in with Firebase Auth
+          try {
+            await _auth.signInWithEmailAndPassword(
+              email: '${username}@currencychanger.com',
+              password: password,
+            );
+            debugPrint('Superadmin signed in with Firebase Auth');
+          } catch (e) {
+            if (e is FirebaseException && e.code == 'user-not-found') {
+              // Create the user in Firebase Auth
+              await _auth.createUserWithEmailAndPassword(
+                email: '${username}@currencychanger.com',
+                password: password,
+              );
+              debugPrint('Superadmin created in Firebase Auth');
+            } else {
+              debugPrint('Error signing in with Firebase Auth: $e');
+            }
+          }
+
+          // Return user model with superadmin role
+          final superadminUser = UserModel.fromFirestore(userData, superadminSnapshot.docs.first.id)
+              .copyWith(role: 'superadmin');
+          debugPrint('Returning superadmin user: ${superadminUser.username}, Role: ${superadminUser.role}');
+          return superadminUser;
+        } else {
+          debugPrint('No superadmin found with username: $username and password: [REDACTED]');
+        }
+      } catch (e) {
+        debugPrint('Error checking superadmins collection: $e');
+      }
+
+      // If not found in superadmins, check regular users collection
+      debugPrint('Not found in superadmins, checking users collection...');
+      final querySnapshot = await _firestore
               .collection(collectionUsers)
               .where('username', isEqualTo: username)
               .where('password', isEqualTo: password)
@@ -1712,7 +1763,61 @@ class DatabaseHelper {
         return UserModel.fromFirestore(userData, querySnapshot.docs.first.id);
       }
 
-      debugPrint('Authentication failed - No matching user found');
+      // If not found in root collections, check users in all companies
+      debugPrint('Not found in root collections, checking company users collections...');
+      
+      // Get all companies
+      final companiesSnapshot = await _firestore.collection(collectionCompanies).get();
+      
+      for (final companyDoc in companiesSnapshot.docs) {
+        final companyId = companyDoc.id;
+        debugPrint('Checking users in company: $companyId');
+        
+        // Look for the user in this company's users collection
+        final companyUsersSnapshot = await _firestore
+            .collection(collectionCompanies)
+            .doc(companyId)
+            .collection('users')
+            .where('username', isEqualTo: username)
+            .where('password', isEqualTo: password)
+            .get();
+        
+        if (companyUsersSnapshot.docs.isNotEmpty) {
+          final userDoc = companyUsersSnapshot.docs.first;
+          final userData = userDoc.data();
+          
+          debugPrint('Found user in company $companyId: ${userData.toString()}');
+          
+          // Sign in with Firebase Auth - using the correct email format for company users
+          try {
+            // Get the sanitized username and company name that were used to create the email
+            final sanitizedUsername = username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+            final companyName = companyDoc.data()['name'] as String;
+            final sanitizedCompanyName = companyName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+            final emailAddress = '${sanitizedUsername}@${sanitizedCompanyName}.com';
+            
+            debugPrint('Attempting to sign in with Firebase Auth using email: $emailAddress');
+            
+            await _auth.signInWithEmailAndPassword(
+              email: emailAddress,
+              password: password,
+            );
+            debugPrint('Company user signed in with Firebase Auth');
+          } catch (e) {
+            debugPrint('Error signing in with Firebase Auth: $e');
+            // We'll continue anyway since we found the user in Firestore
+          }
+          
+          // Return a UserModel with additional company information
+          return UserModel.fromFirestore(userData, userDoc.id)
+              .copyWith(
+                companyId: companyId, 
+                companyName: companyDoc.data()['name'] as String,
+              );
+        }
+      }
+
+      debugPrint('Authentication failed - No matching user found in any collection');
       return null;
     } catch (e) {
       debugPrint('Error in getUserByCredentials: $e');
@@ -2696,6 +2801,280 @@ class DatabaseHelper {
         debugPrint('Firebase error message: ${e.message}');
       }
       return [];
+    }
+  }
+
+  /// Create a superadmin user
+  Future<String> createSuperadminUser(UserModel user) async {
+    try {
+      debugPrint('Creating new superadmin user: ${user.username}');
+
+      // Validate username
+      if (user.username.isEmpty) {
+        throw Exception('Username cannot be empty');
+      }
+
+      // Check if username already exists in users collection
+      final exists = await usernameExists(user.username);
+      if (exists) {
+        throw Exception('Username already exists in users collection');
+      }
+
+      // Check if username already exists in superadmins collection
+      final superadminExists = await superadminUsernameExists(user.username);
+      if (superadminExists) {
+        throw Exception('Username already exists in superadmins collection');
+      }
+
+      // Generate a document ID based on username
+      final docId = user.username.toLowerCase().replaceAll(' ', '_');
+
+      // Add the user to Firestore with specific document ID
+      await _firestore.collection(collectionSuperadmins).doc(docId).set({
+        'username': user.username,
+        'password': user.password,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      // Create the user in Firebase Auth
+      try {
+        // Create a valid email address by removing special characters and ensuring proper format
+        final sanitizedUsername = user.username.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        final emailAddress = '${sanitizedUsername}@currencychanger.com';
+        
+        debugPrint('Creating Firebase Auth user with email: $emailAddress');
+        
+        await _auth.createUserWithEmailAndPassword(
+          email: emailAddress,
+          password: user.password,
+        );
+        debugPrint('Superadmin created in Firebase Auth');
+      } catch (e) {
+        debugPrint('Error creating superadmin in Firebase Auth: $e');
+        // Continue anyway since the Firestore user is more important
+      }
+
+      debugPrint('Superadmin user created successfully with ID: $docId');
+      return docId;
+    } catch (e) {
+      debugPrint('Error in createSuperadminUser: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if a username already exists in superadmins collection
+  Future<bool> superadminUsernameExists(String username) async {
+    try {
+      // Query Firestore for a superadmin with the given username
+      final querySnapshot =
+          await _firestore
+              .collection(collectionSuperadmins)
+              .where('username', isEqualTo: username)
+              .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error in superadminUsernameExists: $e');
+      return false;
+    }
+  }
+
+  // =====================
+  // COMPANY OPERATIONS
+  // =====================
+
+  /// Create a new company and its admin user
+  /// 
+  /// This function:
+  /// 1. Creates a new company document with name and owner_id
+  /// 2. Creates the company owner (admin) user within that company
+  /// 3. Initializes basic data like SOM currency for that company
+  Future<String> createCompany(
+    String companyName,
+    String adminUsername,
+    String adminPassword,
+  ) async {
+    try {
+      debugPrint('Creating new company: $companyName with admin: $adminUsername');
+
+      // Sanitize company name for ID (lowercase, replace spaces with underscores)
+      final companyId = 'company_${companyName.toLowerCase().replaceAll(' ', '_')}';
+
+      // Check if company already exists
+      final companyDoc = await _firestore.collection(collectionCompanies).doc(companyId).get();
+      if (companyDoc.exists) {
+        throw Exception('Company with this name already exists');
+      }
+
+      // Create admin user document with sanitized username
+      final adminUserId = adminUsername.toLowerCase().replaceAll(' ', '_');
+      
+      // Create admin in Firebase Auth
+      UserCredential credential;
+      try {
+        // Create a valid email address by removing special characters and ensuring proper format
+        final sanitizedUsername = adminUsername.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        final sanitizedCompanyName = companyName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+        final emailAddress = '${sanitizedUsername}@${sanitizedCompanyName}.com';
+        
+        debugPrint('Creating Firebase Auth user with email: $emailAddress');
+        
+        credential = await _auth.createUserWithEmailAndPassword(
+          email: emailAddress,
+          password: adminPassword,
+        );
+        debugPrint('Created admin user in Firebase Auth with UID: ${credential.user?.uid}');
+      } catch (e) {
+        debugPrint('Error creating admin in Firebase Auth: $e');
+        throw Exception('Failed to create admin user authentication: $e');
+      }
+
+      // Store the admin's Firebase UID
+      final adminAuthUid = credential.user?.uid;
+
+      // Create the company document with direct properties (no metadata subcollection)
+      await _firestore.collection(collectionCompanies).doc(companyId).set({
+        'name': companyName,
+        'owner_id': adminUserId,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      
+      // Create the admin user document in the company's users collection
+      await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('users')
+          .doc(adminUserId)
+          .set({
+        'username': adminUsername,
+        'password': adminPassword, // Note: In production, consider more secure methods
+        'role': 'admin',
+        'company_id': companyId,
+        'auth_uid': adminAuthUid,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      // Initialize default currency (SOM) for this company
+      await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('currencies')
+          .doc('SOM')
+          .set({
+        'code': 'SOM',
+        'quantity': 0.0,
+        'updated_at': DateTime.now().toIso8601String(),
+        'default_buy_rate': 1.0,
+        'default_sell_rate': 1.0,
+      });
+
+      debugPrint('Company $companyName created successfully with ID: $companyId');
+      return companyId;
+    } catch (e) {
+      debugPrint('Error in createCompany: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all companies
+  Future<List<CompanyModel>> getAllCompanies() async {
+    try {
+      final companies = <CompanyModel>[];
+      
+      // Get all company documents
+      final companyDocs = await _firestore.collection(collectionCompanies).get();
+      
+      // For each company document, create a company model
+      for (final doc in companyDocs.docs) {
+        final companyId = doc.id;
+        final companyData = doc.data();
+        
+        // Create company model from the document data
+        final company = CompanyModel.fromFirestore(companyData, companyId);
+        companies.add(company);
+      }
+      
+      return companies;
+    } catch (e) {
+      debugPrint('Error getting companies: $e');
+      return [];
+    }
+  }
+
+  /// Get company by ID
+  Future<CompanyModel?> getCompanyById(String companyId) async {
+    try {
+      // Get company document
+      final companyDoc = await _firestore.collection(collectionCompanies).doc(companyId).get();
+      
+      if (companyDoc.exists) {
+        // Create company model from the document data
+        final companyData = companyDoc.data() as Map<String, dynamic>;
+        return CompanyModel.fromFirestore(companyData, companyId);
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('Error getting company: $e');
+      return null;
+    }
+  }
+
+  /// Delete a company and all its data
+  Future<bool> deleteCompany(String companyId) async {
+    try {
+      // This is a destructive operation that will delete:
+      // - All users in the company
+      // - All currencies
+      // - All history records
+      // - The company document itself
+      
+      // In a production environment, this should be done with more caution,
+      // possibly with a cloud function to ensure atomic deletion
+
+      // Step 1: Delete all subcollections (naive approach, won't work for large collections)
+      // This is a simplified version, and for large collections, you'd need a different approach
+      
+      // Delete users
+      final userDocs = await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('users')
+          .get();
+      
+      for (final doc in userDocs.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete currencies
+      final currencyDocs = await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('currencies')
+          .get();
+      
+      for (final doc in currencyDocs.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete history
+      final historyDocs = await _firestore
+          .collection(collectionCompanies)
+          .doc(companyId)
+          .collection('history')
+          .get();
+      
+      for (final doc in historyDocs.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Finally, delete the company document itself
+      await _firestore.collection(collectionCompanies).doc(companyId).delete();
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting company: $e');
+      return false;
     }
   }
 }

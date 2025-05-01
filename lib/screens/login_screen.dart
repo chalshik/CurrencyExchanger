@@ -7,6 +7,8 @@ import '../widgets/flag_language_selector.dart';
 import '../widgets/theme_toggle_button.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import 'superadmin_screen.dart';  // Import the superadmin screen
+import 'add_superadmin_screen.dart';  // Import the add superadmin screen
 
 // Global variable to store the currently logged in user
 UserModel? currentUser;
@@ -189,12 +191,24 @@ class _LoginScreenState extends State<LoginScreen> {
     // Store the logged in user globally
     currentUser = user;
 
-    // Login successful, navigate to main app
+    debugPrint('User role: ${user.role}');
+
+    // Navigate based on user role
+    if (user.role == 'superadmin') {
+      // Navigate to superadmin screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const SuperadminScreen(),
+        ),
+      );
+    } else {
+      // Login successful, navigate to main app for regular users and admins
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => const ResponsiveCurrencyConverter(),
       ),
     );
+    }
   }
 
   @override
@@ -498,6 +512,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     )
                     : Text(languageProvider.translate('login_button')),
+          ),
+          
+          // Add Superadmin button (for testing purposes)
+          const SizedBox(height: 20),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddSuperadminScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.admin_panel_settings),
+            label: const Text('Add Superadmin (Admin Only)'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+            ),
           ),
         ],
       ),
